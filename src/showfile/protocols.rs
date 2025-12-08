@@ -1,8 +1,11 @@
 use std::net::IpAddr;
 
+use crate::showfile::Label;
+
 #[derive(Debug, Clone, PartialEq, Default)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Protocols {
-    pub(crate) sacn: Sacn,
+    sacn: Sacn,
 }
 
 impl Protocols {
@@ -12,8 +15,9 @@ impl Protocols {
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Sacn {
-    pub(crate) outputs: Vec<SacnOutput>,
+    outputs: Vec<SacnOutput>,
 }
 
 impl Sacn {
@@ -23,17 +27,18 @@ impl Sacn {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct SacnOutput {
-    pub(crate) name: String,
-    pub(crate) mode: SacnMode,
-    pub(crate) local_universes: Vec<u16>,
-    pub(crate) destination_universe: u16,
-    pub(crate) priority: u8,
+    label: Label,
+    mode: SacnMode,
+    local_universes: Vec<u16>,
+    destination_universe: u16,
+    priority: u8,
 }
 
 impl SacnOutput {
-    pub fn name(&self) -> &str {
-        &self.name
+    pub fn label(&self) -> &Label {
+        &self.label
     }
 
     pub fn mode(&self) -> SacnMode {
@@ -54,6 +59,8 @@ impl SacnOutput {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum SacnMode {
     Unicast { destination_ip: IpAddr },
     Multicast,

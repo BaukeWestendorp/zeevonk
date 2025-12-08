@@ -4,7 +4,7 @@
 //! assist working safely with DMX addresses and values.
 
 use std::collections::HashMap;
-use std::ops::{Deref, DerefMut};
+use std::{fmt, ops, str};
 
 pub use error::Error;
 
@@ -20,7 +20,6 @@ mod error;
 ///
 /// ```
 /// # use zeevonk::dmx;
-///
 /// // Create a valid channel
 /// let valid_channel = dmx::Channel::new(100);
 /// assert!(valid_channel.is_ok());
@@ -32,23 +31,24 @@ mod error;
 /// assert!(invalid_channel.is_err());
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(serde::Serialize)]
 pub struct Channel(u16);
 
-impl Deref for Channel {
+impl ops::Deref for Channel {
     type Target = u16;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl DerefMut for Channel {
+impl ops::DerefMut for Channel {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl std::fmt::Display for Channel {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl fmt::Display for Channel {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
@@ -81,6 +81,15 @@ impl Channel {
     }
 }
 
+impl<'de> serde::Deserialize<'de> for Channel {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Self::new(u16::deserialize(deserializer)?).map_err(serde::de::Error::custom)
+    }
+}
+
 impl Default for Channel {
     fn default() -> Self {
         Self::new(1).unwrap()
@@ -101,7 +110,7 @@ impl TryFrom<u16> for Channel {
     }
 }
 
-impl std::str::FromStr for Channel {
+impl str::FromStr for Channel {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -121,23 +130,24 @@ impl std::str::FromStr for Channel {
 /// let max = dmx::Value(255); // Maximum DMX value
 /// ```
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Value(pub u8);
 
-impl Deref for Value {
+impl ops::Deref for Value {
     type Target = u8;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl DerefMut for Value {
+impl ops::DerefMut for Value {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
-impl std::fmt::Display for Value {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
@@ -154,7 +164,7 @@ impl From<Value> for u8 {
     }
 }
 
-impl std::str::FromStr for Value {
+impl str::FromStr for Value {
     type Err = std::num::ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -193,6 +203,7 @@ impl Value {
 /// assert_eq!(addr.channel, dmx::Channel::new(488).unwrap());
 /// ```
 #[derive(Debug, Clone, Default, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Address {
     /// The universe id for this address.
     pub universe: UniverseId,
@@ -299,7 +310,7 @@ impl Address {
     }
 }
 
-impl std::str::FromStr for Address {
+impl str::FromStr for Address {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -315,8 +326,8 @@ impl std::str::FromStr for Address {
     }
 }
 
-impl std::fmt::Display for Address {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+impl fmt::Display for Address {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}.{}", self.universe, self.channel)
     }
 }
@@ -338,16 +349,17 @@ impl std::fmt::Display for Address {
 /// assert!(invalid.is_err());
 /// ```
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(serde::Serialize)]
 pub struct UniverseId(u16);
 
-impl Deref for UniverseId {
+impl ops::Deref for UniverseId {
     type Target = u16;
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl DerefMut for UniverseId {
+impl ops::DerefMut for UniverseId {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
@@ -389,6 +401,15 @@ impl UniverseId {
     }
 }
 
+impl<'de> serde::Deserialize<'de> for UniverseId {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        Self::new(u16::deserialize(deserializer)?).map_err(serde::de::Error::custom)
+    }
+}
+
 impl Default for UniverseId {
     fn default() -> Self {
         Self::new(1).unwrap()
@@ -409,7 +430,7 @@ impl From<UniverseId> for u16 {
     }
 }
 
-impl std::str::FromStr for UniverseId {
+impl str::FromStr for UniverseId {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -431,7 +452,9 @@ impl std::str::FromStr for UniverseId {
 /// let universe = dmx::Universe::new();
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Universe {
+    #[serde(with = "serde_big_array::BigArray")]
     values: [Value; 512],
 }
 
@@ -538,6 +561,7 @@ impl From<Universe> for Vec<u8> {
 /// let _removed_universe = multiverse.remove_universe(&id);
 /// ```
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Multiverse {
     universes: HashMap<UniverseId, Universe>,
 }
@@ -697,6 +721,8 @@ impl Multiverse {
 
 #[cfg(test)]
 mod tests {
+    use crate::dmx::Universe;
+
     use super::{Address, Channel, UniverseId};
 
     #[test]
@@ -770,5 +796,54 @@ mod tests {
         let c = Address::new(UniverseId::new(4).unwrap(), Channel::new(1).unwrap());
         assert!(a < b);
         assert!(b < c);
+    }
+
+    // ----------
+    // Serde
+    // ----------
+
+    #[test]
+    fn serialize_channel() {
+        let channel = Channel::new(100).unwrap();
+        let serialized = serde_json::to_string(&channel).unwrap();
+        assert_eq!(serialized, "100");
+    }
+
+    #[test]
+    fn deserialize_channel() {
+        let channel: Channel = serde_json::from_str("100").unwrap();
+        assert_eq!(channel, Channel::new(100).unwrap());
+    }
+
+    #[test]
+    fn deserialize_invalid_channel() {
+        let result: Result<Channel, _> = serde_json::from_str("513");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn serialize_universe_id() {
+        let universe_id = UniverseId::new(1).unwrap();
+        let serialized = serde_json::to_string(&universe_id).unwrap();
+        assert_eq!(serialized, "1");
+    }
+
+    #[test]
+    fn deserialize_universe_id() {
+        let universe_id: UniverseId = serde_json::from_str("1").unwrap();
+        assert_eq!(universe_id, UniverseId::new(1).unwrap());
+    }
+
+    #[test]
+    fn deserialize_invalid_universe_id() {
+        let result: Result<Channel, _> = serde_json::from_str("0");
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn deserialize_universe() {
+        let json = r#"{"id":1,"values":[0,0,0]}"#;
+        let universe: Result<Universe, _> = serde_json::from_str(json);
+        assert!(universe.is_err()); // Should fail as we need all 512 values
     }
 }

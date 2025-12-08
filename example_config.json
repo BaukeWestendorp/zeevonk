@@ -1,0 +1,59 @@
+{
+  "patch": {
+    "fixtures": [
+      {
+        "id": 101,
+        "label": "JDC-1 1",
+        "address": {
+          "universe": 1,
+          "channel": 1
+        },
+        "kind": {
+          "fixture_type_id": "9B181200-F6E3-4EE6-B385-FCE095B46424",
+          "dmx_mode": "Mode 3 SPix (68ch)"
+        }
+      },
+      {
+        "id": 102,
+        "label": "JDC-1 2",
+        "address": {
+          "universe": 1,
+          "channel": 69
+        },
+        "kind": {
+          "fixture_type_id": "9B181200-F6E3-4EE6-B385-FCE095B46424",
+          "dmx_mode": "Mode 3 SPix (68ch)"
+        }
+      },
+      {
+        "id": 103,
+        "label": "JDC-1 3",
+        "address": {
+          "universe": 1,
+          "channel": 137
+        },
+        "kind": {
+          "fixture_type_id": "9B181200-F6E3-4EE6-B385-FCE095B46424",
+          "dmx_mode": "Mode 3 SPix (68ch)"
+        }
+      }
+    ]
+  },
+  "protocols": {
+    "sacn": {
+      "outputs": [
+        {
+          "label": "Radiant U1",
+          "mode": {
+            "unicast": {
+              "destination_ip": "127.0.0.1"
+            }
+          },
+          "local_universes": [1],
+          "destination_universe": 1,
+          "priority": 100
+        }
+      ]
+    }
+  }
+}

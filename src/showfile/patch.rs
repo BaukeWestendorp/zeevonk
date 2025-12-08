@@ -8,8 +8,9 @@ use crate::dmx::Address;
 use crate::showfile::Label;
 
 #[derive(Debug, Clone, PartialEq, Default)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Patch {
-    pub(crate) fixtures: Vec<Fixture>,
+    fixtures: Vec<Fixture>,
 }
 
 impl Patch {
@@ -19,11 +20,12 @@ impl Patch {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Fixture {
-    pub(crate) id: FixtureId,
-    pub(crate) label: Label,
-    pub(crate) address: Address,
-    pub(crate) kind: FixtureKind,
+    id: FixtureId,
+    label: Label,
+    address: Address,
+    kind: FixtureKind,
 }
 
 impl Fixture {
@@ -45,9 +47,10 @@ impl Fixture {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct FixtureKind {
-    pub(crate) fixture_type_id: Uuid,
-    pub(crate) dmx_mode: String,
+    fixture_type_id: Uuid,
+    dmx_mode: String,
 }
 
 impl FixtureKind {
@@ -61,6 +64,8 @@ impl FixtureKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
 pub struct FixtureId(NonZeroU32);
 
 impl FixtureId {
