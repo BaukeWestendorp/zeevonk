@@ -28,6 +28,7 @@ enum Commands {
     },
 }
 
+/// Tries to parse the CLI arguments and execute the corresponding command.
 pub fn parse_and_execute() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
