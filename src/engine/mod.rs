@@ -1,10 +1,12 @@
 use std::net::SocketAddr;
+use std::sync::{Arc, RwLock};
 
 use anyhow::Context;
 use futures::{SinkExt, StreamExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
+use crate::dmx::Multiverse;
 use crate::engine::output::DmxOutputManager;
 use crate::packet::{self, ClientboundPacket, ServerboundPacket};
 use crate::showfile::Showfile;
@@ -15,6 +17,7 @@ pub struct Engine<'sf> {
     showfile: &'sf Showfile,
 
     dmx_output_manager: DmxOutputManager,
+    output_multiverse: Arc<RwLock<Multiverse>>,
 
     /// Contains the listener after the engine has been started.
     listener: Option<TcpListener>,
@@ -22,9 +25,15 @@ pub struct Engine<'sf> {
 
 impl<'sf> Engine<'sf> {
     pub fn new(showfile: &'sf Showfile) -> Self {
+        let output_multiverse = Arc::new(RwLock::new(Multiverse::new()));
+
         Self {
             showfile,
-            dmx_output_manager: DmxOutputManager::new(showfile.protocols()),
+            dmx_output_manager: DmxOutputManager::new(
+                showfile.protocols(),
+                output_multiverse.clone(),
+            ),
+            output_multiverse,
             listener: None,
         }
     }
@@ -103,22 +112,28 @@ impl<'sf> Engine<'sf> {
         let mut framed_reader = FramedRead::new(reader, packet::codec::ServerboundPacketDecoder);
         let mut framed_writer = FramedWrite::new(writer, packet::codec::ClientboundPacketEncoder);
 
-        let handle_packet = async |packet, socket_addr, framed_writer: &mut FramedWrite<_, _>| {
-            let response = match packet {
-                ServerboundPacket::RequestLayout => Some(ClientboundPacket::ResponseLayout),
-                ServerboundPacket::RequestDmxOutput => Some(ClientboundPacket::ResponseDmxOutput),
-                ServerboundPacket::RequestTriggers => Some(ClientboundPacket::ResponseTriggers),
-                ServerboundPacket::RequestAttributeValues => {
-                    Some(ClientboundPacket::ResponseAttributeValues)
-                }
-                ServerboundPacket::RequestSetAttributeValues => {
-                    Some(ClientboundPacket::ResponseSetAttributeValues)
-                }
-            };
+        let handle_packet = {
+            let output_multiverse = self.output_multiverse.clone();
+            async move |packet, socket_addr, framed_writer: &mut FramedWrite<_, _>| {
+                let response = match packet {
+                    ServerboundPacket::RequestLayout => Some(ClientboundPacket::ResponseLayout),
+                    ServerboundPacket::RequestDmxOutput => {
+                        let multiverse = output_multiverse.read().unwrap().clone();
+                        Some(ClientboundPacket::ResponseDmxOutput(multiverse))
+                    }
+                    ServerboundPacket::RequestTriggers => Some(ClientboundPacket::ResponseTriggers),
+                    ServerboundPacket::RequestAttributeValues => {
+                        Some(ClientboundPacket::ResponseAttributeValues)
+                    }
+                    ServerboundPacket::RequestSetAttributeValues => {
+                        Some(ClientboundPacket::ResponseSetAttributeValues)
+                    }
+                };
 
-            if let Some(resp) = response {
-                if let Err(err) = framed_writer.send(resp).await {
-                    log::error!("error sending response to {}: {}", socket_addr, err);
+                if let Some(resp) = response {
+                    if let Err(err) = framed_writer.send(resp).await {
+                        log::error!("error sending response to {}: {}", socket_addr, err);
+                    }
                 }
             }
         };

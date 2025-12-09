@@ -1,19 +1,23 @@
+use std::sync::{Arc, RwLock};
 use std::thread::{self, JoinHandle};
 
+use crate::dmx::Multiverse;
 use crate::showfile::protocols::Protocols;
 
 const DMX_OUTPUT_INTERVAL: std::time::Duration = std::time::Duration::from_millis(25);
 
 pub struct DmxOutputManager {
-    sacn_outputs: Vec<SacnOutput>,
+    _sacn_outputs: Vec<SacnOutput>,
 
     thread_handle: Option<JoinHandle<()>>,
+
+    _output_multiverse: Arc<RwLock<Multiverse>>,
 }
 
 impl DmxOutputManager {
-    pub fn new(protocols: &Protocols) -> Self {
-        let sacn_outputs = protocols.sacn().outputs().iter().map(|_| SacnOutput {}).collect();
-        Self { sacn_outputs, thread_handle: None }
+    pub fn new(protocols: &Protocols, _output_multiverse: Arc<RwLock<Multiverse>>) -> Self {
+        let _sacn_outputs = protocols.sacn().outputs().iter().map(|_| SacnOutput {}).collect();
+        Self { _sacn_outputs, thread_handle: None, _output_multiverse }
     }
 
     pub fn start(&mut self) {
@@ -33,8 +37,6 @@ fn start_thread() {
     }
 }
 
-fn send_dmx_output() {
-    log::warn!("implement sending dmx output...");
-}
+fn send_dmx_output() {}
 
 struct SacnOutput {}

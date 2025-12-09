@@ -6,7 +6,7 @@ use zeevonk::packet::{ClientboundPacket, ServerboundPacket};
 pub fn main() {
     let mut socket = TcpStream::connect("127.0.0.1:7334").unwrap();
 
-    socket.write(&ServerboundPacket::RequestDmxOutput.encode_packet_bytes()).unwrap();
+    socket.write(&ServerboundPacket::RequestDmxOutput.encode_packet_bytes().unwrap()).unwrap();
 
     loop {
         // Read the first 4 bytes for the length

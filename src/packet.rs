@@ -2,13 +2,15 @@ use std::io;
 
 use bytes::{Buf, BytesMut};
 
+use crate::dmx::Multiverse;
+
 /// Packets sent from the server to the client.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClientboundPacket {
     IntervalDmxOutput,
 
     ResponseLayout,
-    ResponseDmxOutput,
+    ResponseDmxOutput(Multiverse),
     ResponseTriggers,
     ResponseAttributeValues,
     ResponseSetAttributeValues,
@@ -20,7 +22,7 @@ impl ClientboundPacket {
             Self::IntervalDmxOutput => 0,
 
             Self::ResponseLayout => 1,
-            Self::ResponseDmxOutput => 2,
+            Self::ResponseDmxOutput(_) => 2,
             Self::ResponseTriggers => 3,
             Self::ResponseAttributeValues => 4,
             Self::ResponseSetAttributeValues => 5,
@@ -37,7 +39,13 @@ impl ClientboundPacket {
             0 => Self::IntervalDmxOutput,
 
             1 => Self::ResponseLayout,
-            2 => Self::ResponseDmxOutput,
+            2 => {
+                let multiverse: Multiverse =
+                    rmp_serde::from_slice(&payload_bytes).map_err(|_| Error::InvalidPayload {
+                        message: "failed to decode multiverse".to_string(),
+                    })?;
+                Self::ResponseDmxOutput(multiverse)
+            }
             3 => Self::ResponseTriggers,
             4 => Self::ResponseAttributeValues,
             5 => Self::ResponseSetAttributeValues,
@@ -69,18 +77,36 @@ impl ClientboundPacket {
     }
 
     /// Encodes a clientbound into bytes (excluding the length prefix).
-    pub fn encode_payload_bytes(&self) -> Vec<u8> {
-        vec![self.id()]
+    pub fn encode_payload_bytes(&self) -> Result<Vec<u8>, Error> {
+        let mut payload_bytes = vec![self.id()];
+
+        match self {
+            Self::IntervalDmxOutput => {}
+
+            Self::ResponseLayout => {}
+            Self::ResponseDmxOutput(multiverse) => {
+                let multiverse_bytes = rmp_serde::to_vec(multiverse).map_err(|_| {
+                    Error::InvalidPayload { message: "failed to encode multiverse".to_string() }
+                })?;
+
+                payload_bytes.extend(multiverse_bytes);
+            }
+            Self::ResponseTriggers => {}
+            Self::ResponseAttributeValues => {}
+            Self::ResponseSetAttributeValues => {}
+        }
+
+        Ok(payload_bytes)
     }
 
     /// Encodes a clientbound into bytes including the length prefix (u32 LE).
-    pub fn encode_packet_bytes(&self) -> Vec<u8> {
-        let payload_bytes = self.encode_payload_bytes();
+    pub fn encode_packet_bytes(&self) -> Result<Vec<u8>, Error> {
+        let payload_bytes = self.encode_payload_bytes()?;
         let length = payload_bytes.len() as u32;
         let mut out = Vec::with_capacity(4 + payload_bytes.len());
         out.extend_from_slice(&length.to_le_bytes());
         out.extend_from_slice(&payload_bytes);
-        out
+        Ok(out)
     }
 }
 
@@ -145,18 +171,20 @@ impl ServerboundPacket {
     }
 
     /// Encodes a serverbound into bytes (excluding the length prefix).
-    pub fn encode_payload_bytes(&self) -> Vec<u8> {
-        vec![self.id()]
+    pub fn encode_payload_bytes(&self) -> Result<Vec<u8>, Error> {
+        let payload_bytes = vec![self.id()];
+
+        Ok(payload_bytes)
     }
 
     /// Encodes a serverbound into bytes including the length prefix (u32 LE).
-    pub fn encode_packet_bytes(&self) -> Vec<u8> {
-        let payload_bytes = self.encode_payload_bytes();
+    pub fn encode_packet_bytes(&self) -> Result<Vec<u8>, Error> {
+        let payload_bytes = self.encode_payload_bytes()?;
         let length = payload_bytes.len() as u32;
         let mut out = Vec::with_capacity(4 + payload_bytes.len());
         out.extend_from_slice(&length.to_le_bytes());
         out.extend_from_slice(&payload_bytes);
-        out
+        Ok(out)
     }
 }
 
@@ -172,6 +200,8 @@ pub enum Error {
         "Packet size mismatch: found {expected} bytes in prefix, but actual payload length is {found}"
     )]
     PacketSizeMismatch { expected: u32, found: u32 },
+    #[error("Invalid payload: {message}")]
+    InvalidPayload { message: String },
     #[error("I/O error: {0}")]
     Io(#[from] io::Error),
 }
@@ -233,7 +263,7 @@ pub(crate) mod codec {
             packet: ClientboundPacket,
             dst: &mut BytesMut,
         ) -> Result<(), Self::Error> {
-            let payload_bytes = packet.encode_payload_bytes();
+            let payload_bytes = packet.encode_payload_bytes()?;
 
             // Check if the length of the length prefix + payload bytes is within the limit.
             if 4 + payload_bytes.len() > MAX {
