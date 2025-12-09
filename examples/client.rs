@@ -1,51 +1,29 @@
-use std::io::{ErrorKind, Read as _, Write};
-use std::net::TcpStream;
+use futures::{SinkExt, StreamExt as _};
+use tokio::net::TcpStream;
+use tokio_util::codec::{FramedRead, FramedWrite};
+use zeevonk::packet::Packet;
+use zeevonk::packet::client::ClientboundPacketPayload;
+use zeevonk::packet::codec::{PacketDecoder, PacketEncoder};
+use zeevonk::packet::server::ServerboundPacketPayload;
 
-use zeevonk::packet::{ClientboundPacket, ServerboundPacket};
+#[tokio::main]
+async fn main() {
+    let (reader, writer) = TcpStream::connect("127.0.0.1:7334").await.unwrap().into_split();
+    let mut framed_reader =
+        FramedRead::new(reader, PacketDecoder::<ClientboundPacketPayload>::default());
+    let mut framed_writer = FramedWrite::new(writer, PacketEncoder::default());
 
-pub fn main() {
-    let mut socket = TcpStream::connect("127.0.0.1:7334").unwrap();
+    framed_writer.send(Packet::new(ServerboundPacketPayload::RequestDmxOutput)).await.unwrap();
 
-    socket.write(&ServerboundPacket::RequestDmxOutput.encode_packet_bytes().unwrap()).unwrap();
-
-    loop {
-        // Read the first 4 bytes for the length
-        let mut len_buf = [0u8; 4];
-        let mut read_len = 0;
-        while read_len < 4 {
-            match socket.read(&mut len_buf[read_len..]) {
-                Ok(0) => return, // connection closed
-                Ok(n) => read_len += n,
-                Err(err) if err.kind() == ErrorKind::WouldBlock => {
-                    continue;
-                }
-                Err(e) => {
-                    eprintln!("error reading length from socket: {}", e);
-                    return;
-                }
+    while let Some(packet) = framed_reader.next().await {
+        match packet {
+            Ok(packet) => {
+                eprintln!("packet: {packet:?}");
+            }
+            Err(err) => {
+                log::error!("error reading packet: {}", err);
+                break;
             }
         }
-        let packet_len = u32::from_le_bytes(len_buf) as usize;
-
-        // Read the payload
-        let mut payload = vec![0u8; packet_len];
-        let mut read_payload = 0;
-        while read_payload < packet_len {
-            match socket.read(&mut payload[read_payload..]) {
-                Ok(0) => return, // connection closed
-                Ok(n) => read_payload += n,
-                Err(err) if err.kind() == ErrorKind::WouldBlock => {
-                    continue;
-                }
-                Err(e) => {
-                    eprintln!("error reading payload from socket: {}", e);
-                    return;
-                }
-            }
-        }
-
-        let packet = ClientboundPacket::decode_payload_bytes(&payload).unwrap();
-
-        dbg!(packet);
     }
 }

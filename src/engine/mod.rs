@@ -8,7 +8,10 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::dmx::Multiverse;
 use crate::engine::output::DmxOutputManager;
-use crate::packet::{self, ClientboundPacket, ServerboundPacket};
+use crate::packet::Packet;
+use crate::packet::client::ClientboundPacketPayload;
+use crate::packet::codec::{PacketDecoder, PacketEncoder};
+use crate::packet::server::ServerboundPacketPayload;
 use crate::showfile::Showfile;
 
 mod output;
@@ -109,29 +112,37 @@ impl<'sf> Engine<'sf> {
         log::info!("handling client");
 
         let (reader, writer) = stream.into_split();
-        let mut framed_reader = FramedRead::new(reader, packet::codec::ServerboundPacketDecoder);
-        let mut framed_writer = FramedWrite::new(writer, packet::codec::ClientboundPacketEncoder);
+        let mut framed_reader =
+            FramedRead::new(reader, PacketDecoder::<ServerboundPacketPayload>::default());
+        let mut framed_writer = FramedWrite::new(writer, PacketEncoder::default());
 
         let handle_packet = {
             let output_multiverse = self.output_multiverse.clone();
-            async move |packet, socket_addr, framed_writer: &mut FramedWrite<_, _>| {
-                let response = match packet {
-                    ServerboundPacket::RequestLayout => Some(ClientboundPacket::ResponseLayout),
-                    ServerboundPacket::RequestDmxOutput => {
+            async move |packet: Packet<ServerboundPacketPayload>,
+                        socket_addr,
+                        framed_writer: &mut FramedWrite<_, _>| {
+                let response_payload = match packet.payload() {
+                    ServerboundPacketPayload::RequestLayout => {
+                        Some(ClientboundPacketPayload::ResponseLayout)
+                    }
+                    ServerboundPacketPayload::RequestDmxOutput => {
                         let multiverse = output_multiverse.read().unwrap().clone();
-                        Some(ClientboundPacket::ResponseDmxOutput(multiverse))
+                        Some(ClientboundPacketPayload::ResponseDmxOutput(multiverse))
                     }
-                    ServerboundPacket::RequestTriggers => Some(ClientboundPacket::ResponseTriggers),
-                    ServerboundPacket::RequestAttributeValues => {
-                        Some(ClientboundPacket::ResponseAttributeValues)
+                    ServerboundPacketPayload::RequestTriggers => {
+                        Some(ClientboundPacketPayload::ResponseTriggers)
                     }
-                    ServerboundPacket::RequestSetAttributeValues => {
-                        Some(ClientboundPacket::ResponseSetAttributeValues)
+                    ServerboundPacketPayload::RequestAttributeValues => {
+                        Some(ClientboundPacketPayload::ResponseAttributeValues)
+                    }
+                    ServerboundPacketPayload::RequestSetAttributeValues => {
+                        Some(ClientboundPacketPayload::ResponseSetAttributeValues)
                     }
                 };
 
-                if let Some(resp) = response {
-                    if let Err(err) = framed_writer.send(resp).await {
+                if let Some(response_payload) = response_payload {
+                    let packet = Packet::new(response_payload);
+                    if let Err(err) = framed_writer.send(packet).await {
                         log::error!("error sending response to {}: {}", socket_addr, err);
                     }
                 }
