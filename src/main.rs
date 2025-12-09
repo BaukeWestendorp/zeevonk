@@ -1,5 +1,3 @@
-use anyhow::Context;
-
 mod cli;
 
 fn main() -> anyhow::Result<()> {

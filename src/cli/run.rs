@@ -11,7 +11,7 @@ pub fn run_showfile(showfile_path: PathBuf) -> anyhow::Result<()> {
     let showfile: Showfile =
         serde_json::from_reader(file).context("failed to deserialize showfile")?;
 
-    let mut engine = Engine::new(showfile);
+    let mut engine = Engine::new(&showfile);
     engine.start()?;
 
     Ok(())
