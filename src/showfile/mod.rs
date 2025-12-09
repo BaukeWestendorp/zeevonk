@@ -1,17 +1,25 @@
+use crate::showfile::config::Config;
 use crate::showfile::patch::Patch;
 use crate::showfile::protocols::Protocols;
 
+pub mod config;
 pub mod patch;
 pub mod protocols;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct Showfile {
+    config: Config,
     patch: Patch,
     protocols: Protocols,
 }
 
 impl Showfile {
+    pub fn config(&self) -> &Config {
+        &self.config
+    }
+
     pub fn patch(&self) -> &Patch {
         &self.patch
     }
