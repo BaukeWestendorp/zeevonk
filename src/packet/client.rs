@@ -4,12 +4,23 @@ use crate::packet::PacketPayload;
 /// Packets sent from the server to the client.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ClientboundPacketPayload {
+    /// Response containing DMX output data for all universes.
+    /// Sent at regular intervals.
     IntervalDmxOutput,
 
+    /// Response containing the layout information.
     ResponseLayout,
+
+    /// Response containing DMX output data for all universes.
     ResponseDmxOutput(Multiverse),
+
+    /// Response containing trigger information.
     ResponseTriggers,
+
+    /// Response containing attribute values.
     ResponseAttributeValues,
+
+    /// Response confirming that attribute values have been set.
     ResponseSetAttributeValues,
 }
 

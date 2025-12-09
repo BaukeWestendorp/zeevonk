@@ -2,23 +2,40 @@ use bytes::{Buf, BytesMut};
 
 pub use error::Error;
 
+/// Clientbound packet handling module.
 pub mod client;
+/// Error types for packet coding.
 pub mod error;
+/// Serverbound packet handling module.
 pub mod server;
 
+/// Tokio-based codec for async packet processing.
 #[cfg(feature = "tokio")]
 pub mod codec;
 
+/// Trait for types that can be used as packet payloads.
 pub trait PacketPayload {
+    /// Returns the unique packet ID for this payload.
     fn id(&self) -> u8;
 
+    /// Creates a payload from a packet ID and the associated data bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`Error`] if the data cannot be parsed into a valid payload.
     fn from_id_and_data(id: u8, data: &[u8]) -> Result<Self, Error>
     where
         Self: Sized;
 
+    /// Serializes the payload into a vector of bytes.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`Error`] if the payload cannot be serialized.
     fn to_data_bytes(&self) -> Result<Vec<u8>, Error>;
 }
 
+/// A packet containing a payload.
 #[derive(Debug)]
 pub struct Packet<P: PacketPayload> {
     payload: P,
@@ -70,7 +87,7 @@ impl<P: PacketPayload> Packet<P> {
         Ok(payload_bytes)
     }
 
-    /// Encodes a packet into bytes including the length prefix (u32 LE).
+    /// Encodes a packet into bytes including the length prefix (u32 little-endian).
     pub fn encode_packet_bytes(&self) -> Result<Vec<u8>, Error> {
         let payload_bytes = self.encode_payload_bytes()?;
         let length = payload_bytes.len() as u32;

@@ -3,8 +3,10 @@ use tokio_util::codec::{Decoder, Encoder};
 
 use crate::packet::{Packet, PacketPayload};
 
+/// The maximum allowed length (in bytes) for a packet, including the 4-byte length prefix.
 pub const MAX_PACKET_LENGTH: usize = 8 * 1024 * 1024;
 
+/// An encoder for serializing `Packet` instances into a byte buffer with a length prefix.
 #[derive(Default)]
 pub struct PacketEncoder;
 
@@ -30,6 +32,7 @@ impl<P: PacketPayload> Encoder<Packet<P>> for PacketEncoder {
     }
 }
 
+/// A decoder for deserializing `Packet` instances from a byte buffer with a length prefix.
 pub struct PacketDecoder<P: PacketPayload> {
     marker: std::marker::PhantomData<P>,
 }

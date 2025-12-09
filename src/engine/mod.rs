@@ -14,12 +14,18 @@ use crate::packet::codec::{PacketDecoder, PacketEncoder};
 use crate::packet::server::ServerboundPacketPayload;
 use crate::showfile::Showfile;
 
+/// DMX output handling.
 mod output;
 
+/// The `Engine` struct is responsible for managing the main runtime state of the application.
 pub struct Engine<'sf> {
+    /// Reference to the loaded showfile configuration.
     showfile: &'sf Showfile,
 
+    /// Manages DMX output protocols and their state.
     dmx_output_manager: DmxOutputManager,
+
+    /// Shared state for the output DMX multiverse.
     output_multiverse: Arc<RwLock<Multiverse>>,
 
     /// Contains the listener after the engine has been started.
@@ -27,6 +33,7 @@ pub struct Engine<'sf> {
 }
 
 impl<'sf> Engine<'sf> {
+    /// Creates a new [Engine] for the given [Showfile].
     pub fn new(showfile: &'sf Showfile) -> Self {
         let output_multiverse = Arc::new(RwLock::new(Multiverse::new()));
 
@@ -108,6 +115,7 @@ impl<'sf> Engine<'sf> {
             .unwrap()
     }
 
+    /// Handles an individual client connection.
     fn handle_client(&self, stream: TcpStream, socket_addr: SocketAddr) -> anyhow::Result<()> {
         log::info!("handling client");
 

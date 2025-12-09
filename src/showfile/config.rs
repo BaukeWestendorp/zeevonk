@@ -1,5 +1,6 @@
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
+/// General configuration for the server.
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Config {
@@ -7,6 +8,7 @@ pub struct Config {
 }
 
 impl Config {
+    /// Returns the socket address configured for the server.
     pub fn address(&self) -> SocketAddr {
         self.address
     }

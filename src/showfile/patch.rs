@@ -7,6 +7,7 @@ use uuid::Uuid;
 use crate::dmx::Address;
 use crate::showfile::Label;
 
+/// A patch containing a list of fixtures.
 #[derive(Debug, Clone, PartialEq, Default)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Patch {
@@ -14,11 +15,13 @@ pub struct Patch {
 }
 
 impl Patch {
+    /// Returns all fixtures in the [Patch].
     pub fn fixtures(&self) -> &[Fixture] {
         &self.fixtures
     }
 }
 
+/// A single fixture in the [Patch].
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Fixture {
@@ -29,23 +32,28 @@ pub struct Fixture {
 }
 
 impl Fixture {
+    /// Returns the unique fixture identifier of the fixture.
     pub fn id(&self) -> FixtureId {
         self.id
     }
 
+    /// Returns the [Label] of the fixture.
     pub fn label(&self) -> &Label {
         &self.label
     }
 
+    /// Returns the DMX [Address] of the fixture.
     pub fn address(&self) -> Address {
         self.address
     }
 
+    /// Returns the kind of the fixture.
     pub fn kind(&self) -> &FixtureKind {
         &self.kind
     }
 }
 
+/// Describes the GDTF fixture type and DMX mode of a [Fixture].
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct FixtureKind {
@@ -54,22 +62,25 @@ pub struct FixtureKind {
 }
 
 impl FixtureKind {
+    /// Returns the [Uuid] of the GDTF fixture type.
     pub fn fixture_type_id(&self) -> Uuid {
         self.fixture_type_id
     }
 
+    /// Returns the DMX mode of the fixture.
     pub fn dmx_mode(&self) -> &str {
         &self.dmx_mode
     }
 }
 
+/// A non-zero, positive identifier for a fixture.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 pub struct FixtureId(NonZeroU32);
 
 impl FixtureId {
-    /// Create a new FixtureId. Returns an error if id is zero.
+    /// Create a new [FixtureId]. Returns an error if the id is zero.
     pub fn new(id: u32) -> anyhow::Result<Self> {
         match NonZeroU32::new(id) {
             Some(id) => Ok(FixtureId(id)),
@@ -77,11 +88,13 @@ impl FixtureId {
         }
     }
 
+    /// Returns the underlying u32 value of the [FixtureId].
     pub fn as_u32(&self) -> u32 {
         self.0.into()
     }
 
-    /// Returns a new FixtureId offset by the given value. Returns an error if the result is zero or negative.
+    /// Returns a new [FixtureId] offset by the given value.
+    /// Returns an error if the result is zero or negative.
     pub fn offset(self, offset: i32) -> anyhow::Result<Self> {
         let id = self.as_u32() as i32 + offset;
 

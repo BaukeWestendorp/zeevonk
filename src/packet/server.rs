@@ -3,10 +3,15 @@ use crate::packet::PacketPayload;
 /// Packets sent from the client to the server.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ServerboundPacketPayload {
+    /// Request the current layout from the server.
     RequestLayout,
+    /// Request the current DMX output data of all universes from the server.
     RequestDmxOutput,
+    /// Request the current triggers from the server.
     RequestTriggers,
+    /// Request the current attribute values from the server.
     RequestAttributeValues,
+    /// Request to set new attribute values on the server.
     RequestSetAttributeValues,
 }
 

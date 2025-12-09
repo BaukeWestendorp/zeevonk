@@ -1,5 +1,3 @@
-#![warn(missing_docs)]
-
 //! This crate provides a few helper functions and structs to
 //! assist working safely with DMX addresses and values.
 
