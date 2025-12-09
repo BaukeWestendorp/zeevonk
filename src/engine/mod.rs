@@ -1,9 +1,12 @@
 use std::net::SocketAddr;
 
 use anyhow::Context;
+use futures::{SinkExt, StreamExt};
 use tokio::net::{TcpListener, TcpStream};
+use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::engine::output::DmxOutputManager;
+use crate::packet::{self, ClientboundPacket, ServerboundPacket};
 use crate::showfile::Showfile;
 
 mod output;
@@ -95,6 +98,45 @@ impl<'sf> Engine<'sf> {
 
     fn handle_client(&self, stream: TcpStream, socket_addr: SocketAddr) -> anyhow::Result<()> {
         log::info!("handling client");
+
+        let (reader, writer) = stream.into_split();
+        let mut framed_reader = FramedRead::new(reader, packet::codec::ServerboundPacketDecoder);
+        let mut framed_writer = FramedWrite::new(writer, packet::codec::ClientboundPacketEncoder);
+
+        let handle_packet = async |packet, socket_addr, framed_writer: &mut FramedWrite<_, _>| {
+            let response = match packet {
+                ServerboundPacket::RequestLayout => Some(ClientboundPacket::ResponseLayout),
+                ServerboundPacket::RequestDmxOutput => Some(ClientboundPacket::ResponseDmxOutput),
+                ServerboundPacket::RequestTriggers => Some(ClientboundPacket::ResponseTriggers),
+                ServerboundPacket::RequestAttributeValues => {
+                    Some(ClientboundPacket::ResponseAttributeValues)
+                }
+                ServerboundPacket::RequestSetAttributeValues => {
+                    Some(ClientboundPacket::ResponseSetAttributeValues)
+                }
+            };
+
+            if let Some(resp) = response {
+                if let Err(err) = framed_writer.send(resp).await {
+                    log::error!("error sending response to {}: {}", socket_addr, err);
+                }
+            }
+        };
+
+        tokio::spawn(async move {
+            while let Some(packet) = framed_reader.next().await {
+                match packet {
+                    Ok(packet) => {
+                        handle_packet(packet, socket_addr, &mut framed_writer).await;
+                    }
+                    Err(err) => {
+                        log::error!("error reading packet from {}: {}", socket_addr, err);
+                        break;
+                    }
+                }
+            }
+        });
+
         Ok(())
     }
 }
