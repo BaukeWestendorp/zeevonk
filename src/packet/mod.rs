@@ -10,7 +10,6 @@ pub mod error;
 pub mod server;
 
 /// Tokio-based codec for async packet processing.
-#[cfg(feature = "tokio")]
 pub mod codec;
 
 /// Trait for types that can be used as packet payloads.
