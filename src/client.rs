@@ -16,8 +16,8 @@ pub struct ZeevonkClient {
     packet_reader: FramedRead<OwnedReadHalf, PacketDecoder<ClientboundPacketPayload>>,
     packet_writer: FramedWrite<OwnedWriteHalf, PacketEncoder<ServerboundPacketPayload>>,
 }
-
 impl ZeevonkClient {
+    /// Connects to a Zeevonk server at the given address.
     pub async fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<Self> {
         let (reader, writer) = TcpStream::connect(addr).await?.into_split();
         let decoder = PacketDecoder::<ClientboundPacketPayload>::default();
@@ -27,6 +27,7 @@ impl ZeevonkClient {
         Ok(Self { packet_reader, packet_writer })
     }
 
+    /// Requests the currently baked patch from the server.
     pub async fn request_patch(&mut self) -> io::Result<BakedPatch> {
         self.send_packet(ServerboundPacketPayload::RequestBakedPatch).await?;
 
@@ -45,6 +46,7 @@ impl ZeevonkClient {
         Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Connection closed"))
     }
 
+    /// Requests the current DMX output (multiverse) from the server.
     pub async fn request_dmx_output(&mut self) -> io::Result<Multiverse> {
         self.send_packet(ServerboundPacketPayload::RequestDmxOutput).await?;
 
@@ -63,6 +65,7 @@ impl ZeevonkClient {
         Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Connection closed"))
     }
 
+    /// Sets attribute values for fixtures on the server.
     pub async fn set_attribute_values(
         &mut self,
         values: Vec<(FixturePath, Attribute, ClampedValue)>,
@@ -84,6 +87,7 @@ impl ZeevonkClient {
         Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Connection closed"))
     }
 
+    /// Sends a packet with the given payload to the server.
     async fn send_packet(&mut self, payload: ServerboundPacketPayload) -> io::Result<()> {
         self.packet_writer
             .send(Packet::new(payload))
