@@ -3,6 +3,7 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 /// General configuration for the server.
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct Config {
     address: SocketAddr,
 }

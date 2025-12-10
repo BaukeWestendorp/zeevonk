@@ -2,9 +2,10 @@ use std::net::IpAddr;
 
 use crate::showfile::Label;
 
-/// COntains all DMX IO protocol configurations.
+/// Contains all DMX IO protocol configurations.
 #[derive(Debug, Clone, PartialEq, Default)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct Protocols {
     sacn: Sacn,
 }
@@ -19,6 +20,7 @@ impl Protocols {
 /// Inputs and outputs for the sACN protocol.
 #[derive(Debug, Clone, PartialEq, Default)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct Sacn {
     outputs: Vec<SacnOutput>,
 }

@@ -10,6 +10,7 @@ use crate::showfile::Label;
 /// A patch containing a list of fixtures.
 #[derive(Debug, Clone, PartialEq, Default)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(default)]
 pub struct Patch {
     fixtures: Vec<Fixture>,
 }
