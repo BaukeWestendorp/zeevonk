@@ -1,6 +1,6 @@
 #[derive(Debug, thiserror::Error)]
 /// Errors that can occur during packet processing.
-pub enum Error {
+pub enum PacketError {
     /// Packet size prefix is missing from the input.
     #[error("Missing packet size")]
     MissingPacketSize,
