@@ -3,7 +3,7 @@ use tokio::net::TcpStream;
 use tokio::net::tcp::OwnedWriteHalf;
 use tokio_util::codec::{FramedRead, FramedWrite};
 
-use zeevonk::engine::Layout;
+use zeevonk::engine::BakedPatch;
 use zeevonk::gdcs::Attribute;
 use zeevonk::packet::{
     ClientboundPacketPayload, Packet, PacketDecoder, PacketEncoder, ServerboundPacketPayload,
@@ -16,13 +16,13 @@ async fn main() {
     let mut writer = FramedWrite::new(w, PacketEncoder::default());
 
     writer.send(Packet::new(ServerboundPacketPayload::RequestDmxOutput)).await.unwrap();
-    writer.send(Packet::new(ServerboundPacketPayload::RequestLayout)).await.unwrap();
+    writer.send(Packet::new(ServerboundPacketPayload::RequestBakedPatch)).await.unwrap();
 
     while let Some(packet) = reader.next().await {
         match packet {
             Ok(packet) => match packet.payload() {
-                ClientboundPacketPayload::ResponseLayout(layout) => {
-                    process_layout(layout, &mut writer).await
+                ClientboundPacketPayload::ResponseBakedPatch(baked_patch) => {
+                    process_baked_patch(baked_patch, &mut writer).await
                 }
                 ClientboundPacketPayload::ResponseSetAttributeValues => {
                     println!("attribute values have been set")
@@ -39,13 +39,13 @@ async fn main() {
         }
     }
 
-    async fn process_layout(
-        layout: &Layout,
+    async fn process_baked_patch(
+        baked_patch: &BakedPatch,
         framed_writer: &mut FramedWrite<OwnedWriteHalf, PacketEncoder>,
     ) {
         let mut values = Vec::new();
 
-        for fixture in layout.fixtures() {
+        for fixture in baked_patch.fixtures() {
             let dimmer_channel_functions = fixture
                 .channel_functions()
                 .into_iter()

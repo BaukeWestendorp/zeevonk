@@ -134,12 +134,12 @@ impl<'sf> Engine<'sf> {
                         framed_writer: &mut FramedWrite<_, _>| {
                 log::debug!("handling packet: {packet:?}");
                 let response_payload = match packet.payload {
-                    ServerboundPacketPayload::RequestLayout => {
+                    ServerboundPacketPayload::RequestBakedPatch => {
                         let gdcs_fixtures =
                             gdcs.read().unwrap().fixtures().into_iter().cloned().collect();
-                        let layout = Layout { fixtures: gdcs_fixtures };
+                        let baked_patch = BakedPatch { fixtures: gdcs_fixtures };
 
-                        Some(ClientboundPacketPayload::ResponseLayout(layout))
+                        Some(ClientboundPacketPayload::ResponseBakedPatch(baked_patch))
                     }
                     ServerboundPacketPayload::RequestDmxOutput => {
                         gdcs.write().unwrap().resolve();
@@ -216,15 +216,15 @@ impl<'sf> Engine<'sf> {
     }
 }
 
-/// Contains the complete layout of the patch, (sub)fixtures and their
+/// Contains the complete baked patch of the patch, (sub)fixtures and their
 /// channel functions.
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct Layout {
+pub struct BakedPatch {
     fixtures: Vec<gdcs::Fixture>,
 }
 
-impl Layout {
+impl BakedPatch {
     /// Gets all (sub)fixtures.
     pub fn fixtures(&self) -> &[gdcs::Fixture] {
         &self.fixtures

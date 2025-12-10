@@ -4,8 +4,8 @@ use crate::packet::PacketPayload;
 /// Packets sent from the client to the server.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ServerboundPacketPayload {
-    /// Request the current layout from the server.
-    RequestLayout,
+    /// Request the current baked patch from the server.
+    RequestBakedPatch,
     /// Request the current DMX output data of all universes from the server.
     RequestDmxOutput,
     /// Request the current triggers from the server.
@@ -26,7 +26,7 @@ pub enum ServerboundPacketPayload {
 impl PacketPayload for ServerboundPacketPayload {
     fn id(&self) -> u8 {
         match self {
-            Self::RequestLayout => 0,
+            Self::RequestBakedPatch => 0,
             Self::RequestDmxOutput => 1,
             Self::RequestTriggers => 2,
             Self::RequestAttributeValues => 3,
@@ -36,7 +36,7 @@ impl PacketPayload for ServerboundPacketPayload {
 
     fn from_id_and_data(id: u8, data: &[u8]) -> Result<Self, super::Error> {
         match id {
-            0 => Ok(Self::RequestLayout),
+            0 => Ok(Self::RequestBakedPatch),
             1 => Ok(Self::RequestDmxOutput),
             2 => Ok(Self::RequestTriggers),
             3 => Ok(Self::RequestAttributeValues),
@@ -54,7 +54,7 @@ impl PacketPayload for ServerboundPacketPayload {
 
     fn to_data_bytes(&self) -> Result<Vec<u8>, super::Error> {
         match self {
-            ServerboundPacketPayload::RequestLayout
+            ServerboundPacketPayload::RequestBakedPatch
             | ServerboundPacketPayload::RequestDmxOutput
             | ServerboundPacketPayload::RequestTriggers
             | ServerboundPacketPayload::RequestAttributeValues => Ok(Vec::new()),
