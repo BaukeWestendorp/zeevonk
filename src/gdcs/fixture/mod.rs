@@ -81,13 +81,13 @@ impl Fixture {
 ///
 /// A channel function defines whether the attribute is controlled by
 /// physical DMX addresses or derived virtually from other attributes,
-/// and the range of values it accepts (from/to) and its default value.
+/// and the range of values it accepts (min/max) and its default value.
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct FixtureChannelFunction {
     kind: FixtureChannelFunctionKind,
-    from: ClampedValue,
-    to: ClampedValue,
+    min: ClampedValue,
+    max: ClampedValue,
     default: ClampedValue,
 }
 
@@ -98,13 +98,13 @@ impl FixtureChannelFunction {
     }
 
     /// The minimum value (inclusive) supported by this channel function.
-    pub fn from(&self) -> ClampedValue {
-        self.from
+    pub fn min(&self) -> ClampedValue {
+        self.min
     }
 
     /// The maximum value (inclusive) supported by this channel function.
-    pub fn to(&self) -> ClampedValue {
-        self.to
+    pub fn max(&self) -> ClampedValue {
+        self.max
     }
 
     /// The default value for this attribute when no explicit value is set.
