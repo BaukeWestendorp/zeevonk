@@ -148,12 +148,6 @@ impl<'sf> Engine<'sf> {
                         let multiverse = output_multiverse.read().unwrap().clone();
                         Some(ClientboundPacketPayload::ResponseDmxOutput(multiverse))
                     }
-                    ServerboundPacketPayload::RequestTriggers => {
-                        Some(ClientboundPacketPayload::ResponseTriggers)
-                    }
-                    ServerboundPacketPayload::RequestAttributeValues => {
-                        Some(ClientboundPacketPayload::ResponseAttributeValues)
-                    }
                     ServerboundPacketPayload::RequestSetAttributeValues { values } => {
                         for (fixture_path, attribute, value) in values {
                             gdcs.write().unwrap().set_channel_function_value(

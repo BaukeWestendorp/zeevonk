@@ -9,10 +9,6 @@ pub enum ServerboundPacketPayload {
     RequestBakedPatch,
     /// Request the current DMX output data of all universes from the server.
     RequestDmxOutput,
-    /// Request the current triggers from the server.
-    RequestTriggers,
-    /// Request the current attribute values from the server.
-    RequestAttributeValues,
     /// Request to set new attribute values on the server.
     RequestSetAttributeValues {
         /// values.0: The path of the (sub)fixture whose attribute is to be set.
