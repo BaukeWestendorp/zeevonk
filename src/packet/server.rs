@@ -3,6 +3,7 @@ use crate::packet::PacketPayload;
 
 /// Packets sent from the client to the server.
 #[derive(Debug, Clone, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub enum ServerboundPacketPayload {
     /// Request the current baked patch from the server.
     RequestBakedPatch,
@@ -23,46 +24,4 @@ pub enum ServerboundPacketPayload {
     },
 }
 
-impl PacketPayload for ServerboundPacketPayload {
-    fn id(&self) -> u8 {
-        match self {
-            Self::RequestBakedPatch => 0,
-            Self::RequestDmxOutput => 1,
-            Self::RequestTriggers => 2,
-            Self::RequestAttributeValues => 3,
-            Self::RequestSetAttributeValues { .. } => 4,
-        }
-    }
-
-    fn from_id_and_data(id: u8, data: &[u8]) -> Result<Self, super::Error> {
-        match id {
-            0 => Ok(Self::RequestBakedPatch),
-            1 => Ok(Self::RequestDmxOutput),
-            2 => Ok(Self::RequestTriggers),
-            3 => Ok(Self::RequestAttributeValues),
-            4 => {
-                let values =
-                    rmp_serde::from_slice(data).map_err(|_| super::Error::InvalidPayload {
-                        message: "failed to deserialize values".to_string(),
-                    })?;
-
-                Ok(Self::RequestSetAttributeValues { values })
-            }
-            _ => Err(super::Error::InvalidPacketId(id)),
-        }
-    }
-
-    fn to_data_bytes(&self) -> Result<Vec<u8>, super::Error> {
-        match self {
-            ServerboundPacketPayload::RequestBakedPatch
-            | ServerboundPacketPayload::RequestDmxOutput
-            | ServerboundPacketPayload::RequestTriggers
-            | ServerboundPacketPayload::RequestAttributeValues => Ok(Vec::new()),
-            ServerboundPacketPayload::RequestSetAttributeValues { values } => {
-                rmp_serde::to_vec(values).map_err(|_| super::Error::InvalidPayload {
-                    message: "failed to serialize values".to_string(),
-                })
-            }
-        }
-    }
-}
+impl PacketPayload for ServerboundPacketPayload {}

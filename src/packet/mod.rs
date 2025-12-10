@@ -11,26 +11,7 @@ mod error;
 mod server;
 
 /// Trait for types that can be used as packet payloads.
-pub trait PacketPayload {
-    /// Returns the unique packet ID for this payload.
-    fn id(&self) -> u8;
-
-    /// Creates a payload from a packet ID and the associated data bytes.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [`Error`] if the data cannot be parsed into a valid payload.
-    fn from_id_and_data(id: u8, data: &[u8]) -> Result<Self, Error>
-    where
-        Self: Sized;
-
-    /// Serializes the payload into a vector of bytes.
-    ///
-    /// # Errors
-    ///
-    /// Returns an [`Error`] if the payload cannot be serialized.
-    fn to_data_bytes(&self) -> Result<Vec<u8>, Error>;
-}
+pub trait PacketPayload: serde::Serialize + for<'de> serde::Deserialize<'de> {}
 
 /// A packet containing a payload.
 #[derive(Debug)]
@@ -51,9 +32,9 @@ impl<P: PacketPayload> Packet<P> {
 
     /// Decodes a packet from bytes (excluding the length prefix).
     pub fn decode_payload_bytes(payload_bytes: &[u8]) -> Result<Self, Error> {
-        let mut payload_bytes = BytesMut::from(payload_bytes);
-        let id = payload_bytes.try_get_u8().map_err(|_| Error::MissingPacketId)?;
-        let payload = P::from_id_and_data(id, &payload_bytes)?;
+        let payload = rmp_serde::from_slice(payload_bytes).map_err(|_| Error::InvalidPayload {
+            message: "failed to decode payload".to_string(),
+        })?;
         let packet = Packet { payload };
         Ok(packet)
     }
@@ -79,9 +60,8 @@ impl<P: PacketPayload> Packet<P> {
 
     /// Encodes a packet into bytes (excluding the length prefix).
     pub fn encode_payload_bytes(&self) -> Result<Vec<u8>, Error> {
-        let mut payload_bytes = vec![self.payload.id()];
-        payload_bytes.extend(self.payload.to_data_bytes()?);
-        Ok(payload_bytes)
+        rmp_serde::to_vec(self.payload())
+            .map_err(|_| Error::InvalidPayload { message: "failed to encode payload".to_string() })
     }
 
     /// Encodes a packet into bytes including the length prefix (u32 little-endian).
