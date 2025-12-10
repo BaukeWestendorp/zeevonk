@@ -1,20 +1,22 @@
+use std::sync::Arc;
+use std::time::Duration;
+
 use futures::{SinkExt, StreamExt as _};
-use tokio::io;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpStream, ToSocketAddrs};
+use tokio::sync::Mutex;
+use tokio::{io, task};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::dmx::Multiverse;
-use crate::gdcs::{Attribute, ClampedValue, FixturePath};
 use crate::packet::{
     ClientboundPacketPayload, Packet, PacketDecoder, PacketEncoder, ServerboundPacketPayload,
 };
-use crate::server::BakedPatch;
+use crate::server::{AttributeValues, BakedPatch};
 
 /// The Zeevonk client.
 pub struct ZeevonkClient {
-    packet_reader: FramedRead<OwnedReadHalf, PacketDecoder<ClientboundPacketPayload>>,
-    packet_writer: FramedWrite<OwnedWriteHalf, PacketEncoder<ServerboundPacketPayload>>,
+    inner: Arc<Mutex<Inner>>,
 }
 impl ZeevonkClient {
     /// Connects to a Zeevonk server at the given address.
@@ -24,9 +26,113 @@ impl ZeevonkClient {
         let encoder = PacketEncoder::default();
         let packet_reader = FramedRead::new(reader, decoder);
         let packet_writer = FramedWrite::new(writer, encoder);
-        Ok(Self { packet_reader, packet_writer })
+
+        let inner = Arc::new(Mutex::new(Inner { packet_reader, packet_writer }));
+
+        Ok(Self { inner })
     }
 
+    /// Registers a processor closure that will run in a background task.
+    ///
+    /// The processor is invoked on a fixed 25ms interval (i.e. 40Hz).
+    ///
+    /// The populated attribute values are sent to the server on each frame.
+    pub async fn register_processor<
+        F: Fn(&BakedPatch, &mut AttributeValues) + Send + Sync + 'static,
+    >(
+        &self,
+        processor: F,
+    ) {
+        let inner = Arc::clone(&self.inner);
+        let processor = Arc::new(processor);
+        task::spawn(async move {
+            let baked_patch = match inner.lock().await.request_patch().await {
+                Ok(p) => p,
+                Err(err) => {
+                    log::error!("could not get baked patch for processor: {err}");
+                    return;
+                }
+            };
+
+            // Use a fixed interval starting one period from now to get accurate 25ms ticks.
+            let period = Duration::from_millis(25);
+            let start = tokio::time::Instant::now() + period;
+            let mut interval = tokio::time::interval_at(start, period);
+            interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+
+            // For averaging logs over time.
+            const AVG_WINDOW: usize = 80;
+            let mut timing_logger = TimingLogger::new(AVG_WINDOW);
+
+            loop {
+                // Wait until the next scheduled tick. Using interval_at fixes the schedule
+                // to the chosen start instant and period, minimizing drift.
+                let scheduled_instant = interval.tick().await;
+                let start_instant = tokio::time::Instant::now();
+
+                // How late we are relative to the scheduled instant.
+                let lateness =
+                    start_instant.checked_duration_since(scheduled_instant).unwrap_or_default();
+
+                let mut values = AttributeValues::new();
+
+                let proc_start = tokio::time::Instant::now();
+                (processor.as_ref())(&baked_patch, &mut values);
+                let proc_end = tokio::time::Instant::now();
+
+                let send_start = tokio::time::Instant::now();
+                // Await the result to ensure the request is sent and handled.
+                let send_result = inner.lock().await.request_set_attribute_values(values).await;
+                let send_end = tokio::time::Instant::now();
+
+                let proc_duration = proc_end.duration_since(proc_start);
+                let send_duration = send_end.duration_since(send_start);
+                let total_frame = send_end.duration_since(start_instant);
+
+                // Record and possibly log timings
+                timing_logger.record_frame(
+                    lateness,
+                    proc_duration,
+                    send_duration,
+                    total_frame,
+                    period,
+                );
+
+                if let Err(err) = send_result {
+                    log::error!("failed to send attribute values: {err}");
+                    break;
+                }
+            }
+        })
+        .await
+        .unwrap();
+    }
+
+    /// Requests the currently baked patch from the server.
+    pub async fn request_patch(&self) -> io::Result<BakedPatch> {
+        let mut guard = self.inner.lock().await;
+        guard.request_patch().await
+    }
+
+    /// Requests the current DMX output (multiverse) from the server.
+    pub async fn request_dmx_output(&self) -> io::Result<Multiverse> {
+        let mut guard = self.inner.lock().await;
+        guard.request_dmx_output().await
+    }
+
+    /// Requests setting attribute values for fixtures on the server.
+    pub async fn request_set_attribute_values(&self, values: AttributeValues) -> io::Result<()> {
+        let mut guard = self.inner.lock().await;
+        guard.request_set_attribute_values(values).await
+    }
+}
+
+struct Inner {
+    packet_reader: FramedRead<OwnedReadHalf, PacketDecoder<ClientboundPacketPayload>>,
+    packet_writer: FramedWrite<OwnedWriteHalf, PacketEncoder<ServerboundPacketPayload>>,
+}
+
+impl Inner {
     /// Requests the currently baked patch from the server.
     pub async fn request_patch(&mut self) -> io::Result<BakedPatch> {
         self.send_packet(ServerboundPacketPayload::RequestBakedPatch).await?;
@@ -65,10 +171,10 @@ impl ZeevonkClient {
         Err(io::Error::new(io::ErrorKind::UnexpectedEof, "Connection closed"))
     }
 
-    /// Sets attribute values for fixtures on the server.
-    pub async fn set_attribute_values(
+    /// Requests setting attribute values for fixtures on the server.
+    pub async fn request_set_attribute_values(
         &mut self,
-        values: Vec<(FixturePath, Attribute, ClampedValue)>,
+        values: AttributeValues,
     ) -> io::Result<()> {
         self.send_packet(ServerboundPacketPayload::RequestSetAttributeValues { values }).await?;
 
@@ -93,5 +199,74 @@ impl ZeevonkClient {
             .send(Packet::new(payload))
             .await
             .map_err(|err| io::Error::new(io::ErrorKind::Other, err))
+    }
+}
+
+struct TimingLogger {
+    avg_window: usize,
+    lateness_sum: Duration,
+    proc_sum: Duration,
+    send_sum: Duration,
+    total_sum: Duration,
+    frame_count: usize,
+    over_period_count: usize,
+}
+
+impl TimingLogger {
+    fn new(avg_window: usize) -> Self {
+        Self {
+            avg_window,
+            lateness_sum: Duration::ZERO,
+            proc_sum: Duration::ZERO,
+            send_sum: Duration::ZERO,
+            total_sum: Duration::ZERO,
+            frame_count: 0,
+            over_period_count: 0,
+        }
+    }
+
+    fn record_frame(
+        &mut self,
+        lateness: Duration,
+        proc_duration: Duration,
+        send_duration: Duration,
+        total_frame: Duration,
+        period: Duration,
+    ) {
+        self.lateness_sum += lateness;
+        self.proc_sum += proc_duration;
+        self.send_sum += send_duration;
+        self.total_sum += total_frame;
+        self.frame_count += 1;
+        if total_frame > period {
+            self.over_period_count += 1;
+        }
+
+        // Log averages every avg_window frames
+        if self.frame_count % self.avg_window == 0 {
+            let avg_lateness = self.lateness_sum / self.avg_window as u32;
+            let avg_proc = self.proc_sum / self.avg_window as u32;
+            let avg_send = self.send_sum / self.avg_window as u32;
+
+            log::debug!(
+                "processor frame timing (avg over {:.2}): lateness={:.2?} proc={:.2?} send={:.2?}",
+                self.avg_window,
+                avg_lateness,
+                avg_proc,
+                avg_send,
+            );
+            self.lateness_sum = Duration::ZERO;
+            self.proc_sum = Duration::ZERO;
+            self.send_sum = Duration::ZERO;
+        }
+
+        // Warn if frame took longer than the period.
+        if total_frame > period {
+            log::warn!(
+                "processor frame took {:.2?}, which exceeds the frame period of {:.2?}",
+                total_frame,
+                period
+            );
+        }
     }
 }

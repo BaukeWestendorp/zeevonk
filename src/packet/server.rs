@@ -1,5 +1,5 @@
-use crate::gdcs::{Attribute, ClampedValue, FixturePath};
 use crate::packet::PacketPayload;
+use crate::server::AttributeValues;
 
 /// Packets sent from the client to the server.
 #[derive(Debug, Clone, PartialEq)]
@@ -11,12 +11,8 @@ pub enum ServerboundPacketPayload {
     RequestDmxOutput,
     /// Request to set new attribute values on the server.
     RequestSetAttributeValues {
-        /// values.0: The path of the (sub)fixture whose attribute is to be set.
-        ///
-        /// values.1: The attribute to set.
-        ///
-        /// values.2: The new value for the attribute.
-        values: Vec<(FixturePath, Attribute, ClampedValue)>,
+        /// Attribute values to set.
+        values: AttributeValues,
     },
 }
 

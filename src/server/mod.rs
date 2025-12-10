@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
 
@@ -7,7 +8,7 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::dmx::Multiverse;
-use crate::gdcs::{self, GeneralizedDmxControlSystem};
+use crate::gdcs::{self, Attribute, ClampedValue, FixturePath, GeneralizedDmxControlSystem};
 use crate::packet::{
     ClientboundPacketPayload, Packet, PacketDecoder, PacketEncoder, ServerboundPacketPayload,
 };
@@ -143,7 +144,7 @@ impl<'sf> Server<'sf> {
                         Some(ClientboundPacketPayload::ResponseDmxOutput(multiverse))
                     }
                     ServerboundPacketPayload::RequestSetAttributeValues { values } => {
-                        for (fixture_path, attribute, value) in values {
+                        for ((fixture_path, attribute), value) in values.values {
                             gdcs.write().unwrap().set_channel_function_value(
                                 fixture_path,
                                 attribute,
@@ -201,6 +202,31 @@ impl<'sf> Server<'sf> {
         }
 
         Ok(())
+    }
+}
+
+/// Stores attribute values for fixtures, mapping each (FixturePath, Attribute)
+/// pair to its corresponding [ClampedValue].
+#[derive(Debug, Clone, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct AttributeValues {
+    values: HashMap<(FixturePath, Attribute), ClampedValue>,
+}
+
+impl AttributeValues {
+    /// Creates a new [AttributeValues].
+    pub fn new() -> Self {
+        Self { values: HashMap::new() }
+    }
+
+    /// Sets the value for a given fixture path and attribute.
+    pub fn set(
+        &mut self,
+        fixture_path: FixturePath,
+        attribute: Attribute,
+        value: impl Into<ClampedValue>,
+    ) {
+        self.values.insert((fixture_path, attribute), value.into());
     }
 }
 
