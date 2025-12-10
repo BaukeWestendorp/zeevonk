@@ -16,18 +16,13 @@ pub trait PacketPayload: serde::Serialize + for<'de> serde::Deserialize<'de> {}
 /// A packet containing a payload.
 #[derive(Debug)]
 pub struct Packet<P: PacketPayload> {
-    pub(crate) payload: P,
+    pub payload: P,
 }
 
 impl<P: PacketPayload> Packet<P> {
     /// Create a new packet.
     pub fn new(payload: P) -> Self {
         Self { payload }
-    }
-
-    /// This packet's payload.
-    pub fn payload(&self) -> &P {
-        &self.payload
     }
 
     /// Decodes a packet from bytes (excluding the length prefix).
@@ -60,7 +55,7 @@ impl<P: PacketPayload> Packet<P> {
 
     /// Encodes a packet into bytes (excluding the length prefix).
     pub fn encode_payload_bytes(&self) -> Result<Vec<u8>, PacketError> {
-        rmp_serde::to_vec(self.payload()).map_err(|_| PacketError::InvalidPayload {
+        rmp_serde::to_vec(&self.payload).map_err(|_| PacketError::InvalidPayload {
             message: "failed to encode payload".to_string(),
         })
     }
