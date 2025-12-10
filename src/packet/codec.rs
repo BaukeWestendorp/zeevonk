@@ -9,10 +9,17 @@ use super::PacketError;
 pub const MAX_PACKET_LENGTH: usize = 8 * 1024 * 1024;
 
 /// An encoder for serializing `Packet` instances into a byte buffer with a length prefix.
-#[derive(Default)]
-pub struct PacketEncoder;
+pub struct PacketEncoder<P: PacketPayload> {
+    marker: std::marker::PhantomData<P>,
+}
 
-impl<P: PacketPayload> Encoder<Packet<P>> for PacketEncoder {
+impl<P: PacketPayload> Default for PacketEncoder<P> {
+    fn default() -> Self {
+        Self { marker: std::marker::PhantomData::default() }
+    }
+}
+
+impl<P: PacketPayload> Encoder<Packet<P>> for PacketEncoder<P> {
     type Error = PacketError;
 
     fn encode(&mut self, packet: Packet<P>, dst: &mut BytesMut) -> Result<(), Self::Error> {

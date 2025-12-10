@@ -1,66 +1,32 @@
-use futures::{SinkExt as _, StreamExt as _};
-use tokio::net::TcpStream;
-use tokio::net::tcp::OwnedWriteHalf;
-use tokio_util::codec::{FramedRead, FramedWrite};
-
-use zeevonk::engine::BakedPatch;
+use tokio::io;
+use zeevonk::client::ZeevonkClient;
 use zeevonk::gdcs::Attribute;
-use zeevonk::packet::{
-    ClientboundPacketPayload, Packet, PacketDecoder, PacketEncoder, ServerboundPacketPayload,
-};
 
 #[tokio::main]
-async fn main() {
-    let (r, w) = TcpStream::connect("127.0.0.1:7334").await.unwrap().into_split();
-    let mut reader = FramedRead::new(r, PacketDecoder::<ClientboundPacketPayload>::default());
-    let mut writer = FramedWrite::new(w, PacketEncoder::default());
+async fn main() -> io::Result<()> {
+    let mut client = ZeevonkClient::connect("127.0.0.1:7334").await?;
 
-    writer.send(Packet::new(ServerboundPacketPayload::RequestDmxOutput)).await.unwrap();
-    writer.send(Packet::new(ServerboundPacketPayload::RequestBakedPatch)).await.unwrap();
+    let patch = client.request_patch().await?;
 
-    while let Some(packet) = reader.next().await {
-        match packet {
-            Ok(packet) => match packet.payload() {
-                ClientboundPacketPayload::ResponseBakedPatch(baked_patch) => {
-                    process_baked_patch(baked_patch, &mut writer).await
-                }
-                ClientboundPacketPayload::ResponseSetAttributeValues => {
-                    println!("attribute values have been set")
-                }
-                ClientboundPacketPayload::ResponseDmxOutput(multiverse) => {
-                    println!("multiverse: {multiverse:?}")
-                }
-                _ => {}
-            },
-            Err(err) => {
-                log::error!("error reading packet: {}", err);
-                break;
-            }
+    let dmx_output = client.request_dmx_output().await?;
+    println!("before: {dmx_output:?}");
+
+    let mut values = Vec::new();
+    for fixture in patch.fixtures() {
+        let dimmer_channel_functions = fixture
+            .channel_functions()
+            .into_iter()
+            .filter(|(attr, _cf)| **attr == Attribute::Dimmer);
+
+        for (attr, cf) in dimmer_channel_functions {
+            values.push((fixture.path(), attr.clone(), cf.to()));
         }
     }
 
-    async fn process_baked_patch(
-        baked_patch: &BakedPatch,
-        framed_writer: &mut FramedWrite<OwnedWriteHalf, PacketEncoder>,
-    ) {
-        let mut values = Vec::new();
+    client.set_attribute_values(values).await?;
 
-        for fixture in baked_patch.fixtures() {
-            let dimmer_channel_functions = fixture
-                .channel_functions()
-                .into_iter()
-                .filter(|(attr, _cf)| **attr == Attribute::Dimmer);
+    let dmx_output = client.request_dmx_output().await?;
+    println!("after: {dmx_output:?}");
 
-            for (attr, cf) in dimmer_channel_functions {
-                values.push((fixture.path(), attr.clone(), cf.to()));
-            }
-        }
-
-        framed_writer
-            .send(Packet::new(ServerboundPacketPayload::RequestSetAttributeValues { values }))
-            .await
-            .unwrap();
-
-        framed_writer.send(Packet::new(ServerboundPacketPayload::RequestDmxOutput)).await.unwrap();
-    }
+    Ok(())
 }

@@ -124,7 +124,8 @@ impl<'sf> Engine<'sf> {
         let (reader, writer) = stream.into_split();
         let mut framed_reader =
             FramedRead::new(reader, PacketDecoder::<ServerboundPacketPayload>::default());
-        let mut framed_writer = FramedWrite::new(writer, PacketEncoder::default());
+        let mut framed_writer =
+            FramedWrite::new(writer, PacketEncoder::<ClientboundPacketPayload>::default());
 
         let handle_packet = {
             let output_multiverse = Arc::clone(&self.output_multiverse);
