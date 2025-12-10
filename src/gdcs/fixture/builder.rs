@@ -254,6 +254,7 @@ impl<'a> FixtureBuilder<'a> {
     fn attribute_from_cf(&self, cf: &ChannelFunction) -> Option<Attribute> {
         cf.attribute(&self.gdtf_fixture_type)
             .and_then(|attribute| attribute.name.as_ref())
+            // Unwrapping here is safe, as from_str for Attribute cannot fail.
             .map(|attribute| Attribute::from_str(&*attribute).unwrap())
     }
 

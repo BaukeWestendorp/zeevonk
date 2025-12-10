@@ -6,9 +6,14 @@
 
 use std::fmt;
 use std::str::FromStr;
+use std::sync::Mutex;
+
+lazy_static::lazy_static! {
+    static ref CUSTOM_NAMES: Mutex<Vec<String>> = Mutex::new(Vec::new());
+}
 
 /// A GDTF attribute.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Attribute {
     /// Controls the intensity of a fixture.
     Dimmer,
@@ -682,7 +687,32 @@ pub enum Attribute {
     FieldOfView,
 
     /// Any other non-standard attribute.
-    Custom(String),
+    Custom(CustomName),
+}
+
+/// Wrapper to make sure [`Attribute`] is [`Copy`].
+///
+/// To get the actual name of the custom attribute, you can use [CustomName::to_string].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CustomName(usize);
+
+impl CustomName {
+    fn new(s: String) -> Self {
+        let mut names = CUSTOM_NAMES.lock().unwrap();
+        if let Some(ix) = names.iter().position(|name| name == &s) {
+            Self(ix)
+        } else {
+            let ix = names.len();
+            names.push(s);
+            Self(ix)
+        }
+    }
+}
+
+impl ToString for CustomName {
+    fn to_string(&self) -> String {
+        CUSTOM_NAMES.lock().unwrap()[self.0].to_owned()
+    }
 }
 
 impl Attribute {
@@ -1275,7 +1305,7 @@ impl fmt::Display for Attribute {
             Self::InputSource => write!(f, "InputSource"),
             Self::FieldOfView => write!(f, "FieldOfView"),
 
-            Self::Custom(name) => write!(f, "{name}"),
+            Self::Custom(name) => write!(f, "{}", name.to_string()),
         }
     }
 }
@@ -1287,19 +1317,15 @@ impl FromStr for Attribute {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         // Helper function to extract `n` from an attribute name.
         fn extract_attr_n(s: &str, prefix: &str, suffix: Option<&str>) -> Option<u8> {
-            if let Some(rest) = s.strip_prefix(prefix) {
+            s.strip_prefix(prefix).and_then(|rest| {
                 if let Some(suffix) = suffix {
-                    if let Some(number_part) = rest.strip_suffix(suffix) {
+                    rest.strip_suffix(suffix).and_then(|number_part| {
                         number_part.parse::<u8>().ok()
-                    } else {
-                        None
-                    }
+                    })
                 } else {
                     rest.parse::<u8>().ok()
                 }
-            } else {
-                None
-            }
+            })
         }
 
         // Helper function to extract `n` and `m` from an attribute name.
@@ -1639,7 +1665,7 @@ impl FromStr for Attribute {
                 else if let Some(n) = extract_attr_n(s, "VideoCamera", None) { Self::VideoCamera(n) }
                 else if let Some(n) = extract_attr_n(s, "VideoSoundVolume", None) { Self::VideoSoundVolume(n) }
 
-                else { Self::Custom(s.to_string()) }
+                else { Self::Custom(CustomName::new(s.to_string())) }
             }
         };
 
@@ -1690,7 +1716,8 @@ impl<'de> serde::Deserialize<'de> for Attribute {
 #[rustfmt::skip]
 mod tests {
     use std::str::FromStr;
-    use super::Attribute;
+
+    use super::*;
 
     macro_rules! test_attr {
         ($test_name:ident, $attr_name:literal, $attr_kind:expr) => {
@@ -1979,5 +2006,11 @@ mod tests {
     test_attr!(video_blend_mode, "VideoBlendMode", Attribute::VideoBlendMode);
     test_attr!(input_source, "InputSource", Attribute::InputSource);
     test_attr!(field_of_view, "FieldOfView", Attribute::FieldOfView);
-    test_attr!(custom, "CustomAttribute", Attribute::Custom("CustomAttribute".to_string()));
+
+    #[test]
+    fn custom() {
+        let attribute = Attribute::from_str("CustomAttribute").unwrap();
+        let found = attribute.to_string();
+        assert_eq!(found.as_str(), "CustomAttribute");
+    }
 }

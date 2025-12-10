@@ -14,7 +14,7 @@ async fn main() -> io::Result<()> {
                     fixture.channel_functions().filter(|(attr, _cf)| **attr == Attribute::Dimmer);
 
                 for (attr, cf) in dimmer_channel_functions {
-                    values.set(fixture.path(), attr.clone(), cf.to());
+                    values.set(fixture.path(), *attr, cf.to());
                 }
             }
         })
