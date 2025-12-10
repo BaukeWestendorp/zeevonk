@@ -56,18 +56,18 @@ impl Fixture {
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct FixtureKind {
-    fixture_type_id: Uuid,
-    dmx_mode: String,
+    gdtf_fixture_type_id: Uuid,
+    gdtf_dmx_mode: String,
 }
 
 impl FixtureKind {
     /// Returns the [Uuid] of the GDTF fixture type.
-    pub fn fixture_type_id(&self) -> Uuid {
-        self.fixture_type_id
+    pub fn gdtf_fixture_type_id(&self) -> Uuid {
+        self.gdtf_fixture_type_id
     }
 
     /// Returns the DMX mode of the fixture.
-    pub fn dmx_mode(&self) -> &str {
-        &self.dmx_mode
+    pub fn gdtf_dmx_mode(&self) -> &str {
+        &self.gdtf_dmx_mode
     }
 }

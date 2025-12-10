@@ -8,6 +8,7 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::dmx::Multiverse;
 use crate::engine::output::DmxOutputManager;
+use crate::gdcs::GeneralizedDmxControlSystem;
 use crate::packet::Packet;
 use crate::packet::client::ClientboundPacketPayload;
 use crate::packet::codec::{PacketDecoder, PacketEncoder};
@@ -19,14 +20,11 @@ mod output;
 
 /// The `Engine` struct is responsible for managing the main runtime state of the application.
 pub struct Engine<'sf> {
-    /// Reference to the loaded showfile configuration.
     showfile: &'sf Showfile,
 
-    /// Manages DMX output protocols and their state.
     dmx_output_manager: DmxOutputManager,
-
-    /// Shared state for the output DMX multiverse.
     output_multiverse: Arc<RwLock<Multiverse>>,
+    gdcs: GeneralizedDmxControlSystem,
 
     /// Contains the listener after the engine has been started.
     listener: Option<TcpListener>,
@@ -44,6 +42,7 @@ impl<'sf> Engine<'sf> {
                 output_multiverse.clone(),
             ),
             output_multiverse,
+            gdcs: GeneralizedDmxControlSystem::new(),
             listener: None,
         }
     }
@@ -56,6 +55,9 @@ impl<'sf> Engine<'sf> {
     /// - The TCP listener fails to bind to the specified address.
     ///
     pub fn start(&mut self) -> anyhow::Result<()> {
+        self.load_gdcs_gdtf_fixture_types()?;
+        self.load_gdcs_fixtures()?;
+
         self.dmx_output_manager.start();
 
         // Start the Tokio Runtime.
@@ -95,6 +97,28 @@ impl<'sf> Engine<'sf> {
                 Ok::<_, anyhow::Error>(())
             })
             .context("top level future")?;
+
+        Ok(())
+    }
+
+    fn load_gdcs_gdtf_fixture_types(&mut self) -> anyhow::Result<()> {
+        for gdtf_file_path in self.showfile.gdtf_file_paths() {
+            self.gdcs.register_gdtf_file(gdtf_file_path)?;
+        }
+
+        Ok(())
+    }
+
+    fn load_gdcs_fixtures(&mut self) -> anyhow::Result<()> {
+        for fixture in self.showfile.patch().fixtures() {
+            self.gdcs.register_fixture(
+                fixture.id(),
+                fixture.label().to_string(),
+                fixture.address(),
+                fixture.kind().gdtf_fixture_type_id(),
+                fixture.kind().gdtf_dmx_mode().to_string(),
+            )?;
+        }
 
         Ok(())
     }

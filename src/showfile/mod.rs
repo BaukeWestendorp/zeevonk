@@ -1,4 +1,7 @@
-use std::fmt;
+use std::path::{Path, PathBuf};
+use std::{fmt, fs};
+
+use anyhow::Context;
 
 use crate::showfile::config::Config;
 use crate::showfile::patch::Patch;
@@ -11,17 +14,90 @@ pub mod patch;
 /// DMX IO protocols.
 pub mod protocols;
 
+const RELATIVE_DESCRIPTION_FILE_PATH: &str = "showfile.json";
+const RELATIVE_GDTF_FILES_PATH: &str = "gdtf_files";
+
 /// The top-level showfile.
 #[derive(Debug, Clone, PartialEq, Default)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct Showfile {
+    #[serde(skip)]
+    gdtf_file_paths: Vec<PathBuf>,
+
     config: Config,
     patch: Patch,
     protocols: Protocols,
 }
 
 impl Showfile {
+    /// Load a [`Showfile`] from a folder on disk.
+    pub fn load_from_folder(showfile_path: &Path) -> anyhow::Result<Self> {
+        // Load showfile from description file.
+        let showfile_file = fs::File::open(showfile_path.join(RELATIVE_DESCRIPTION_FILE_PATH))
+            .with_context(|| format!("failed to open '{}'", RELATIVE_DESCRIPTION_FILE_PATH))?;
+        let mut showfile: Showfile = serde_json::from_reader(showfile_file)
+            .with_context(|| format!("failed to parse '{}'", RELATIVE_DESCRIPTION_FILE_PATH))?;
+
+        // Get GDTF file paths.
+        let gdtf_file_dir = fs::read_dir(showfile_path.join(RELATIVE_GDTF_FILES_PATH))
+            .context("failed to read gdtf_files directory")?;
+        for entry in gdtf_file_dir {
+            let Ok(entry) = entry else { continue };
+
+            let file_path = entry.path();
+
+            if !file_path.extension().is_some_and(|ext| ext == "gdtf") {
+                continue;
+            }
+
+            showfile.gdtf_file_paths.push(file_path);
+        }
+
+        Ok(showfile)
+    }
+
+    /// Save this [`Showfile`] into a folder on disk.
+    pub fn save_to_folder(&self, showfile_path: &Path) -> anyhow::Result<()> {
+        // Ensure the gdtf_files directory exists.
+        let gdtf_dir = showfile_path.join(RELATIVE_GDTF_FILES_PATH);
+        fs::create_dir_all(&gdtf_dir)
+            .with_context(|| format!("failed to create '{}'", gdtf_dir.display()))?;
+
+        // Save the showfile description.
+        let description_path = showfile_path.join(RELATIVE_DESCRIPTION_FILE_PATH);
+        let showfile_to_save = self.clone();
+
+        let file = fs::File::create(&description_path)
+            .with_context(|| format!("failed to create '{}'", description_path.display()))?;
+        serde_json::to_writer_pretty(file, &showfile_to_save)
+            .with_context(|| format!("failed to write '{}'", description_path.display()))?;
+
+        // Copy GDTF files into the gdtf_files directory.
+        for path in &self.gdtf_file_paths {
+            if let Some(filename) = path.file_name() {
+                let dest = gdtf_dir.join(filename);
+                // Only copy if source and destination are different.
+                if path != &dest {
+                    fs::copy(path, &dest).with_context(|| {
+                        format!("failed to copy '{}' to '{}'", path.display(), dest.display())
+                    })?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Returns the list of GDTF file paths referenced by this showfile.
+    ///
+    /// The returned slice contains the absolute or relative file paths that were
+    /// discovered when the showfile was loaded (or that were set prior to
+    /// saving). These point to the original GDTF source files.
+    pub fn gdtf_file_paths(&self) -> &[PathBuf] {
+        &self.gdtf_file_paths
+    }
+
     /// Returns a reference to the [`Config`] section of the showfile.
     pub fn config(&self) -> &Config {
         &self.config
@@ -48,6 +124,12 @@ impl Label {
     /// Creates a new [`Label`].
     pub fn new(value: impl Into<String>) -> Self {
         Self(value.into())
+    }
+}
+
+impl fmt::Display for Label {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 

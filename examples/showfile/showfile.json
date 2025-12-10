@@ -12,8 +12,8 @@
           "channel": 1
         },
         "kind": {
-          "fixture_type_id": "9B181200-F6E3-4EE6-B385-FCE095B46424",
-          "dmx_mode": "Mode 3 SPix (68ch)"
+          "gdtf_fixture_type_id": "9B181200-F6E3-4EE6-B385-FCE095B46424",
+          "gdtf_dmx_mode": "Mode 3 SPix (68ch)"
         }
       },
       {
@@ -24,8 +24,8 @@
           "channel": 69
         },
         "kind": {
-          "fixture_type_id": "9B181200-F6E3-4EE6-B385-FCE095B46424",
-          "dmx_mode": "Mode 3 SPix (68ch)"
+          "gdtf_fixture_type_id": "9B181200-F6E3-4EE6-B385-FCE095B46424",
+          "gdtf_dmx_mode": "Mode 3 SPix (68ch)"
         }
       },
       {
@@ -36,8 +36,8 @@
           "channel": 137
         },
         "kind": {
-          "fixture_type_id": "9B181200-F6E3-4EE6-B385-FCE095B46424",
-          "dmx_mode": "Mode 3 SPix (68ch)"
+          "gdtf_fixture_type_id": "9B181200-F6E3-4EE6-B385-FCE095B46424",
+          "gdtf_dmx_mode": "Mode 3 SPix (68ch)"
         }
       }
     ]
