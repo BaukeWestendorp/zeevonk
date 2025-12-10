@@ -16,7 +16,8 @@ pub(crate) mod builder;
 mod path;
 
 /// A configured fixture instance.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Fixture {
     pub(super) path: FixturePath,
     pub(super) root_base_address: Address,
@@ -83,7 +84,8 @@ impl Fixture {
 /// A channel function defines whether the attribute is controlled by
 /// physical DMX addresses or derived virtually from other attributes,
 /// and the range of values it accepts (from/to) and its default value.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct FixtureChannelFunction {
     kind: FixtureChannelFunctionKind,
     from: ClampedValue,
@@ -115,7 +117,8 @@ impl FixtureChannelFunction {
 
 /// Specifies whether an attribute is mapped to physical DMX channels or is
 /// computed virtually from other attributes.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub enum FixtureChannelFunctionKind {
     /// A physical channel mapping addresses to a channel functions.
     /// (multiple are used for fine-controlled channel functions like Pan or Tilt).
@@ -133,7 +136,8 @@ pub enum FixtureChannelFunctionKind {
 
 /// A relation describes how a virtual attribute is derived from another
 /// attribute.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Relation {
     kind: RelationKind,
     fixture_path: FixturePath,
@@ -164,6 +168,7 @@ impl Relation {
 
 /// The operation used when combining a source attribute into a virtual attribute.
 #[derive(Debug, Clone, Copy)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub enum RelationKind {
     /// Multiply the source attribute value with the target.
     Multiply,

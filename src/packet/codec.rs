@@ -53,16 +53,19 @@ impl<P: PacketPayload> Decoder for PacketDecoder<P> {
             return Ok(None);
         }
 
-        // Read length prefix.
-        let payload_length =
-            src.try_get_u32_le().map_err(|_| Self::Error::MissingPacketSize)? as usize;
+        // Peek at the length prefix without consuming it.
+        let payload_length = {
+            let mut length_bytes = [0u8; 4];
+            length_bytes.copy_from_slice(&src[..4]);
+            u32::from_le_bytes(length_bytes) as usize
+        };
 
-        if src.len() < payload_length {
+        if src.len() < 4 + payload_length {
             // The full packet has not yet arrived.
             //
             // We reserve more space in the buffer. This is not strictly
             // necessary, but is a good idea performance-wise.
-            src.reserve(payload_length - src.len());
+            src.reserve(4 + payload_length - src.len());
 
             return Ok(None);
         }
@@ -73,8 +76,10 @@ impl<P: PacketPayload> Decoder for PacketDecoder<P> {
             return Err(Self::Error::PacketTooLarge(payload_length));
         }
 
-        let payload_bytes = &src.split_to(payload_length);
-        let packet = Packet::decode_payload_bytes(payload_bytes)?;
+        // Now we can consume the length prefix and payload.
+        src.advance(4);
+        let payload_bytes = src.split_to(payload_length);
+        let packet = Packet::decode_payload_bytes(&payload_bytes)?;
 
         Ok(Some(packet))
     }

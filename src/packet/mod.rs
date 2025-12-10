@@ -37,7 +37,7 @@ pub trait PacketPayload {
 /// A packet containing a payload.
 #[derive(Debug)]
 pub struct Packet<P: PacketPayload> {
-    payload: P,
+    pub(crate) payload: P,
 }
 
 impl<P: PacketPayload> Packet<P> {

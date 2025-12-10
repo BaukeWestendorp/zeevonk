@@ -8,7 +8,7 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::dmx::Multiverse;
 use crate::engine::output::DmxOutputManager;
-use crate::gdcs::GeneralizedDmxControlSystem;
+use crate::gdcs::{self, GeneralizedDmxControlSystem};
 use crate::packet::Packet;
 use crate::packet::client::ClientboundPacketPayload;
 use crate::packet::codec::{PacketDecoder, PacketEncoder};
@@ -24,7 +24,7 @@ pub struct Engine<'sf> {
 
     dmx_output_manager: DmxOutputManager,
     output_multiverse: Arc<RwLock<Multiverse>>,
-    gdcs: GeneralizedDmxControlSystem,
+    gdcs: Arc<RwLock<GeneralizedDmxControlSystem>>,
 
     /// Contains the listener after the engine has been started.
     listener: Option<TcpListener>,
@@ -34,6 +34,7 @@ impl<'sf> Engine<'sf> {
     /// Creates a new [Engine] for the given [Showfile].
     pub fn new(showfile: &'sf Showfile) -> Self {
         let output_multiverse = Arc::new(RwLock::new(Multiverse::new()));
+        let gdcs = Arc::new(RwLock::new(GeneralizedDmxControlSystem::new()));
 
         Self {
             showfile,
@@ -42,7 +43,7 @@ impl<'sf> Engine<'sf> {
                 output_multiverse.clone(),
             ),
             output_multiverse,
-            gdcs: GeneralizedDmxControlSystem::new(),
+            gdcs,
             listener: None,
         }
     }
@@ -101,28 +102,6 @@ impl<'sf> Engine<'sf> {
         Ok(())
     }
 
-    fn load_gdcs_gdtf_fixture_types(&mut self) -> anyhow::Result<()> {
-        for gdtf_file_path in self.showfile.gdtf_file_paths() {
-            self.gdcs.register_gdtf_file(gdtf_file_path)?;
-        }
-
-        Ok(())
-    }
-
-    fn load_gdcs_fixtures(&mut self) -> anyhow::Result<()> {
-        for fixture in self.showfile.patch().fixtures() {
-            self.gdcs.register_fixture(
-                fixture.id(),
-                fixture.label().to_string(),
-                fixture.address(),
-                fixture.kind().gdtf_fixture_type_id(),
-                fixture.kind().gdtf_dmx_mode().to_string(),
-            )?;
-        }
-
-        Ok(())
-    }
-
     /// Returns the address the socket has been bound to.
     /// Note that this could be different from the address set in
     /// the showfile config, as using port 0 in the config will return the
@@ -149,15 +128,24 @@ impl<'sf> Engine<'sf> {
         let mut framed_writer = FramedWrite::new(writer, PacketEncoder::default());
 
         let handle_packet = {
-            let output_multiverse = self.output_multiverse.clone();
+            let output_multiverse = Arc::clone(&self.output_multiverse);
+            let gdcs = Arc::clone(&self.gdcs);
             async move |packet: Packet<ServerboundPacketPayload>,
                         socket_addr,
                         framed_writer: &mut FramedWrite<_, _>| {
-                let response_payload = match packet.payload() {
+                log::debug!("handling packet: {packet:?}");
+                let response_payload = match packet.payload {
                     ServerboundPacketPayload::RequestLayout => {
-                        Some(ClientboundPacketPayload::ResponseLayout)
+                        let gdcs_fixtures =
+                            gdcs.read().unwrap().fixtures().into_iter().cloned().collect();
+                        let layout = Layout { fixtures: gdcs_fixtures };
+
+                        Some(ClientboundPacketPayload::ResponseLayout(layout))
                     }
                     ServerboundPacketPayload::RequestDmxOutput => {
+                        gdcs.write().unwrap().resolve();
+                        *output_multiverse.write().unwrap() =
+                            gdcs.read().unwrap().resolved_multiverse().clone();
                         let multiverse = output_multiverse.read().unwrap().clone();
                         Some(ClientboundPacketPayload::ResponseDmxOutput(multiverse))
                     }
@@ -167,7 +155,15 @@ impl<'sf> Engine<'sf> {
                     ServerboundPacketPayload::RequestAttributeValues => {
                         Some(ClientboundPacketPayload::ResponseAttributeValues)
                     }
-                    ServerboundPacketPayload::RequestSetAttributeValues => {
+                    ServerboundPacketPayload::RequestSetAttributeValues { values } => {
+                        for (fixture_path, attribute, value) in values {
+                            gdcs.write().unwrap().set_channel_function_value(
+                                fixture_path,
+                                attribute,
+                                value,
+                            );
+                        }
+
                         Some(ClientboundPacketPayload::ResponseSetAttributeValues)
                     }
                 };
@@ -196,5 +192,42 @@ impl<'sf> Engine<'sf> {
         });
 
         Ok(())
+    }
+
+    fn load_gdcs_gdtf_fixture_types(&mut self) -> anyhow::Result<()> {
+        for gdtf_file_path in self.showfile.gdtf_file_paths() {
+            self.gdcs.write().unwrap().register_gdtf_file(gdtf_file_path)?;
+        }
+
+        Ok(())
+    }
+
+    fn load_gdcs_fixtures(&mut self) -> anyhow::Result<()> {
+        for fixture in self.showfile.patch().fixtures() {
+            self.gdcs.write().unwrap().register_fixture(
+                fixture.id(),
+                fixture.label().to_string(),
+                fixture.address(),
+                fixture.kind().gdtf_fixture_type_id(),
+                fixture.kind().gdtf_dmx_mode().to_string(),
+            )?;
+        }
+
+        Ok(())
+    }
+}
+
+/// Contains the complete layout of the patch, (sub)fixtures and their
+/// channel functions.
+#[derive(Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct Layout {
+    fixtures: Vec<gdcs::fixture::Fixture>,
+}
+
+impl Layout {
+    /// Gets all (sub)fixtures.
+    pub fn fixtures(&self) -> &[gdcs::fixture::Fixture] {
+        &self.fixtures
     }
 }
