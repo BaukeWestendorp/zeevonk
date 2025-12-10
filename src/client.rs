@@ -5,12 +5,13 @@ use tokio::net::{TcpStream, ToSocketAddrs};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::dmx::Multiverse;
-use crate::engine::BakedPatch;
 use crate::gdcs::{Attribute, ClampedValue, FixturePath};
 use crate::packet::{
     ClientboundPacketPayload, Packet, PacketDecoder, PacketEncoder, ServerboundPacketPayload,
 };
+use crate::server::BakedPatch;
 
+/// The Zeevonk client.
 pub struct ZeevonkClient {
     packet_reader: FramedRead<OwnedReadHalf, PacketDecoder<ClientboundPacketPayload>>,
     packet_writer: FramedWrite<OwnedWriteHalf, PacketEncoder<ServerboundPacketPayload>>,

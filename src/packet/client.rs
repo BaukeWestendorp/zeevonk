@@ -1,6 +1,6 @@
 use crate::dmx::Multiverse;
-use crate::engine::BakedPatch;
 use crate::packet::PacketPayload;
+use crate::server::BakedPatch;
 
 /// Packets sent from the server to the client.
 #[derive(Debug, Clone)]

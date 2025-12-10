@@ -7,30 +7,29 @@ use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::dmx::Multiverse;
-use crate::engine::output::DmxOutputManager;
 use crate::gdcs::{self, GeneralizedDmxControlSystem};
 use crate::packet::{
     ClientboundPacketPayload, Packet, PacketDecoder, PacketEncoder, ServerboundPacketPayload,
 };
+use crate::server::output::DmxOutputManager;
 use crate::showfile::Showfile;
 
-/// DMX output handling.
 mod output;
 
-/// The `Engine` struct is responsible for managing the main runtime state of the application.
-pub struct Engine<'sf> {
+/// The Zeevonk server.
+pub struct Server<'sf> {
     showfile: &'sf Showfile,
 
     dmx_output_manager: DmxOutputManager,
     output_multiverse: Arc<RwLock<Multiverse>>,
     gdcs: Arc<RwLock<GeneralizedDmxControlSystem>>,
 
-    /// Contains the listener after the engine has been started.
+    /// Contains the listener after the server has been started.
     listener: Option<TcpListener>,
 }
 
-impl<'sf> Engine<'sf> {
-    /// Creates a new [Engine] for the given [Showfile].
+impl<'sf> Server<'sf> {
+    /// Creates a new [Server] for the given [Showfile].
     pub fn new(showfile: &'sf Showfile) -> Self {
         let output_multiverse = Arc::new(RwLock::new(Multiverse::new()));
         let gdcs = Arc::new(RwLock::new(GeneralizedDmxControlSystem::new()));
@@ -47,13 +46,7 @@ impl<'sf> Engine<'sf> {
         }
     }
 
-    /// Initializes and starts the engine.
-    ///
-    /// # Errors
-    ///
-    /// - The Tokio runtime fails to build.
-    /// - The TCP listener fails to bind to the specified address.
-    ///
+    /// Initializes and starts the server.
     pub fn start(&mut self) -> anyhow::Result<()> {
         self.load_gdcs_gdtf_fixture_types()?;
         self.load_gdcs_fixtures()?;
@@ -108,11 +101,11 @@ impl<'sf> Engine<'sf> {
     ///
     /// # Panics
     ///
-    /// This function will panic if the engine has not been started yet.
+    /// This function will panic if the server has not been started yet.
     pub fn address(&self) -> SocketAddr {
         self.listener
             .as_ref()
-            .expect("engine should have been started before calling this")
+            .expect("server should have been started before calling this")
             .local_addr()
             .unwrap()
     }
@@ -211,8 +204,8 @@ impl<'sf> Engine<'sf> {
     }
 }
 
-/// Contains the complete baked patch of the patch, (sub)fixtures and their
-/// channel functions.
+/// Contains the complete baked patch, containing (sub)fixtures
+/// and their channel functions.
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct BakedPatch {

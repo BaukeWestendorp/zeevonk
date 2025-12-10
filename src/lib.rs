@@ -2,19 +2,20 @@
 
 //! # Zeevonk.
 
-/// The [Client][client::Client] is the main API for interacting with the zeevonk server.
+/// Zeevonk client.
 pub mod client;
+/// Zeevonk server.
+pub mod server;
+
+mod packet;
 
 /// DMX utilities.
 pub mod dmx;
-/// The [Engine][engine::Engine] is responsible for managing the main runtime state of the application.
-mod engine;
-/// Generalized DMX Control System.
+
+/// GDCS.
 pub mod gdcs;
-/// Packet handling.
-mod packet;
 /// Showfile management.
-mod showfile;
+pub mod showfile;
 
 /// The default port used for network communication.
 pub const DEFAULT_PORT: u16 = 7334;
