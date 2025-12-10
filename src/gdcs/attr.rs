@@ -1,3 +1,9 @@
+//! Attribute helpers and types used by the GDCS.
+//!
+//! This module contains types and utilities related to fixture attributes
+//! (e.g. pan, tilt, color) that are used when setting and resolving channel
+//! function values.
+
 use std::fmt;
 use std::str::FromStr;
 

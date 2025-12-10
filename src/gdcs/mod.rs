@@ -22,6 +22,9 @@ mod error;
 mod resolver;
 mod util;
 
+/// The Generalized DMX Control System (GDCS) manages GDTF fixture types
+/// and user-defined fixtures, to make it easy to work with any kind of fixture,
+/// while still providing a way to use all attributes a fixture contains.
 #[derive(Debug)]
 pub struct GeneralizedDmxControlSystem {
     fixture_types: HashMap<Uuid, FixtureType>,
@@ -35,6 +38,7 @@ pub struct GeneralizedDmxControlSystem {
 }
 
 impl GeneralizedDmxControlSystem {
+    /// Create a new, empty GDCS.
     pub fn new() -> Self {
         Self {
             fixture_types: HashMap::new(),
@@ -48,22 +52,35 @@ impl GeneralizedDmxControlSystem {
         }
     }
 
+    /// Returns all registered GDTF fixture types.
     pub fn gdtf_fixture_types(&self) -> impl Iterator<Item = (&Uuid, &FixtureType)> {
         self.fixture_types.iter()
     }
 
+    /// Returns the channel count for a given fixture type and DMX mode name.
+    ///
+    /// The DMX mode name must match one that was present in the GDTF fixture
+    /// type that was previously registered. If no entry exists, `None` is
+    /// returned.
     pub fn dmx_mode_channel_count(&self, fixture_type_id: Uuid, dmx_mode: String) -> Option<u32> {
         self.dmx_mode_channel_counts.get(&(fixture_type_id, dmx_mode)).copied()
     }
 
+    /// Returns all instantiated fixtures.
     pub fn fixtures(&self) -> impl IntoIterator<Item = &Fixture> {
         self.fixtures.values()
     }
 
+    /// Returns all root fixtures.
+    ///
+    /// Root fixtures are those whose `FixturePath` has only one part. Top-level fixtures.
     pub fn root_fixtures(&self) -> impl IntoIterator<Item = &Fixture> {
         self.fixtures.values().filter(|fixture| fixture.path().is_root_fixture())
     }
 
+    /// Register a GDTF (.gdtf) file into the system.
+    ///
+    /// Returns an error if the file cannot be opened or parsed.
     pub fn register_gdtf_file(&mut self, path: &Path) -> Result<(), GdcsError> {
         let file = fs::File::open(path)?;
         let gdtf_file = gdtf::GdtfFile::new(file)?;
@@ -89,6 +106,7 @@ impl GeneralizedDmxControlSystem {
         Ok(())
     }
 
+    /// Register a fixture (root) and its child fixtures into the system.
     pub fn register_fixture(
         &mut self,
         root_id: FixtureId,
@@ -125,34 +143,46 @@ impl GeneralizedDmxControlSystem {
         Ok(())
     }
 
+    /// Get a registered GDTF fixture type by its UUID.
     pub fn gdtf_fixture_type(&self, fixture_type_id: Uuid) -> Option<&FixtureType> {
         self.fixture_types.get(&fixture_type_id)
     }
 
+    /// Get a fixture by its path.
     pub fn fixture(&self, path: &FixturePath) -> Option<&Fixture> {
         self.fixtures.get(path)
     }
 
+    /// Get the root fixture for a given root id.
     pub fn root_fixture(&self, root_id: FixtureId) -> Option<&Fixture> {
         self.fixtures.get(&FixturePath::new(root_id))
     }
 
+    /// Return all registered fixture paths.
     pub fn fixture_paths(&self) -> impl IntoIterator<Item = FixturePath> {
         self.fixtures.keys().copied()
     }
 
+    /// Get the resolved multiverse.
+    ///
+    /// The multiverse represents the final DMX channel values after the
+    /// resolver has been run with the current fixtures and unresolved values.
     pub fn resolved_multiverse(&self) -> &Multiverse {
         &self.resolved_multiverse
     }
 
+    /// Run the resolver to produce an updated resolved multiverse
+    /// that can be accessed with [Self::resolved_multiverse].
     pub fn resolve(&mut self) {
         self.resolved_multiverse = Resolver::new(self).resolve();
     }
 
+    /// Get all unresolved channel function values.
     pub fn unresolved_values(&self) -> &HashMap<(FixturePath, Attribute), ClampedValue> {
         &self.channel_function_values
     }
 
+    /// Check whether a DMX address is available (not occupied by another fixture).
     pub fn address_available(&self, address: &Address) -> bool {
         !self.fixtures().into_iter().any(|f| {
             let channel_count = self
@@ -166,14 +196,19 @@ impl GeneralizedDmxControlSystem {
         })
     }
 
+    /// Check whether a fixture path is available (not already used).
     pub fn path_available(&self, path: &FixturePath) -> bool {
         !self.fixtures().into_iter().any(|f| f.path() == *path)
     }
 
+    /// Check whether a fixture would collide by path or address.
     pub fn fixture_collides(&self, path: &FixturePath, address: &Address) -> bool {
         !self.path_available(path) || !self.address_available(address)
     }
 
+    /// Set (or update) an unresolved channel function value for a fixture attribute.
+    ///
+    /// It will be used by the resolver the next time [Self::resolve()] is called.
     pub fn set_channel_function_value(
         &mut self,
         fixture_path: FixturePath,
@@ -184,6 +219,7 @@ impl GeneralizedDmxControlSystem {
     }
 }
 
+/// Compute how many DMX channels a given DMX mode uses for a fixture type.
 fn calculate_channel_count_for_dmx_mode(fixture_type: &FixtureType, dmx_mode: &DmxMode) -> u32 {
     // To calculate the channel count for a certain dmx mode, we just create a temporary fixture, and find
     // the highest used address for that fixture.

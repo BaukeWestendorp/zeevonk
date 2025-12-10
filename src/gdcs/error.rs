@@ -6,6 +6,7 @@ use crate::dmx::Address;
 use crate::gdcs::attr::Attribute;
 use crate::gdcs::fixture::FixturePath;
 
+/// Errir variants for GDCS.
 #[derive(Debug, thiserror::Error)]
 pub enum GdcsError {
     /// An I/O error.
@@ -46,5 +47,8 @@ pub enum GdcsError {
     InvalidAttributeForFixture(Attribute),
     /// Could not parse fixture path
     #[error("failed to parse fixture path: {message}")]
-    FailedToParseFixturePath { message: String },
+    FailedToParseFixturePath {
+        /// Why the parsing failed.
+        message: String,
+    },
 }

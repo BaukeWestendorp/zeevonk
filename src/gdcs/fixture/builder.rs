@@ -322,7 +322,7 @@ impl<'a> FixtureBuilder<'a> {
                     let default = channel_function.default.into();
 
                     channel_functions
-                        .insert(attribute, FixtureChannelFunction::new(kind, from, to, default));
+                        .insert(attribute, FixtureChannelFunction { kind, from, to, default });
 
                     // Record where this channel function was created for relation lookup later.
                     self.channel_function_map.insert(cf_id, path);

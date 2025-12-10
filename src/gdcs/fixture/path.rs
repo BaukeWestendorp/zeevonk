@@ -4,20 +4,31 @@ use crate::gdcs::GdcsError;
 use crate::gdcs::fixture::FixtureId;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
+/// A path of [FixtureId] values.
+///
+/// The first element is considered the "root" fixture and additional
+/// elements are sub-fixtures. The maximum number of elements is [FixturePath::MAX_LEN].
 pub struct FixturePath {
     ids: [FixtureId; Self::MAX_LEN],
     len: u8,
 }
 
 impl FixturePath {
-    const MAX_LEN: usize = 8;
+    /// Maximum number of [FixtureId]s that can be stored in a [FixturePath].
+    pub const MAX_LEN: usize = 8;
 
+    /// Create a new [FixturePath] containing only the given root fixture.
     pub fn new(root_id: FixtureId) -> Self {
         let mut ids = [FixtureId::new(1).unwrap(); Self::MAX_LEN];
         ids[0] = root_id;
         FixturePath { ids, len: 1 }
     }
 
+    /// Append a fixture identifier to the end of the path.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the path already contains [FixturePath::MAX_LEN] elements.
     pub fn push(&mut self, id: FixtureId) {
         let len = self.len();
         assert!(len < Self::MAX_LEN, "FixturePath capacity exceeded (max {})", Self::MAX_LEN);
@@ -25,43 +36,52 @@ impl FixturePath {
         self.len = (len + 1) as u8;
     }
 
+    /// Returns the number of fixtures in this path.
     pub fn len(&self) -> usize {
         self.len as usize
     }
 
+    /// Returns `true` if this path contains only the root fixture.
     pub fn is_root_fixture(&self) -> bool {
         self.len == 1
     }
 
+    /// Returns the number of sub-fixtures (excluding the root).
     pub fn sub_len(&self) -> usize {
         assert!(self.len() >= 1, "FixturePath must have at least a root");
         self.len() - 1
     }
 
+    /// Returns the root [FixtureId] of the path.
     pub fn root(&self) -> FixtureId {
         self.ids[0]
     }
 
+    /// Returns the last [FixtureId] in the path.
     pub fn last(&self) -> FixtureId {
         let l = self.len();
         assert!(l >= 1, "FixturePath must have at least a root");
         self.ids[l - 1]
     }
 
+    /// Borrow the path as a slice of [FixtureId]s.
     pub fn as_slice(&self) -> &[FixtureId] {
         &self.ids[..self.len()]
     }
 
+    /// Returns an iterator over the fixture identifiers in the path.
     pub fn iter(&self) -> std::slice::Iter<'_, FixtureId> {
         self.as_slice().iter()
     }
 
+    /// Replace the last element of the path with `sub_id`.
     pub fn replace_last(&mut self, sub_id: FixtureId) {
         let l = self.len();
         assert!(l >= 1, "FixturePath must have at least a root");
         self.ids[l - 1] = sub_id;
     }
 
+    /// Return a new [FixturePath] with `part` appended.
     pub fn extended_with(mut self, part: FixtureId) -> FixturePath {
         self.push(part);
         self
@@ -222,15 +242,36 @@ impl<'de> serde::Deserialize<'de> for FixturePath {
     }
 }
 
+/// Create a FixturePath from a comma-separated list of fixture identifiers.
+///
+/// The macro accepts either
+/// - integer literals (converted to FixtureId via FixtureId::new), or
+/// - FixtureId values (passed through directly).
+///
+/// Examples:
+///
+/// ```rust
+/// # use zeevonk::gdcs::fixture::FixtureId;
+/// # use zeevonk::fpath;
+/// // Using integer literals (converted to FixtureId via FixtureId::new)
+/// let p = fpath![1, 2, 3];
+///
+/// // Using FixtureId values directly
+/// let id0 = FixtureId::new(1).unwrap();
+/// let id1 = FixtureId::new(2).unwrap();
+/// let p = fpath![id0, id1];
+/// ```
 #[macro_export]
 macro_rules! fpath {
-    ( $first:expr $(, $rest:expr )* $(,)? ) => {{
-        let mut p = $crate::fixture::FixturePath::new($crate::fixture::FixtureId::new($first).unwrap());
-        $( p.push($crate::fixture::FixtureId::new($rest).unwrap()); )*
+    ( $first:literal $(, $rest:literal )* $(,)? ) => {{
+        let mut p = $crate::gdcs::fixture::FixturePath::new(
+            $crate::gdcs::fixture::FixtureId::new($first).unwrap()
+        );
+        $( p.push($crate::gdcs::fixture::FixtureId::new($rest).unwrap()); )*
         p
     }};
     ( $first:expr $(, $rest:expr )* $(,)? ) => {{
-        let mut p = $crate::fixture::FixturePath::new($first);
+        let mut p = $crate::gdcs::fixture::FixturePath::new($first);
         $( p.push($rest); )*
         p
     }};
