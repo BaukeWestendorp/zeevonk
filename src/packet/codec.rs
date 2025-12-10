@@ -57,12 +57,6 @@ impl<P: PacketPayload> Decoder for PacketDecoder<P> {
         let payload_length =
             src.try_get_u32_le().map_err(|_| Self::Error::MissingPacketSize)? as usize;
 
-        // Check that the length is not too large to avoid a denial of
-        // service attack where the server runs out of memory.
-        if payload_length > MAX_PACKET_LENGTH {
-            return Err(Self::Error::PacketTooLarge(payload_length));
-        }
-
         if src.len() < payload_length {
             // The full packet has not yet arrived.
             //
@@ -73,6 +67,15 @@ impl<P: PacketPayload> Decoder for PacketDecoder<P> {
             return Ok(None);
         }
 
-        Ok(Some(Packet::decode_payload_bytes(&src)?))
+        // Check that the length is not too large to avoid a denial of
+        // service attack where the server runs out of memory.
+        if payload_length > MAX_PACKET_LENGTH {
+            return Err(Self::Error::PacketTooLarge(payload_length));
+        }
+
+        let payload_bytes = &src.split_to(payload_length);
+        let packet = Packet::decode_payload_bytes(payload_bytes)?;
+
+        Ok(Some(packet))
     }
 }
