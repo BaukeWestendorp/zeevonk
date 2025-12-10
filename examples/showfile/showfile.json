@@ -39,6 +39,18 @@
           "gdtf_fixture_type_id": "9B181200-F6E3-4EE6-B385-FCE095B46424",
           "gdtf_dmx_mode": "Mode 3 SPix (68ch)"
         }
+      },
+      {
+        "id": 201,
+        "label": "Robin 1",
+        "address": {
+          "universe": 1,
+          "channel": 205
+        },
+        "kind": {
+          "gdtf_fixture_type_id": "1C8C3DB6-A31F-4220-BD67-99035290B312",
+          "gdtf_dmx_mode": "Mode 1 Extended with all zones 16bit"
+        }
       }
     ]
   },

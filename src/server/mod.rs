@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::{Arc, RwLock};
+use std::thread;
 
 use anyhow::Context;
 use futures::{SinkExt, StreamExt};
@@ -16,12 +17,12 @@ use crate::server::output::DmxOutputManager;
 use crate::showfile::Showfile;
 
 mod output;
+mod sacn;
 
 /// The Zeevonk server.
 pub struct Server<'sf> {
     showfile: &'sf Showfile,
 
-    dmx_output_manager: DmxOutputManager,
     output_multiverse: Arc<RwLock<Multiverse>>,
     gdcs: Arc<RwLock<GeneralizedDmxControlSystem>>,
 
@@ -35,24 +36,17 @@ impl<'sf> Server<'sf> {
         let output_multiverse = Arc::new(RwLock::new(Multiverse::new()));
         let gdcs = Arc::new(RwLock::new(GeneralizedDmxControlSystem::new()));
 
-        Self {
-            showfile,
-            dmx_output_manager: DmxOutputManager::new(
-                showfile.protocols(),
-                output_multiverse.clone(),
-            ),
-            output_multiverse,
-            gdcs,
-            listener: None,
-        }
+        Self { showfile, output_multiverse, gdcs, listener: None }
     }
 
     /// Initializes and starts the server.
     pub fn start(&mut self) -> anyhow::Result<()> {
+        log::info!("starting server");
+
+        self.start_dmx_output_manager()?;
+
         self.load_gdcs_gdtf_fixture_types()?;
         self.load_gdcs_fixtures()?;
-
-        self.dmx_output_manager.start();
 
         // Start the Tokio Runtime.
         tokio::runtime::Builder::new_multi_thread()
@@ -60,7 +54,7 @@ impl<'sf> Server<'sf> {
             .build()
             .context("failed to build tokio runtime")?
             .block_on(async move {
-                log::debug!("binding listener...");
+                log::debug!("binding listener");
 
                 // Create a listener.
                 let address = self.showfile.config().address();
@@ -70,7 +64,7 @@ impl<'sf> Server<'sf> {
                         .with_context(|| format!("failed to bind the listener on {}", address))?,
                 );
 
-                log::debug!("accepting streams...");
+                log::debug!("accepting streams");
 
                 // For each new incoming connection, run the handle_client function.
                 while let Ok((stream, socket_addr)) = self
@@ -111,6 +105,20 @@ impl<'sf> Server<'sf> {
             .unwrap()
     }
 
+    fn start_dmx_output_manager(&mut self) -> anyhow::Result<()> {
+        let mut dmx_output_manager =
+            DmxOutputManager::new(self.showfile.protocols(), self.output_multiverse.clone())?;
+
+        // FIXME: We should make sure this thread closes if we drop the server.
+        thread::spawn(move || {
+            if let Err(err) = dmx_output_manager.start() {
+                log::error!("failed to start DMX output manager: {err}");
+            };
+        });
+
+        Ok(())
+    }
+
     /// Handles an individual client connection.
     fn handle_client(&self, stream: TcpStream, socket_addr: SocketAddr) -> anyhow::Result<()> {
         log::info!("handling client");
@@ -127,7 +135,7 @@ impl<'sf> Server<'sf> {
             async move |packet: Packet<ServerboundPacketPayload>,
                         socket_addr,
                         framed_writer: &mut FramedWrite<_, _>| {
-                log::debug!("handling packet: {packet:?}");
+                log::trace!("handling incoming packet");
                 let response_payload = match packet.payload {
                     ServerboundPacketPayload::RequestBakedPatch => {
                         let gdcs_fixtures =
@@ -145,11 +153,11 @@ impl<'sf> Server<'sf> {
                     }
                     ServerboundPacketPayload::RequestSetAttributeValues { values } => {
                         for ((fixture_path, attribute), value) in values.values {
-                            gdcs.write().unwrap().set_channel_function_value(
-                                fixture_path,
-                                attribute,
-                                value,
-                            );
+                            let mut gdcs_lock = gdcs.write().unwrap();
+                            gdcs_lock.set_channel_function_value(fixture_path, attribute, value);
+                            gdcs_lock.resolve();
+                            *output_multiverse.write().unwrap() =
+                                gdcs_lock.resolved_multiverse().clone();
                         }
 
                         Some(ClientboundPacketPayload::ResponseSetAttributeValues)
