@@ -9,10 +9,9 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 use crate::dmx::Multiverse;
 use crate::engine::output::DmxOutputManager;
 use crate::gdcs::{self, GeneralizedDmxControlSystem};
-use crate::packet::Packet;
-use crate::packet::client::ClientboundPacketPayload;
-use crate::packet::codec::{PacketDecoder, PacketEncoder};
-use crate::packet::server::ServerboundPacketPayload;
+use crate::packet::{
+    ClientboundPacketPayload, Packet, PacketDecoder, PacketEncoder, ServerboundPacketPayload,
+};
 use crate::showfile::Showfile;
 
 /// DMX output handling.
@@ -222,12 +221,12 @@ impl<'sf> Engine<'sf> {
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Layout {
-    fixtures: Vec<gdcs::fixture::Fixture>,
+    fixtures: Vec<gdcs::Fixture>,
 }
 
 impl Layout {
     /// Gets all (sub)fixtures.
-    pub fn fixtures(&self) -> &[gdcs::fixture::Fixture] {
+    pub fn fixtures(&self) -> &[gdcs::Fixture] {
         &self.fixtures
     }
 }

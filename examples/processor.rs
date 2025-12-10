@@ -2,12 +2,12 @@ use futures::{SinkExt as _, StreamExt as _};
 use tokio::net::TcpStream;
 use tokio::net::tcp::OwnedWriteHalf;
 use tokio_util::codec::{FramedRead, FramedWrite};
+
 use zeevonk::engine::Layout;
-use zeevonk::gdcs::attr::Attribute;
-use zeevonk::packet::Packet;
-use zeevonk::packet::client::ClientboundPacketPayload;
-use zeevonk::packet::codec::{PacketDecoder, PacketEncoder};
-use zeevonk::packet::server::ServerboundPacketPayload;
+use zeevonk::gdcs::Attribute;
+use zeevonk::packet::{
+    ClientboundPacketPayload, Packet, PacketDecoder, PacketEncoder, ServerboundPacketPayload,
+};
 
 #[tokio::main]
 async fn main() {

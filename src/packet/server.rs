@@ -1,6 +1,4 @@
-use crate::gdcs::ClampedValue;
-use crate::gdcs::attr::Attribute;
-use crate::gdcs::fixture::FixturePath;
+use crate::gdcs::{Attribute, ClampedValue, FixturePath};
 use crate::packet::PacketPayload;
 
 /// Packets sent from the client to the server.

@@ -7,16 +7,16 @@ use gdtf::fixture_type::FixtureType;
 use uuid::Uuid;
 
 use crate::dmx::{Address, Channel, Multiverse, UniverseId};
-use crate::gdcs::attr::Attribute;
 use crate::gdcs::fixture::builder::FixtureBuilder;
-use crate::gdcs::fixture::{Fixture, FixtureChannelFunctionKind, FixtureId, FixturePath};
 use crate::gdcs::resolver::Resolver;
 
-pub use error::GdcsError;
-pub use util::ClampedValue;
+pub use attr::*;
+pub use error::*;
+pub use fixture::*;
+pub use util::*;
 
-pub mod attr;
-pub mod fixture;
+mod attr;
+mod fixture;
 
 mod error;
 mod resolver;

@@ -2,7 +2,7 @@ use std::str;
 use uuid::Uuid;
 
 use crate::dmx::Address;
-use crate::gdcs::fixture::FixtureId;
+use crate::gdcs::FixtureId;
 use crate::showfile::Label;
 
 /// A patch containing a list of fixtures.

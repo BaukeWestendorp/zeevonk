@@ -1,16 +1,14 @@
 use bytes::{Buf, BytesMut};
 
-pub use error::Error;
+pub use client::*;
+pub use codec::*;
+pub use error::*;
+pub use server::*;
 
-/// Clientbound packet handling module.
-pub mod client;
-/// Error types for packet coding.
-pub mod error;
-/// Serverbound packet handling module.
-pub mod server;
-
-/// Tokio-based codec for async packet processing.
-pub mod codec;
+mod client;
+mod codec;
+mod error;
+mod server;
 
 /// Trait for types that can be used as packet payloads.
 pub trait PacketPayload {
