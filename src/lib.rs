@@ -6,6 +6,8 @@
 pub mod dmx;
 /// The `Engine` is responsible for managing the main runtime state of the application.
 pub mod engine;
+/// Generalized DMX Control System.
+pub mod gdcs;
 /// Packet handling.
 pub mod packet;
 /// Showfile management.
