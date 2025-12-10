@@ -72,9 +72,7 @@ impl Fixture {
     }
 
     /// Get all channel functions for this fixture.
-    pub fn channel_functions(
-        &self,
-    ) -> impl IntoIterator<Item = (&Attribute, &FixtureChannelFunction)> {
+    pub fn channel_functions(&self) -> impl Iterator<Item = (&Attribute, &FixtureChannelFunction)> {
         self.channel_functions.iter()
     }
 }
