@@ -39,7 +39,7 @@ impl ZeevonkClient {
     ///
     /// The populated attribute values are sent to the server on each frame.
     pub async fn register_processor<
-        F: Fn(&BakedPatch, &mut AttributeValues) + Send + Sync + 'static,
+        F: Fn(usize, &BakedPatch, &mut AttributeValues) + Send + Sync + 'static,
     >(
         &self,
         processor: F,
@@ -65,6 +65,7 @@ impl ZeevonkClient {
             const AVG_WINDOW: usize = 80;
             let mut timing_logger = TimingLogger::new(AVG_WINDOW);
 
+            let mut i = 0;
             loop {
                 // Wait until the next scheduled tick. Using interval_at fixes the schedule
                 // to the chosen start instant and period, minimizing drift.
@@ -78,7 +79,7 @@ impl ZeevonkClient {
                 let mut values = AttributeValues::new();
 
                 let proc_start = tokio::time::Instant::now();
-                (processor.as_ref())(&baked_patch, &mut values);
+                (processor.as_ref())(i, &baked_patch, &mut values);
                 let proc_end = tokio::time::Instant::now();
 
                 let send_start = tokio::time::Instant::now();
@@ -103,6 +104,8 @@ impl ZeevonkClient {
                     log::error!("failed to send attribute values: {err}");
                     break;
                 }
+
+                i += 1;
             }
         })
         .await
