@@ -12,7 +12,7 @@ use crate::gdcs::fixture::{
     Fixture, FixtureChannelFunction, FixtureChannelFunctionKind, FixturePath, Relation,
     RelationKind,
 };
-use crate::gdcs::{ClampedValue, GdcsError};
+use crate::gdcs::{self, ClampedValue};
 
 use super::FixtureId;
 
@@ -68,7 +68,7 @@ impl<'a> FixtureBuilder<'a> {
         }
     }
 
-    pub(crate) fn build_fixture_tree(mut self) -> Result<Vec<Fixture>, GdcsError> {
+    pub(crate) fn build_fixture_tree(mut self) -> Result<Vec<Fixture>, gdcs::Error> {
         // Find the root geometry for the chosen DMX mode and start the recursive building.
         let root_geometry = self.get_root_geometry()?.clone();
         let root_path = FixturePath::new(self.root_id);
@@ -80,7 +80,7 @@ impl<'a> FixtureBuilder<'a> {
         Ok(self.fixtures)
     }
 
-    fn get_root_geometry(&self) -> Result<&Geometry, GdcsError> {
+    fn get_root_geometry(&self) -> Result<&Geometry, gdcs::Error> {
         let Some(root_geometry) = self.gdtf_dmx_mode.geometry(&self.gdtf_fixture_type) else {
             todo!("fixure out what to do with a `None` DMX mode geometry");
         };

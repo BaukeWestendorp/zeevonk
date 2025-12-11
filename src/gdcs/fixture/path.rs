@@ -1,7 +1,7 @@
 use std::{fmt, str};
 
-use crate::gdcs::GdcsError;
 use crate::gdcs::fixture::FixtureId;
+use crate::gdcs::{self};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 /// A path of [FixtureId] values.
@@ -176,19 +176,19 @@ impl fmt::Debug for FixturePath {
 }
 
 impl str::FromStr for FixturePath {
-    type Err = GdcsError;
+    type Err = gdcs::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let parts: Vec<&str> = s.split('.').collect();
 
         if parts.is_empty() {
-            return Err(GdcsError::FailedToParseFixturePath {
+            return Err(gdcs::Error::FailedToParseFixturePath {
                 message: "FixturePath string is empty".to_string(),
             });
         }
 
         if parts.len() > FixturePath::MAX_LEN {
-            return Err(GdcsError::FailedToParseFixturePath {
+            return Err(gdcs::Error::FailedToParseFixturePath {
                 message: format!(
                     "FixturePath string has too many parts (max {})",
                     FixturePath::MAX_LEN

@@ -8,7 +8,7 @@ use crate::gdcs::fixture::FixturePath;
 
 /// Errir variants for GDCS.
 #[derive(Debug, thiserror::Error)]
-pub enum GdcsError {
+pub enum Error {
     /// An I/O error.
     #[error("i/o error")]
     Io(#[from] io::Error),

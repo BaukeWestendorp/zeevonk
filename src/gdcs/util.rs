@@ -1,7 +1,6 @@
 use std::{fmt, str};
 
-use crate::dmx;
-use crate::gdcs::GdcsError;
+use crate::{dmx, gdcs};
 
 /// A clamped value.
 ///
@@ -119,9 +118,9 @@ impl From<ClampedValue> for dmx::Value {
 }
 
 impl str::FromStr for ClampedValue {
-    type Err = GdcsError;
+    type Err = gdcs::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self::new(s.parse().map_err(|_| GdcsError::AttributeParseError)?))
+        Ok(Self::new(s.parse().map_err(|_| gdcs::Error::AttributeParseError)?))
     }
 }

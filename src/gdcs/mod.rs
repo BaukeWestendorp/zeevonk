@@ -7,6 +7,7 @@ use gdtf::fixture_type::FixtureType;
 use uuid::Uuid;
 
 use crate::dmx::{Address, Channel, Multiverse, UniverseId};
+use crate::gdcs;
 use crate::gdcs::fixture::builder::FixtureBuilder;
 use crate::gdcs::resolver::Resolver;
 
@@ -81,7 +82,7 @@ impl GeneralizedDmxControlSystem {
     /// Register a GDTF (.gdtf) file into the system.
     ///
     /// Returns an error if the file cannot be opened or parsed.
-    pub fn register_gdtf_file(&mut self, path: &Path) -> Result<(), GdcsError> {
+    pub fn register_gdtf_file(&mut self, path: &Path) -> Result<(), gdcs::Error> {
         let file = fs::File::open(path)?;
         let gdtf_file = gdtf::GdtfFile::new(file)?;
 
@@ -114,21 +115,21 @@ impl GeneralizedDmxControlSystem {
         address: Address,
         gdtf_fixture_type_id: Uuid,
         gdtf_dmx_mode: String,
-    ) -> Result<(), GdcsError> {
+    ) -> Result<(), gdcs::Error> {
         if self.fixture_roots.contains(&root_id) {
-            return Err(GdcsError::FixtureAlreadyExists(root_id.as_u32()));
+            return Err(gdcs::Error::FixtureAlreadyExists(root_id.as_u32()));
         }
 
         if !self.address_available(&address) {
-            return Err(GdcsError::AddressAlreadyMapped(address));
+            return Err(gdcs::Error::AddressAlreadyMapped(address));
         }
 
         let Some(gdtf_fixture_type) = self.gdtf_fixture_type(gdtf_fixture_type_id) else {
-            return Err(GdcsError::FixtureTypeNotFound(gdtf_fixture_type_id));
+            return Err(gdcs::Error::FixtureTypeNotFound(gdtf_fixture_type_id));
         };
 
         let Some(gdtf_dmx_mode) = gdtf_fixture_type.dmx_mode(&gdtf_dmx_mode) else {
-            return Err(GdcsError::InvalidDmxMode(gdtf_dmx_mode));
+            return Err(gdcs::Error::InvalidDmxMode(gdtf_dmx_mode));
         };
 
         let fixtures =

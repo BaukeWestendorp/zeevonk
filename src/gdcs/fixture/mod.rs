@@ -10,7 +10,7 @@ pub use path::*;
 
 use crate::dmx::Address;
 use crate::gdcs::attr::Attribute;
-use crate::gdcs::{ClampedValue, GdcsError};
+use crate::gdcs::{self, ClampedValue};
 
 pub(crate) mod builder;
 mod path;
@@ -185,11 +185,11 @@ pub struct FixtureId(NonZeroU32);
 impl FixtureId {
     /// Create a new `FixtureId` from a raw `u32`.
     ///
-    /// Returns `Err(GdcsError::InvalidFixtureId)` if `id` is zero.
-    pub fn new(id: u32) -> Result<Self, GdcsError> {
+    /// Returns `Err(gdcs::Error::InvalidFixtureId)` if `id` is zero.
+    pub fn new(id: u32) -> Result<Self, gdcs::Error> {
         match NonZeroU32::new(id) {
             Some(id) => Ok(FixtureId(id)),
-            None => Err(GdcsError::InvalidFixtureId(id)),
+            None => Err(gdcs::Error::InvalidFixtureId(id)),
         }
     }
 
@@ -202,11 +202,11 @@ impl FixtureId {
     ///
     /// Useful for computing adjacent fixture identifiers. Returns an error
     /// if the resulting id would be zero or otherwise invalid.
-    pub fn offset(self, offset: i32) -> Result<Self, GdcsError> {
+    pub fn offset(self, offset: i32) -> Result<Self, gdcs::Error> {
         let id = self.as_u32() as i32 + offset;
         match NonZeroU32::new(id as u32) {
             Some(id) => Ok(FixtureId(id)),
-            None => Err(GdcsError::InvalidFixtureId(id as u32)),
+            None => Err(gdcs::Error::InvalidFixtureId(id as u32)),
         }
     }
 }
@@ -218,10 +218,10 @@ impl fmt::Display for FixtureId {
 }
 
 impl str::FromStr for FixtureId {
-    type Err = GdcsError;
+    type Err = gdcs::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let id = s.parse::<u32>().map_err(|_| GdcsError::InvalidFixtureId(0))?;
+        let id = s.parse::<u32>().map_err(|_| gdcs::Error::InvalidFixtureId(0))?;
         FixtureId::new(id)
     }
 }
