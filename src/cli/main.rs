@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
+mod info;
 mod init;
 mod run;
 
@@ -15,15 +16,28 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Initialize a new showfile
+    /// Initialize a new showfile.
     Init {
-        /// Path to create the showfile JSON
-        #[arg(default_value = "showfile.json")]
+        /// Path to create the showfile at.
         showfile_path: PathBuf,
     },
-    /// Run the showfile
+    /// Run the showfile.
     Run {
-        /// Path to the showfile JSON
+        /// Path to the showfile.
+        showfile_path: PathBuf,
+    },
+    /// Get info about a showfile.
+    Info {
+        #[command(subcommand)]
+        command: InfoSubcommand,
+    },
+}
+
+#[derive(Subcommand)]
+enum InfoSubcommand {
+    /// Dump the patch tree.
+    Patch {
+        /// Path to the showfile.
         showfile_path: PathBuf,
     },
 }
@@ -39,6 +53,9 @@ fn main() -> anyhow::Result<()> {
         }
         Commands::Run { showfile_path } => {
             run::run_showfile(showfile_path)?;
+        }
+        Commands::Info { command: InfoSubcommand::Patch { showfile_path } } => {
+            info::dump_patch(showfile_path)?;
         }
     }
 

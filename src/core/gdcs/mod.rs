@@ -10,6 +10,7 @@ use crate::core::dmx::{Address, Channel, Multiverse, UniverseId};
 use crate::core::gdcs;
 use crate::core::gdcs::fixture::builder::FixtureBuilder;
 use crate::core::gdcs::resolver::Resolver;
+use crate::core::showfile::Showfile;
 
 pub use attr::*;
 pub use error::*;
@@ -53,6 +54,24 @@ impl GeneralizedDmxControlSystem {
         }
     }
 
+    pub fn insert_showfile_data(&mut self, showfile: &Showfile) -> Result<(), gdcs::Error> {
+        for gdtf_file_path in showfile.gdtf_file_paths() {
+            self.register_gdtf_file(gdtf_file_path)?;
+        }
+
+        for fixture in showfile.patch().fixtures() {
+            self.register_fixture(
+                fixture.id(),
+                fixture.label().to_string(),
+                fixture.address(),
+                fixture.kind().gdtf_fixture_type_id(),
+                fixture.kind().gdtf_dmx_mode().to_string(),
+            )?;
+        }
+
+        Ok(())
+    }
+
     /// Returns all registered GDTF fixture types.
     pub fn gdtf_fixture_types(&self) -> impl Iterator<Item = (&Uuid, &FixtureType)> {
         self.fixture_types.iter()
@@ -68,14 +87,14 @@ impl GeneralizedDmxControlSystem {
     }
 
     /// Returns all instantiated fixtures.
-    pub fn fixtures(&self) -> impl IntoIterator<Item = &Fixture> {
+    pub fn fixtures(&self) -> impl Iterator<Item = &Fixture> {
         self.fixtures.values()
     }
 
     /// Returns all root fixtures.
     ///
     /// Root fixtures are those whose `FixturePath` has only one part. Top-level fixtures.
-    pub fn root_fixtures(&self) -> impl IntoIterator<Item = &Fixture> {
+    pub fn root_fixtures(&self) -> impl Iterator<Item = &Fixture> {
         self.fixtures.values().filter(|fixture| fixture.path().is_root_fixture())
     }
 
@@ -160,7 +179,7 @@ impl GeneralizedDmxControlSystem {
     }
 
     /// Return all registered fixture paths.
-    pub fn fixture_paths(&self) -> impl IntoIterator<Item = FixturePath> {
+    pub fn fixture_paths(&self) -> impl Iterator<Item = FixturePath> {
         self.fixtures.keys().copied()
     }
 

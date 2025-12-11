@@ -10,10 +10,10 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::core::dmx::Multiverse;
 use crate::core::gdcs::{self, Attribute, ClampedValue, FixturePath, GeneralizedDmxControlSystem};
-use crate::core::showfile::Showfile;
 use crate::core::packet::{
     ClientboundPacketPayload, Packet, PacketDecoder, PacketEncoder, ServerboundPacketPayload,
 };
+use crate::core::showfile::Showfile;
 use crate::server::output::DmxOutputManager;
 
 mod output;
@@ -45,8 +45,7 @@ impl<'sf> Server<'sf> {
 
         self.start_dmx_output_manager()?;
 
-        self.load_gdcs_gdtf_fixture_types()?;
-        self.load_gdcs_fixtures()?;
+        self.gdcs.write().unwrap().insert_showfile_data(self.showfile)?;
 
         // Start the Tokio Runtime.
         tokio::runtime::Builder::new_multi_thread()
@@ -186,28 +185,6 @@ impl<'sf> Server<'sf> {
                 }
             }
         });
-
-        Ok(())
-    }
-
-    fn load_gdcs_gdtf_fixture_types(&mut self) -> anyhow::Result<()> {
-        for gdtf_file_path in self.showfile.gdtf_file_paths() {
-            self.gdcs.write().unwrap().register_gdtf_file(gdtf_file_path)?;
-        }
-
-        Ok(())
-    }
-
-    fn load_gdcs_fixtures(&mut self) -> anyhow::Result<()> {
-        for fixture in self.showfile.patch().fixtures() {
-            self.gdcs.write().unwrap().register_fixture(
-                fixture.id(),
-                fixture.label().to_string(),
-                fixture.address(),
-                fixture.kind().gdtf_fixture_type_id(),
-                fixture.kind().gdtf_dmx_mode().to_string(),
-            )?;
-        }
 
         Ok(())
     }
