@@ -1,6 +1,6 @@
 #[derive(Debug, thiserror::Error)]
 /// Errors that can occur during packet processing.
-pub enum PacketError {
+pub enum Error {
     /// The packet is too large.
     #[error("Packet too large: {0} bytes")]
     PacketTooLarge(usize),

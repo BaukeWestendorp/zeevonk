@@ -3,8 +3,6 @@ use tokio_util::codec::{Decoder, Encoder};
 
 use crate::packet::{Packet, PacketPayload};
 
-use super::PacketError;
-
 /// The maximum allowed length (in bytes) for a packet, including the 4-byte length prefix.
 pub const MAX_PACKET_LENGTH: usize = 8 * 1024 * 1024;
 
@@ -20,14 +18,14 @@ impl<P: PacketPayload> Default for PacketEncoder<P> {
 }
 
 impl<P: PacketPayload> Encoder<Packet<P>> for PacketEncoder<P> {
-    type Error = PacketError;
+    type Error = super::Error;
 
     fn encode(&mut self, packet: Packet<P>, dst: &mut BytesMut) -> Result<(), Self::Error> {
         let payload_bytes = packet.encode_payload_bytes()?;
 
         // Check if the length of the length prefix + payload bytes is within the limit.
         if 4 + payload_bytes.len() > MAX_PACKET_LENGTH {
-            return Err(PacketError::PacketTooLarge(payload_bytes.len()));
+            return Err(super::Error::PacketTooLarge(payload_bytes.len()));
         }
 
         // Reserve space in the buffer.
@@ -54,7 +52,7 @@ impl<P: PacketPayload> Default for PacketDecoder<P> {
 
 impl<P: PacketPayload> Decoder for PacketDecoder<P> {
     type Item = Packet<P>;
-    type Error = PacketError;
+    type Error = super::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         if src.len() < 4 {

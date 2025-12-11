@@ -25,18 +25,17 @@ impl<P: PacketPayload> Packet<P> {
     }
 
     /// Decodes a packet from bytes (excluding the length prefix).
-    pub fn decode_payload_bytes(payload_bytes: &[u8]) -> Result<Self, PacketError> {
-        let payload = rmp_serde::from_slice(payload_bytes).map_err(|_| {
-            PacketError::InvalidPayload { message: "failed to decode payload".to_string() }
+    pub fn decode_payload_bytes(payload_bytes: &[u8]) -> Result<Self, Error> {
+        let payload = rmp_serde::from_slice(payload_bytes).map_err(|_| Error::InvalidPayload {
+            message: "failed to decode payload".to_string(),
         })?;
         let packet = Packet { payload };
         Ok(packet)
     }
 
     /// Encodes a packet into bytes (excluding the length prefix).
-    pub fn encode_payload_bytes(&self) -> Result<Vec<u8>, PacketError> {
-        rmp_serde::to_vec(&self.payload).map_err(|_| PacketError::InvalidPayload {
-            message: "failed to encode payload".to_string(),
-        })
+    pub fn encode_payload_bytes(&self) -> Result<Vec<u8>, Error> {
+        rmp_serde::to_vec(&self.payload)
+            .map_err(|_| Error::InvalidPayload { message: "failed to encode payload".to_string() })
     }
 }
