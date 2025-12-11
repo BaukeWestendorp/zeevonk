@@ -1,12 +1,5 @@
+#![doc = include_str!("../README.md")]
 #![warn(missing_docs)]
-
-//! # Zeevonk
-//!
-//! _A modular lighting control system._
-//!
-//! Zeevonk consists of a [client] and a [server].
-//!
-//! FIXME: Add complete description of how Zeevonk works.
 
 /// Commonly used types for Zeevonk.
 ///
