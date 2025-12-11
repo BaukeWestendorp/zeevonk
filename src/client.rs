@@ -16,10 +16,11 @@ use crate::server::{AttributeValues, BakedPatch};
 use crate::util::TimingLogger;
 
 /// The Zeevonk client.
-pub struct ZeevonkClient {
+pub struct Client {
     inner: Arc<Mutex<Inner>>,
 }
-impl ZeevonkClient {
+
+impl Client {
     /// Connects to a Zeevonk server at the given address.
     pub async fn connect<A: ToSocketAddrs>(addr: A) -> io::Result<Self> {
         let (reader, writer) = TcpStream::connect(addr).await?.into_split();

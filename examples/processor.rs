@@ -1,11 +1,11 @@
 use tokio::io;
-use zeevonk::client::ZeevonkClient;
+use zeevonk::client::Client;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
     pretty_env_logger::init();
 
-    ZeevonkClient::connect("127.0.0.1:7334")
+    Client::connect("127.0.0.1:7334")
         .await?
         .register_processor(|i, patch, values| {
             use zeevonk::gdcs::Attribute::{ColorAddB, ColorAddG, ColorAddR, Dimmer};
