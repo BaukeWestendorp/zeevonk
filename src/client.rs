@@ -39,9 +39,7 @@ impl Client {
     /// The processor is invoked on a fixed 25ms interval (i.e. 40Hz).
     ///
     /// The populated attribute values are sent to the server on each frame.
-    pub async fn register_processor<
-        F: Fn(usize, &BakedPatch, &mut AttributeValues) + Send + Sync + 'static,
-    >(
+    pub async fn register_processor<F: Fn(ProcessorContext) + Send + Sync + 'static>(
         &self,
         processor: F,
     ) {
@@ -64,7 +62,7 @@ impl Client {
 
             let mut timing_logger = TimingLogger::new("processor", period.as_millis() as usize * 5);
 
-            let mut i = 0;
+            let mut frame = 0;
             loop {
                 // Wait until the next scheduled tick. Using interval_at fixes the schedule
                 // to the chosen start instant and period, minimizing drift.
@@ -79,20 +77,22 @@ impl Client {
                     log::warn!(
                         "processor is running behind schedule by {:.2?} (frame {})",
                         lateness,
-                        i
+                        frame
                     );
                 } else {
                     log::trace!(
                         "processor is running behind schedule by {:.2?} (frame {})",
                         lateness,
-                        i
+                        frame
                     );
                 }
 
                 timing_logger.record();
 
                 let mut values = AttributeValues::new();
-                (processor.as_ref())(i, &baked_patch, &mut values);
+                let cx = ProcessorContext { frame, patch: &baked_patch, values: &mut values };
+                (processor.as_ref())(cx);
+
                 // Await the result to ensure the request is sent and handled.
                 let send_result = inner.lock().await.request_set_attribute_values(values).await;
 
@@ -103,7 +103,7 @@ impl Client {
                     break;
                 }
 
-                i += 1;
+                frame += 1;
             }
         })
         .await
@@ -202,4 +202,13 @@ impl Inner {
             .await
             .map_err(|err| io::Error::new(io::ErrorKind::Other, err))
     }
+}
+/// Context passed to the processor closure for each frame.
+pub struct ProcessorContext<'bp, 'val> {
+    /// The current frame number.
+    pub frame: usize,
+    /// Reference to the baked patch describing the fixture configuration.
+    pub patch: &'bp BakedPatch,
+    /// Mutable reference to the attribute values to be set for this frame.
+    pub values: &'val mut AttributeValues,
 }
