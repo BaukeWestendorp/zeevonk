@@ -1,9 +1,9 @@
 use std::str;
 use uuid::Uuid;
 
-use crate::dmx::Address;
-use crate::gdcs::FixtureId;
-use crate::showfile::Label;
+use crate::core::dmx::Address;
+use crate::core::gdcs::FixtureId;
+use crate::core::showfile::Label;
 
 /// A patch containing a list of fixtures.
 #[derive(Debug, Clone, PartialEq, Default)]

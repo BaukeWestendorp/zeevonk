@@ -2,9 +2,9 @@ use std::io;
 
 use uuid::Uuid;
 
-use crate::dmx::Address;
-use crate::gdcs::attr::Attribute;
-use crate::gdcs::fixture::FixturePath;
+use crate::core::dmx::Address;
+use crate::core::gdcs::attr::Attribute;
+use crate::core::gdcs::fixture::FixturePath;
 
 /// Errir variants for GDCS.
 #[derive(Debug, thiserror::Error)]

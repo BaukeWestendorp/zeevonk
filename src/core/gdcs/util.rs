@@ -1,6 +1,6 @@
 use std::{fmt, str};
 
-use crate::{dmx, gdcs};
+use crate::core::{dmx, gdcs};
 
 /// A clamped value.
 ///

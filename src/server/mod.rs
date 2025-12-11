@@ -8,13 +8,13 @@ use futures::{SinkExt, StreamExt};
 use tokio::net::{TcpListener, TcpStream};
 use tokio_util::codec::{FramedRead, FramedWrite};
 
-use crate::dmx::Multiverse;
-use crate::gdcs::{self, Attribute, ClampedValue, FixturePath, GeneralizedDmxControlSystem};
-use crate::packet::{
+use crate::core::dmx::Multiverse;
+use crate::core::gdcs::{self, Attribute, ClampedValue, FixturePath, GeneralizedDmxControlSystem};
+use crate::core::showfile::Showfile;
+use crate::core::packet::{
     ClientboundPacketPayload, Packet, PacketDecoder, PacketEncoder, ServerboundPacketPayload,
 };
 use crate::server::output::DmxOutputManager;
-use crate::showfile::Showfile;
 
 mod output;
 mod sacn;

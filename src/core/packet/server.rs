@@ -1,4 +1,4 @@
-use crate::packet::PacketPayload;
+use crate::core::packet::PacketPayload;
 use crate::server::AttributeValues;
 
 /// Packets sent from the client to the server.

@@ -1,12 +1,12 @@
 //! See [Resolver] for more information.
 
-use crate::dmx::{self, Multiverse};
-use crate::gdcs::attr::Attribute;
-use crate::gdcs::fixture::{
+use crate::core::dmx::{self, Multiverse};
+use crate::core::gdcs::attr::Attribute;
+use crate::core::gdcs::fixture::{
     Fixture, FixtureChannelFunction, FixtureChannelFunctionKind, FixturePath, Relation,
     RelationKind,
 };
-use crate::gdcs::{ClampedValue, GeneralizedDmxControlSystem};
+use crate::core::gdcs::{ClampedValue, GeneralizedDmxControlSystem};
 
 /// Resolver for translating GDCS state into a physical DMX multiverse.
 ///

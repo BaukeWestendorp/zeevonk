@@ -3,8 +3,9 @@ name = "zeevonk"
 version = "0.1.0"
 edition = "2024"
 
-[features]
-default = []
+[[bin]]
+name = "zeevonk"
+path = "src/cli/main.rs"
 
 [dependencies]
 anyhow = "1.0.100"

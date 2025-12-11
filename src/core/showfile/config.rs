@@ -18,7 +18,7 @@ impl Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            address: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, crate::DEFAULT_PORT)),
+            address: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, crate::core::DEFAULT_PORT)),
         }
     }
 }

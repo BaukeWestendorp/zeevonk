@@ -719,7 +719,7 @@ impl Multiverse {
 
 #[cfg(test)]
 mod tests {
-    use crate::dmx::Universe;
+    use crate::core::dmx::Universe;
 
     use super::{Address, Channel, UniverseId};
 

@@ -1,6 +1,6 @@
 use std::net::IpAddr;
 
-use crate::showfile::Label;
+use crate::core::showfile::Label;
 
 /// Contains all DMX IO protocol configurations.
 #[derive(Debug, Clone, PartialEq, Default)]

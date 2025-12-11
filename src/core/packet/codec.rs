@@ -1,7 +1,7 @@
 use bytes::{Buf, BufMut as _, BytesMut};
 use tokio_util::codec::{Decoder, Encoder};
 
-use crate::packet::{Packet, PacketPayload};
+use crate::core::packet::{Packet, PacketPayload};
 
 /// The maximum allowed length (in bytes) for a packet, including the 4-byte length prefix.
 pub const MAX_PACKET_LENGTH: usize = 8 * 1024 * 1024;

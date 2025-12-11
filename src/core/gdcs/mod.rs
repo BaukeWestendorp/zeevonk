@@ -6,10 +6,10 @@ use gdtf::dmx_mode::DmxMode;
 use gdtf::fixture_type::FixtureType;
 use uuid::Uuid;
 
-use crate::dmx::{Address, Channel, Multiverse, UniverseId};
-use crate::gdcs;
-use crate::gdcs::fixture::builder::FixtureBuilder;
-use crate::gdcs::resolver::Resolver;
+use crate::core::dmx::{Address, Channel, Multiverse, UniverseId};
+use crate::core::gdcs;
+use crate::core::gdcs::fixture::builder::FixtureBuilder;
+use crate::core::gdcs::resolver::Resolver;
 
 pub use attr::*;
 pub use error::*;

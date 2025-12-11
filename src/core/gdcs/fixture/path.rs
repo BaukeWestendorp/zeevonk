@@ -1,7 +1,7 @@
 use std::{fmt, str};
 
-use crate::gdcs::fixture::FixtureId;
-use crate::gdcs::{self};
+use crate::core::gdcs::fixture::FixtureId;
+use crate::core::gdcs::{self};
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
 /// A path of [FixtureId] values.

@@ -6,13 +6,13 @@ use gdtf::fixture_type::FixtureType;
 use gdtf::geometry::{AnyGeometry, Geometry, ReferenceGeometry};
 use gdtf::values::Name;
 
-use crate::dmx::Address;
-use crate::gdcs::attr::Attribute;
-use crate::gdcs::fixture::{
+use crate::core::dmx::Address;
+use crate::core::gdcs::attr::Attribute;
+use crate::core::gdcs::fixture::{
     Fixture, FixtureChannelFunction, FixtureChannelFunctionKind, FixturePath, Relation,
     RelationKind,
 };
-use crate::gdcs::{self, ClampedValue};
+use crate::core::gdcs::{self, ClampedValue};
 
 use super::FixtureId;
 

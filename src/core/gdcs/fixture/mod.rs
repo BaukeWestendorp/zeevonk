@@ -8,9 +8,9 @@ use uuid::Uuid;
 
 pub use path::*;
 
-use crate::dmx::Address;
-use crate::gdcs::attr::Attribute;
-use crate::gdcs::{self, ClampedValue};
+use crate::core::dmx::Address;
+use crate::core::gdcs::attr::Attribute;
+use crate::core::gdcs::{self, ClampedValue};
 
 pub(crate) mod builder;
 mod path;

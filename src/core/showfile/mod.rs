@@ -3,9 +3,9 @@ use std::{fmt, fs};
 
 use anyhow::Context;
 
-use crate::showfile::config::Config;
-use crate::showfile::patch::Patch;
-use crate::showfile::protocols::Protocols;
+use crate::core::showfile::config::Config;
+use crate::core::showfile::patch::Patch;
+use crate::core::showfile::protocols::Protocols;
 
 /// General configuration.
 pub mod config;

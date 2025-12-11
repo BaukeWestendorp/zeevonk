@@ -1,5 +1,5 @@
-use crate::dmx::Multiverse;
-use crate::packet::PacketPayload;
+use crate::core::dmx::Multiverse;
+use crate::core::packet::PacketPayload;
 use crate::server::BakedPatch;
 
 /// Packets sent from the server to the client.
