@@ -54,6 +54,7 @@ impl GeneralizedDmxControlSystem {
         }
     }
 
+    /// Registers GDTF files and fixtures from the given [`Showfile`].
     pub fn insert_showfile_data(&mut self, showfile: &Showfile) -> Result<(), gdcs::Error> {
         for gdtf_file_path in showfile.gdtf_file_paths() {
             self.register_gdtf_file(gdtf_file_path)?;
