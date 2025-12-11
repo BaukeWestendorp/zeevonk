@@ -2,6 +2,9 @@
 
 //! # Zeevonk.
 
+/// Commonly used types for Zeevonk.
+pub mod prelude;
+
 /// Zeevonk client.
 pub mod client;
 /// Zeevonk server.

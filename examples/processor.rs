@@ -1,5 +1,6 @@
 use tokio::io;
-use zeevonk::client::{Client, ProcessorContext};
+
+use zeevonk::prelude::*;
 
 #[tokio::main]
 async fn main() -> io::Result<()> {
@@ -12,10 +13,8 @@ async fn main() -> io::Result<()> {
 }
 
 fn processor(ProcessorContext { frame, patch, values, .. }: ProcessorContext) {
-    use std::f32::consts::TAU;
-    use zeevonk::gdcs::Attribute;
-
     for (j, fixture) in patch.fixtures().iter().enumerate() {
+        use std::f32::consts::TAU;
         let t = ((frame + j * 100) % 150) as f32 / 150.0;
         let r = (t * TAU).sin() * 0.5 + 0.5;
         let g = ((t + 1.0 / 3.0) * TAU).sin() * 0.5 + 0.5;
