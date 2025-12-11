@@ -7,8 +7,8 @@ use uuid::Uuid;
 
 use crate::core::dmx::Multiverse;
 use crate::core::showfile::protocols::{Protocols, SacnMode};
-use crate::server::sacn;
 use crate::core::util::TimingLogger;
+use crate::server::sacn;
 
 const DMX_OUTPUT_INTERVAL: Duration = Duration::from_millis(44);
 
@@ -18,7 +18,6 @@ pub struct DmxOutputManager {
 }
 
 impl DmxOutputManager {
-    /// Creates a new `DmxOutputManager` with the given protocols and output multiverse.
     pub fn new(
         protocols: &Protocols,
         output_multiverse: Arc<RwLock<Multiverse>>,

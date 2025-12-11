@@ -9,10 +9,10 @@ pub mod prelude {
     pub use crate::core::gdcs::{Attribute, ClampedValue, Fixture};
 }
 
-/// Modules that are both used in the server and the client.
+/// Modules that are both used in the [server] and the [client].
 pub mod core;
 
-/// Zeevonk client.
+/// A client that can communicate with a Zeevonk [server] (e.g. sending and receiving triggers or setting attribute values).
 pub mod client;
-/// Zeevonk server.
+/// The Zeevonk server serves as a hub to connect multiple clients together and generating DMX output over various protocols.
 pub mod server;
