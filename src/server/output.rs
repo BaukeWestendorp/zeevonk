@@ -1,5 +1,6 @@
 use std::sync::{Arc, RwLock, mpsc};
 use std::thread::{self};
+use std::time::Duration;
 
 use anyhow::Context as _;
 use uuid::Uuid;
@@ -8,10 +9,8 @@ use crate::dmx::Multiverse;
 use crate::server::sacn;
 use crate::showfile::protocols::{Protocols, SacnMode};
 
-/// How often the DMX output should be sent to the protocols.
-const DMX_OUTPUT_INTERVAL: std::time::Duration = std::time::Duration::from_millis(25);
+const DMX_OUTPUT_INTERVAL: Duration = Duration::from_millis(25);
 
-/// Manages DMX output threads and protocol outputs.
 pub struct DmxOutputManager {
     sacn_sources: Vec<SacnSource>,
     output_multiverse: Arc<RwLock<Multiverse>>,

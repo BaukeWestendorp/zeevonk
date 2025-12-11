@@ -13,7 +13,6 @@ use crate::packet::{
     ClientboundPacketPayload, Packet, PacketDecoder, PacketEncoder, ServerboundPacketPayload,
 };
 use crate::server::{AttributeValues, BakedPatch};
-use crate::util::TimingLogger;
 
 /// The Zeevonk client.
 pub struct Client {
@@ -62,44 +61,14 @@ impl Client {
             let mut interval = tokio::time::interval_at(start, period);
             interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
-            // For averaging logs over time.
-            const AVG_WINDOW: usize = 80;
-            let mut timing_logger = TimingLogger::new(AVG_WINDOW);
-
             let mut i = 0;
             loop {
-                // Wait until the next scheduled tick. Using interval_at fixes the schedule
-                // to the chosen start instant and period, minimizing drift.
-                let scheduled_instant = interval.tick().await;
-                let start_instant = tokio::time::Instant::now();
-
-                // How late we are relative to the scheduled instant.
-                let lateness =
-                    start_instant.checked_duration_since(scheduled_instant).unwrap_or_default();
-
                 let mut values = AttributeValues::new();
 
-                let proc_start = tokio::time::Instant::now();
                 (processor.as_ref())(i, &baked_patch, &mut values);
-                let proc_end = tokio::time::Instant::now();
 
-                let send_start = tokio::time::Instant::now();
                 // Await the result to ensure the request is sent and handled.
                 let send_result = inner.lock().await.request_set_attribute_values(values).await;
-                let send_end = tokio::time::Instant::now();
-
-                let proc_duration = proc_end.duration_since(proc_start);
-                let send_duration = send_end.duration_since(send_start);
-                let total_frame = send_end.duration_since(start_instant);
-
-                // Record and possibly log timings
-                timing_logger.record_frame(
-                    lateness,
-                    proc_duration,
-                    send_duration,
-                    total_frame,
-                    period,
-                );
 
                 if let Err(err) = send_result {
                     log::error!("failed to send attribute values: {err}");

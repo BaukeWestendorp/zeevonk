@@ -17,7 +17,5 @@ pub mod gdcs;
 /// Showfile management.
 pub mod showfile;
 
-mod util;
-
 /// The default port used for network communication.
 pub const DEFAULT_PORT: u16 = 7334;
