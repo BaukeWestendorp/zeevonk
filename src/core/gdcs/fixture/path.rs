@@ -264,14 +264,14 @@ impl<'de> serde::Deserialize<'de> for FixturePath {
 #[macro_export]
 macro_rules! fpath {
     ( $first:literal $(, $rest:literal )* $(,)? ) => {{
-        let mut p = $crate::gdcs::fixture::FixturePath::new(
-            $crate::gdcs::fixture::FixtureId::new($first).unwrap()
+        let mut p = $crate::core::gdcs::FixturePath::new(
+            $crate::core::gdcs::FixtureId::new($first).unwrap()
         );
-        $( p.push($crate::gdcs::fixture::FixtureId::new($rest).unwrap()); )*
+        $( p.push($crate::core::gdcs::FixtureId::new($rest).unwrap()); )*
         p
     }};
     ( $first:expr $(, $rest:expr )* $(,)? ) => {{
-        let mut p = $crate::gdcs::fixture::FixturePath::new($first);
+        let mut p = $crate::core::gdcs::FixturePath::new($first);
         $( p.push($rest); )*
         p
     }};
