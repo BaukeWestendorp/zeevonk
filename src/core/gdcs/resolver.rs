@@ -1,12 +1,14 @@
 //! See [Resolver] for more information.
 
-use crate::core::dmx::{self, Multiverse};
+use crate::core::dmx::Multiverse;
 use crate::core::gdcs::attr::Attribute;
 use crate::core::gdcs::fixture::{
     Fixture, FixtureChannelFunction, FixtureChannelFunctionKind, FixturePath, Relation,
     RelationKind,
 };
-use crate::core::gdcs::{ClampedValue, GeneralizedDmxControlSystem};
+use crate::core::gdcs::{
+    ClampedValue, GeneralizedDmxControlSystem, clamped_value_to_address_values,
+};
 
 /// Resolver for translating GDCS state into a physical DMX multiverse.
 ///
@@ -30,7 +32,7 @@ pub struct Resolver<'gdcs> {
 impl<'gdcs> Resolver<'gdcs> {
     /// Create a new resolver.
     pub fn new(gdcs: &'gdcs GeneralizedDmxControlSystem) -> Self {
-        Self { gdcs, multiverse: Multiverse::new(), deferred_relations: Vec::new() }
+        Self { gdcs, multiverse: gdcs.defaulted_multiverse.clone(), deferred_relations: Vec::new() }
     }
 
     /// Perform resolution and return the populated multiverse.
@@ -58,36 +60,19 @@ impl<'gdcs> Resolver<'gdcs> {
     /// Resolve all channel functions of a single fixture.
     fn resolve_fixture(&mut self, fixture: &'gdcs Fixture) {
         for (attribute, channel_function) in fixture.channel_functions() {
-            let value = self.get_channel_function_value(fixture.path(), attribute);
-            self.set_channel_function_value(channel_function, value);
+            if let Some(value) = self.get_channel_function_value(fixture.path(), attribute) {
+                self.set_channel_function_value(channel_function, value);
+            }
         }
     }
 
-    /// Determines the value for a specific channel function.
-    ///
-    /// Values explicitly present in the GDCS's unresolved values map take
-    /// precedence. If no explicit value exists, we fall back to the channel
-    /// function's default. If the fixture or channel function cannot be found,
-    /// we return the default `ClampedValue`.
+    /// Determines the value for a specific channel function explicitly present in the GDCS's unresolved values map.
     fn get_channel_function_value(
         &self,
         fixture_path: FixturePath,
         attribute: &Attribute,
-    ) -> ClampedValue {
-        match self.gdcs.unresolved_values().get(&(fixture_path, attribute.clone())).copied() {
-            Some(value) => value,
-            None => {
-                let Some(fixture) = self.gdcs.fixture(&fixture_path) else {
-                    return ClampedValue::default();
-                };
-
-                let Some(channel_function) = fixture.channel_function(&attribute) else {
-                    return ClampedValue::default();
-                };
-
-                channel_function.default()
-            }
-        }
+    ) -> Option<ClampedValue> {
+        self.gdcs.unresolved_values().get(&(fixture_path, attribute.clone())).copied()
     }
 
     /// Apply a computed value to a channel function.
@@ -105,36 +90,23 @@ impl<'gdcs> Resolver<'gdcs> {
     ) {
         match channel_function.kind() {
             FixtureChannelFunctionKind::Physical { addresses } => {
-                let bytes: Vec<u8> = match addresses.len() {
-                    1 => vec![value.to_u8()],
-                    2 => value.to_u16_bytes().to_vec(),
-                    3 => value.to_u24_bytes().to_vec(),
-                    4 => value.to_u32_bytes().to_vec(),
-                    _ => {
-                        log::warn!(
-                            "cannot set DMX channel value for fixture: unsupported address length {}",
-                            addresses.len()
-                        );
-                        return;
-                    }
-                };
-
-                for (address, byte) in addresses.iter().zip(bytes) {
-                    self.multiverse.set_value(address, dmx::Value(byte));
+                let values = clamped_value_to_address_values(addresses, value);
+                for (address, value) in values {
+                    self.multiverse.set_value(&address, value);
                 }
             }
             FixtureChannelFunctionKind::Virtual { relations } => {
                 for relation in relations {
                     match *relation.kind() {
                         RelationKind::Multiply => {
-                            let follower_value = self.get_channel_function_value(
+                            if let Some(follower_value) = self.get_channel_function_value(
                                 relation.fixture_path(),
                                 relation.attribute(),
-                            );
-
-                            let new_value =
-                                ClampedValue::new(follower_value.as_f32() * value.as_f32());
-                            self.defer_relation_resolution(relation, new_value);
+                            ) {
+                                let new_value =
+                                    ClampedValue::new(follower_value.as_f32() * value.as_f32());
+                                self.defer_relation_resolution(relation, new_value);
+                            };
                         }
                         RelationKind::Override => {
                             self.defer_relation_resolution(relation, value);

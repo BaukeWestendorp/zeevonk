@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::str::FromStr;
 
 use gdtf::dmx_mode::{ChannelFunction, DmxChannel, DmxMode, RelationType};
@@ -6,13 +6,13 @@ use gdtf::fixture_type::FixtureType;
 use gdtf::geometry::{AnyGeometry, Geometry, ReferenceGeometry};
 use gdtf::values::Name;
 
-use crate::core::dmx::Address;
+use crate::core::dmx::{self, Address};
 use crate::core::gdcs::attr::Attribute;
 use crate::core::gdcs::fixture::{
     Fixture, FixtureChannelFunction, FixtureChannelFunctionKind, FixturePath, Relation,
     RelationKind,
 };
-use crate::core::gdcs::{self, ClampedValue};
+use crate::core::gdcs::{self, ClampedValue, clamped_value_to_address_values};
 
 use super::FixtureId;
 
@@ -43,6 +43,8 @@ pub struct FixtureBuilder<'a> {
     // depend on being able to find followers across the whole fixture set, so we store
     // them to resolve after the initial construction.
     unresolved_virtual_channels: Vec<(ChannelFunctionId, Attribute)>,
+
+    defaults: HashSet<(Address, dmx::Value)>,
 }
 
 impl<'a> FixtureBuilder<'a> {
@@ -65,10 +67,13 @@ impl<'a> FixtureBuilder<'a> {
             sibling_count_stack: Vec::new(),
             channel_function_map: HashMap::new(),
             unresolved_virtual_channels: Vec::new(),
+            defaults: HashSet::new(),
         }
     }
 
-    pub(crate) fn build_fixture_tree(mut self) -> Result<Vec<Fixture>, gdcs::Error> {
+    pub(crate) fn build_fixture_tree(
+        mut self,
+    ) -> Result<(Vec<Fixture>, HashSet<(Address, dmx::Value)>), gdcs::Error> {
         // Find the root geometry for the chosen DMX mode and start the recursive building.
         let root_geometry = self.get_root_geometry()?.clone();
         let root_path = FixturePath::new(self.root_id);
@@ -77,7 +82,7 @@ impl<'a> FixtureBuilder<'a> {
         // After building all fixtures and registering virtual channels, resolve their relations.
         self.resolve_virtual_channels();
 
-        Ok(self.fixtures)
+        Ok((self.fixtures, self.defaults))
     }
 
     fn get_root_geometry(&self) -> Result<&Geometry, gdcs::Error> {
@@ -321,6 +326,19 @@ impl<'a> FixtureBuilder<'a> {
                     );
 
                     let default = channel_function.default.into();
+
+                    // Collect the default values for the initial function.
+                    if dmx_channel.initial_function().is_some_and(|(_, cf)| cf == *channel_function)
+                    {
+                        match &kind {
+                            FixtureChannelFunctionKind::Physical { addresses } => {
+                                let default_values =
+                                    clamped_value_to_address_values(addresses, default);
+                                self.defaults.extend(default_values);
+                            }
+                            FixtureChannelFunctionKind::Virtual { .. } => {}
+                        }
+                    }
 
                     channel_functions.insert(
                         attribute,

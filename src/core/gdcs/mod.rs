@@ -35,8 +35,9 @@ pub struct GeneralizedDmxControlSystem {
     fixtures: HashMap<FixturePath, Fixture>,
     fixture_roots: HashSet<FixtureId>,
 
-    resolved_multiverse: Multiverse,
     channel_function_values: HashMap<(FixturePath, Attribute), ClampedValue>,
+    resolved_multiverse: Multiverse,
+    defaulted_multiverse: Multiverse,
 }
 
 impl GeneralizedDmxControlSystem {
@@ -51,6 +52,7 @@ impl GeneralizedDmxControlSystem {
 
             channel_function_values: HashMap::new(),
             resolved_multiverse: Multiverse::new(),
+            defaulted_multiverse: Multiverse::new(),
         }
     }
 
@@ -152,9 +154,13 @@ impl GeneralizedDmxControlSystem {
             return Err(gdcs::Error::InvalidDmxMode(gdtf_dmx_mode));
         };
 
-        let fixtures =
+        let (fixtures, defaults) =
             FixtureBuilder::new(root_id, name, address, gdtf_fixture_type, gdtf_dmx_mode)
                 .build_fixture_tree()?;
+
+        for (address, value) in defaults {
+            self.defaulted_multiverse.set_value(&address, value);
+        }
 
         self.fixture_roots.insert(root_id);
         for fixture in fixtures {
@@ -247,7 +253,7 @@ fn calculate_channel_count_for_dmx_mode(fixture_type: &FixtureType, dmx_mode: &D
 
     let start_address = Address::new(UniverseId::new(1).unwrap(), Channel::new(1).unwrap());
 
-    let fixtures = FixtureBuilder::new(
+    let (fixtures, _) = FixtureBuilder::new(
         FixtureId::new(1).unwrap(),
         "F".to_string(),
         start_address,

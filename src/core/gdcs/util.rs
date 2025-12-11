@@ -1,6 +1,7 @@
 use std::{fmt, str};
 
-use crate::core::{dmx, gdcs};
+use crate::core::dmx::{self, Address};
+use crate::core::gdcs;
 
 /// A clamped value.
 ///
@@ -123,4 +124,25 @@ impl str::FromStr for ClampedValue {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self::new(s.parse().map_err(|_| gdcs::Error::AttributeParseError)?))
     }
+}
+
+pub(crate) fn clamped_value_to_address_values(
+    addresses: &[Address],
+    value: ClampedValue,
+) -> Vec<(Address, dmx::Value)> {
+    let bytes: Vec<u8> = match addresses.len() {
+        1 => vec![value.to_u8()],
+        2 => value.to_u16_bytes().to_vec(),
+        3 => value.to_u24_bytes().to_vec(),
+        4 => value.to_u32_bytes().to_vec(),
+        _ => {
+            log::warn!(
+                "cannot set DMX channel value for fixture: unsupported address length {}",
+                addresses.len()
+            );
+            return Vec::new();
+        }
+    };
+
+    addresses.iter().copied().zip(bytes.into_iter().map(|b| dmx::Value::from(b))).collect()
 }
