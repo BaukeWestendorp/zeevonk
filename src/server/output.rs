@@ -8,8 +8,9 @@ use uuid::Uuid;
 use crate::dmx::Multiverse;
 use crate::server::sacn;
 use crate::showfile::protocols::{Protocols, SacnMode};
+use crate::util::TimingLogger;
 
-const DMX_OUTPUT_INTERVAL: Duration = Duration::from_millis(25);
+const DMX_OUTPUT_INTERVAL: Duration = Duration::from_millis(44);
 
 pub struct DmxOutputManager {
     sacn_sources: Vec<SacnSource>,
@@ -68,12 +69,19 @@ impl DmxOutputManager {
 
         log::debug!("all sACN sources started");
 
+        let mut timing_logger =
+            TimingLogger::new("dmx output", DMX_OUTPUT_INTERVAL.as_millis() as usize * 5);
+
         loop {
+            timing_logger.record();
+
             if let Err(err) = self.send_multiverse(&self.output_multiverse.read().unwrap()) {
                 log::error!("failed to send multiverse: {err}");
             }
 
             spin_sleep::sleep(DMX_OUTPUT_INTERVAL);
+
+            timing_logger.stop();
         }
     }
 

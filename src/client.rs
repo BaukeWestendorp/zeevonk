@@ -13,6 +13,7 @@ use crate::packet::{
     ClientboundPacketPayload, Packet, PacketDecoder, PacketEncoder, ServerboundPacketPayload,
 };
 use crate::server::{AttributeValues, BakedPatch};
+use crate::util::TimingLogger;
 
 /// The Zeevonk client.
 pub struct Client {
@@ -55,20 +56,47 @@ impl Client {
                 }
             };
 
-            // Use a fixed interval starting one period from now to get accurate 25ms ticks.
-            let period = Duration::from_millis(25);
+            // Use a fixed interval starting one period from now to get accurate 33ms ticks.
+            let period = Duration::from_millis(33);
             let start = tokio::time::Instant::now() + period;
             let mut interval = tokio::time::interval_at(start, period);
             interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
 
+            let mut timing_logger = TimingLogger::new("processor", period.as_millis() as usize * 5);
+
             let mut i = 0;
             loop {
+                // Wait until the next scheduled tick. Using interval_at fixes the schedule
+                // to the chosen start instant and period, minimizing drift.
+                let scheduled_instant = interval.tick().await;
+                let start_instant = tokio::time::Instant::now();
+
+                // How late we are relative to the scheduled instant.
+                let lateness =
+                    start_instant.checked_duration_since(scheduled_instant).unwrap_or_default();
+
+                if lateness > period {
+                    log::warn!(
+                        "processor is running behind schedule by {:.2?} (frame {})",
+                        lateness,
+                        i
+                    );
+                } else {
+                    log::trace!(
+                        "processor is running behind schedule by {:.2?} (frame {})",
+                        lateness,
+                        i
+                    );
+                }
+
+                timing_logger.record();
+
                 let mut values = AttributeValues::new();
-
                 (processor.as_ref())(i, &baked_patch, &mut values);
-
                 // Await the result to ensure the request is sent and handled.
                 let send_result = inner.lock().await.request_set_attribute_values(values).await;
+
+                timing_logger.stop();
 
                 if let Err(err) = send_result {
                     log::error!("failed to send attribute values: {err}");
