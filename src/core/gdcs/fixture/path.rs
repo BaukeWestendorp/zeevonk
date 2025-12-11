@@ -86,6 +86,15 @@ impl FixturePath {
         self.push(part);
         self
     }
+
+    /// Returns `true` if `self` contains `path` as a prefix.
+    pub fn contains(&self, path: FixturePath) -> bool {
+        let path_len = path.len();
+        if path_len > self.len() {
+            return false;
+        }
+        &self.as_slice()[..path_len] == path.as_slice()
+    }
 }
 
 impl AsRef<[FixtureId]> for FixturePath {
