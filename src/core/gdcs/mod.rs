@@ -180,6 +180,11 @@ impl GeneralizedDmxControlSystem {
         self.fixtures.get(path)
     }
 
+    /// Returns all fixtures.
+    pub fn fixtures_map(&self) -> &HashMap<FixturePath, Fixture> {
+        &self.fixtures
+    }
+
     /// Get the root fixture for a given root id.
     pub fn root_fixture(&self, root_id: FixtureId) -> Option<&Fixture> {
         self.fixtures.get(&FixturePath::new(root_id))

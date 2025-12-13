@@ -137,8 +137,7 @@ impl<'sf> Server<'sf> {
                 log::trace!("handling incoming packet");
                 let response_payload = match packet.payload {
                     ServerboundPacketPayload::RequestBakedPatch => {
-                        let gdcs_fixtures =
-                            gdcs.read().unwrap().fixtures().into_iter().cloned().collect();
+                        let gdcs_fixtures = gdcs.read().unwrap().fixtures_map().clone();
                         let baked_patch = BakedPatch { fixtures: gdcs_fixtures };
 
                         Some(ClientboundPacketPayload::ResponseBakedPatch(baked_patch))
@@ -220,12 +219,12 @@ impl AttributeValues {
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct BakedPatch {
-    fixtures: Vec<gdcs::Fixture>,
+    fixtures: HashMap<FixturePath, gdcs::Fixture>,
 }
 
 impl BakedPatch {
     /// Gets all (sub)fixtures.
-    pub fn fixtures(&self) -> &[gdcs::Fixture] {
+    pub fn fixtures(&self) -> &HashMap<FixturePath, gdcs::Fixture> {
         &self.fixtures
     }
 }
