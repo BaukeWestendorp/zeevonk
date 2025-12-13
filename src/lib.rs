@@ -1,5 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![warn(missing_docs)]
 
 /// Commonly used types for Zeevonk.
 ///
