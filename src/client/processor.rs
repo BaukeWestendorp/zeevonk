@@ -4,7 +4,9 @@ use std::time::Duration;
 use tokio::task;
 
 use crate::client::Client;
+use crate::core::gdcs::FixturePath;
 use crate::core::util::TimingLogger;
+use crate::prelude::{Attribute, ClampedValue};
 use crate::server::{AttributeValues, BakedPatch};
 
 impl Client {
@@ -87,10 +89,99 @@ impl Client {
 
 /// Context passed to the processor closure for each frame.
 pub struct ProcessorContext<'bp, 'val> {
+    frame: usize,
+    patch: &'bp BakedPatch,
+    values: &'val mut AttributeValues,
+}
+
+impl ProcessorContext<'_, '_> {
     /// The current frame number.
-    pub frame: usize,
+    pub fn frame(&self) -> usize {
+        self.frame
+    }
+
     /// Reference to the baked patch describing the fixture configuration.
-    pub patch: &'bp BakedPatch,
+    pub fn patch(&self) -> &BakedPatch {
+        self.patch
+    }
+
     /// Mutable reference to the attribute values to be set for this frame.
-    pub values: &'val mut AttributeValues,
+    pub fn values_mut(&mut self) -> &mut AttributeValues {
+        self.values
+    }
+
+    pub fn set_attribute(
+        &mut self,
+        fixture_collection: impl Into<FixtureCollection>,
+        attribute: Attribute,
+        value: impl Into<ClampedValue>,
+        include_children: bool,
+    ) {
+        let value = value.into();
+        for path in fixture_collection.into().paths() {
+            if include_children {
+                let paths = self
+                    .patch()
+                    .fixtures()
+                    .keys()
+                    .filter(|p| p.contains(path))
+                    .copied()
+                    .collect::<Vec<_>>();
+
+                for p in paths {
+                    self.values_mut().set(p, attribute, value);
+                }
+            } else {
+                self.values_mut().set(*path, attribute, value);
+            }
+        }
+    }
+}
+
+pub struct FixtureCollection(Vec<FixturePath>);
+
+impl FixtureCollection {
+    pub fn new() -> Self {
+        Self(Vec::new())
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+
+    pub fn push(&mut self, fixture_path: FixturePath) {
+        self.0.push(fixture_path)
+    }
+
+    pub fn paths(&self) -> &[FixturePath] {
+        &self.0
+    }
+}
+
+impl From<FixturePath> for FixtureCollection {
+    fn from(fixture_path: FixturePath) -> Self {
+        Self(vec![fixture_path])
+    }
+}
+
+impl From<Vec<FixturePath>> for FixtureCollection {
+    fn from(fixture_paths: Vec<FixturePath>) -> Self {
+        Self(fixture_paths)
+    }
+}
+
+impl From<&[FixturePath]> for FixtureCollection {
+    fn from(fixture_paths: &[FixturePath]) -> Self {
+        Self(fixture_paths.to_vec())
+    }
+}
+
+impl<const N: usize> From<[FixturePath; N]> for FixtureCollection {
+    fn from(fixture_paths: [FixturePath; N]) -> Self {
+        Self(fixture_paths.to_vec())
+    }
 }

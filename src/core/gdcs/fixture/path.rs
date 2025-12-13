@@ -88,7 +88,7 @@ impl FixturePath {
     }
 
     /// Returns `true` if `self` contains `path` as a prefix.
-    pub fn contains(&self, path: FixturePath) -> bool {
+    pub fn contains(&self, path: &FixturePath) -> bool {
         let path_len = path.len();
         if path_len > self.len() {
             return false;
