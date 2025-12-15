@@ -6,8 +6,8 @@ use tokio::task;
 use crate::attr::Attribute;
 use crate::client::Client;
 use crate::packet::AttributeValues;
-use crate::state::State;
-use crate::state::fixture::FixturePath;
+use crate::show::ShowData;
+use crate::show::fixture::FixturePath;
 use crate::value::ClampedValue;
 
 impl Client {
@@ -18,7 +18,7 @@ impl Client {
         let inner = Arc::clone(&self.inner);
         let processor = Arc::new(processor);
         task::spawn(async move {
-            let state = match inner.lock().await.request_state().await {
+            let show_data = match inner.lock().await.request_show_data().await {
                 Ok(p) => p,
                 Err(err) => {
                     log::error!("could not get show data for processor: {err}");
@@ -39,7 +39,7 @@ impl Client {
                 interval.tick().await;
 
                 let mut values = AttributeValues::new();
-                let cx = ProcessorContext { frame, state: &state, values: &mut values };
+                let cx = ProcessorContext { frame, show_data: &show_data, values: &mut values };
                 (processor.as_ref())(cx);
 
                 // Await the result to ensure the request is sent and handled.
@@ -58,9 +58,9 @@ impl Client {
     }
 }
 
-pub struct ProcessorContext<'state, 'val> {
+pub struct ProcessorContext<'sd, 'val> {
     frame: usize,
-    state: &'state State,
+    show_data: &'sd ShowData,
     values: &'val mut AttributeValues,
 }
 
@@ -69,8 +69,8 @@ impl ProcessorContext<'_, '_> {
         self.frame
     }
 
-    pub fn state(&self) -> &State {
-        self.state
+    pub fn show_data(&self) -> &ShowData {
+        self.show_data
     }
 
     pub fn values_mut(&mut self) -> &mut AttributeValues {
@@ -88,7 +88,7 @@ impl ProcessorContext<'_, '_> {
         for path in fixture_collection.into().paths() {
             if include_children {
                 let paths = self
-                    .state()
+                    .show_data()
                     .patch()
                     .fixtures()
                     .keys()

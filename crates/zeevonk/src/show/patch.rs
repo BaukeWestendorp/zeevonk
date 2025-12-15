@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use crate::dmx::Multiverse;
-use crate::state::fixture::{Fixture, FixturePath};
+use crate::show::fixture::{Fixture, FixturePath};
 
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]

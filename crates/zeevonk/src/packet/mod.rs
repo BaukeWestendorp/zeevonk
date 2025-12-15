@@ -7,7 +7,7 @@ pub use error::*;
 pub use server::*;
 
 use crate::attr::Attribute;
-use crate::state::fixture::FixturePath;
+use crate::show::fixture::FixturePath;
 use crate::value::ClampedValue;
 
 mod client;

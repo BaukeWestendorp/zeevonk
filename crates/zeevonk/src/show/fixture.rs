@@ -470,10 +470,10 @@ impl<'de> serde::Deserialize<'de> for FixturePath {
 #[macro_export]
 macro_rules! fpath {
     ( $first:literal $(, $rest:literal )* $(,)? ) => {{
-        let mut p = $crate::state::fixture::FixturePath::new(
-            $crate::state::fixture::FixtureId::new($first).unwrap()
+        let mut p = $crate::show::fixture::FixturePath::new(
+            $crate::show::fixture::FixtureId::new($first).unwrap()
         );
-        $( p.push($crate::state::fixture::FixtureId::new($rest).unwrap()); )*
+        $( p.push($crate::show::fixture::FixtureId::new($rest).unwrap()); )*
         p
     }};
     ( $first:expr $(, $rest:expr )* $(,)? ) => {{

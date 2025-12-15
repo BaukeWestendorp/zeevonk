@@ -3,16 +3,16 @@ use tokio::sync::RwLock;
 use crate::attr::Attribute;
 use crate::dmx::Multiverse;
 use crate::packet::AttributeValues;
-use crate::server::Inner;
-use crate::state::State;
-use crate::state::fixture::{
+use crate::server::ServerState;
+use crate::show::ShowData;
+use crate::show::fixture::{
     FixtureChannelFunction, FixtureChannelFunctionKind, FixturePath, Relation, RelationKind,
 };
 use crate::value::ClampedValue;
 
-impl Inner {
+impl ServerState {
     pub async fn resolve_values(&self) {
-        Resolver::new(&self.pending_attribute_values, &self.state, &self.output_multiverse)
+        Resolver::new(&self.pending_attribute_values, &self.show_data, &self.output_multiverse)
             .resolve()
             .await;
     }
@@ -28,7 +28,7 @@ impl Inner {
 /// resolved against the master's computed values.
 struct Resolver<'a> {
     attribute_values: &'a RwLock<AttributeValues>,
-    state: &'a RwLock<State>,
+    show_data: &'a RwLock<ShowData>,
     multiverse: &'a RwLock<Multiverse>,
 
     /// Relations whose writes are deferred until after the initial fixture
@@ -41,35 +41,34 @@ impl<'a> Resolver<'a> {
     /// Create a new resolver.
     pub fn new(
         attribute_values: &'a RwLock<AttributeValues>,
-        state: &'a RwLock<State>,
+        show_data: &'a RwLock<ShowData>,
         multiverse: &'a RwLock<Multiverse>,
     ) -> Self {
-        Self { attribute_values, state, multiverse, deferred_relations: Vec::new() }
+        Self { attribute_values, show_data, multiverse, deferred_relations: Vec::new() }
     }
 
     /// Perform resolution and return the populated multiverse.
     pub async fn resolve(mut self) {
-        // Collect fixture paths while holding the state read lock briefly.
+        // Collect fixture paths.
         let fixture_paths: Vec<FixturePath> = {
-            let state = self.state.read().await;
-            state.patch.fixtures.keys().cloned().collect()
+            let show_data = self.show_data.read().await;
+            show_data.patch.fixtures.keys().cloned().collect()
         };
 
-        // Resolve each fixture independently. We don't hold any long-lived
-        // state guards across await points.
+        // Resolve each fixture independently.
         for fixture_path in fixture_paths {
             self.resolve_fixture(fixture_path).await;
         }
 
         // Apply deferred relation writes. Each relation is looked up in the
-        // current state before applying so that channel functions are resolved
+        // current show data before applying so that channel functions are resolved
         // against the latest fixture definitions.
         let deferred_writes = std::mem::take(&mut self.deferred_relations);
         for (relation, value) in deferred_writes {
-            // Look up the target channel function from state.
+            // Look up the target channel function from show data.
             let channel_function_opt = {
-                let state = self.state.read().await;
-                state
+                let show_data = self.show_data.read().await;
+                show_data
                     .patch
                     .fixtures
                     .get(&relation.fixture_path())
@@ -85,10 +84,10 @@ impl<'a> Resolver<'a> {
 
     /// Resolve all channel functions of a single fixture.
     async fn resolve_fixture(&mut self, fixture_path: FixturePath) {
-        // Snapshot the fixture's channel functions while holding the state read lock.
+        // Snapshot the fixture's channel functions.
         let channel_functions: Vec<(Attribute, FixtureChannelFunction)> = {
-            let state = self.state.read().await;
-            if let Some(fixture) = state.patch.fixtures.get(&fixture_path) {
+            let show_data = self.show_data.read().await;
+            if let Some(fixture) = show_data.patch.fixtures.get(&fixture_path) {
                 fixture.channel_functions.iter().map(|(a, cf)| (*a, cf.clone())).collect()
             } else {
                 Vec::new()

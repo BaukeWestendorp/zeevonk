@@ -10,16 +10,16 @@ use gdtf::values::Name;
 use crate::Error;
 use crate::attr::Attribute;
 use crate::dmx::{self, Address, Multiverse};
-use crate::showfile::Showfile;
-use crate::state::State;
-use crate::state::fixture::{
+use crate::show::ShowData;
+use crate::show::fixture::{
     Fixture, FixtureChannelFunction, FixtureChannelFunctionKind, FixtureId, FixturePath, Relation,
     RelationKind,
 };
-use crate::state::patch::Patch;
+use crate::show::patch::Patch;
+use crate::showfile::Showfile;
 use crate::value::ClampedValue;
 
-pub(crate) fn build_from_showfile(showfile: &Showfile) -> Result<State, Error> {
+pub(crate) fn build_from_showfile(showfile: &Showfile) -> Result<ShowData, Error> {
     let mut patch = Patch { fixtures: BTreeMap::new(), default_multiverse: Multiverse::new() };
 
     // Get all fixture types used in the showfile patch.
@@ -72,7 +72,7 @@ pub(crate) fn build_from_showfile(showfile: &Showfile) -> Result<State, Error> {
         }
     }
 
-    Ok(State { patch })
+    Ok(ShowData { patch })
 }
 
 /// Helper for building the fixture tree from a GDTF fixture type + DMX mode.

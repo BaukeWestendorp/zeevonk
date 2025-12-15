@@ -5,7 +5,7 @@ use crate::packet::{AttributeValues, PacketPayload};
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(tag = "type")]
 pub enum ServerPacketPayload {
-    RequestState,
+    RequestShowData,
     RequestDmxOutput,
     RequestSetAttributeValues(AttributeValues),
 }

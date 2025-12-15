@@ -13,7 +13,7 @@ use crate::dmx::Multiverse;
 use crate::packet::{
     AttributeValues, ClientPacketPayload, Packet, PacketDecoder, PacketEncoder, ServerPacketPayload,
 };
-use crate::state::State;
+use crate::show::ShowData;
 
 pub use processor::*;
 
@@ -38,9 +38,9 @@ impl Client {
         Ok(Self { inner })
     }
 
-    pub async fn request_state(&self) -> io::Result<State> {
+    pub async fn request_show_data(&self) -> io::Result<ShowData> {
         let mut guard = self.inner.lock().await;
-        guard.request_state().await
+        guard.request_show_data().await
     }
 
     pub async fn request_dmx_output(&self) -> io::Result<Multiverse> {
@@ -60,14 +60,14 @@ struct Inner {
 }
 
 impl Inner {
-    pub async fn request_state(&mut self) -> io::Result<State> {
-        self.send_packet(ServerPacketPayload::RequestState).await?;
+    pub async fn request_show_data(&mut self) -> io::Result<ShowData> {
+        self.send_packet(ServerPacketPayload::RequestShowData).await?;
 
         while let Some(packet) = self.packet_reader.next().await {
             match packet {
                 Ok(packet) => match packet.payload {
-                    ClientPacketPayload::ResponseState(state) => {
-                        return Ok(state);
+                    ClientPacketPayload::ResponseShowData(show_data) => {
+                        return Ok(show_data);
                     }
                     _ => continue,
                 },

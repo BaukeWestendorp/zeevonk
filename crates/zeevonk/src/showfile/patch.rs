@@ -2,7 +2,7 @@ use std::str;
 use uuid::Uuid;
 
 use crate::dmx::Address;
-use crate::state::fixture::FixtureId;
+use crate::show::fixture::FixtureId;
 
 /// A patch containing a list of [`Fixture`]s.
 #[derive(Debug, Clone, PartialEq, Default)]

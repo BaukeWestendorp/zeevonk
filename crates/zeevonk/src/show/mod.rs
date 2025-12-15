@@ -1,15 +1,15 @@
-use crate::state::patch::Patch;
+use crate::show::patch::Patch;
 
 pub mod fixture;
 pub mod patch;
 
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct State {
+pub struct ShowData {
     pub(crate) patch: Patch,
 }
 
-impl State {
+impl ShowData {
     pub fn patch(&self) -> &Patch {
         &self.patch
     }

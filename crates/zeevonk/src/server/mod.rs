@@ -17,26 +17,26 @@ use crate::dmx::Multiverse;
 use crate::packet::{
     AttributeValues, ClientPacketPayload, Packet, PacketDecoder, PacketEncoder, ServerPacketPayload,
 };
+use crate::show::ShowData;
+use crate::show::fixture::FixturePath;
 use crate::showfile::Showfile;
-use crate::state::State;
-use crate::state::fixture::FixturePath;
 use crate::value::ClampedValue;
 
 mod resolver;
-mod state_builder;
+mod show_data_builder;
 
 pub struct Server<'sf> {
     showfile: &'sf Showfile,
-    inner: Arc<Inner>,
+    state: Arc<ServerState>,
 
     bound_addr: Arc<Mutex<Option<SocketAddr>>>,
 }
 
 impl<'sf> Server<'sf> {
     pub fn new(showfile: &'sf Showfile) -> Result<Self, Error> {
-        let inner = Arc::new(Inner::new(showfile)?);
+        let state = Arc::new(ServerState::new(showfile)?);
         let bound_addr = Arc::new(Mutex::new(None));
-        Ok(Self { showfile, inner, bound_addr })
+        Ok(Self { showfile, state, bound_addr })
     }
 
     pub fn start(&mut self) -> Result<(), Error> {
@@ -44,7 +44,7 @@ impl<'sf> Server<'sf> {
 
         let runtime = tokio::runtime::Builder::new_multi_thread().enable_io().build()?;
 
-        let inner = Arc::clone(&self.inner);
+        let state = Arc::clone(&self.state);
         let bound_addr = Arc::clone(&self.bound_addr);
         let showfile = self.showfile;
 
@@ -67,7 +67,7 @@ impl<'sf> Server<'sf> {
             loop {
                 match listener.accept().await {
                     Ok((stream, peer)) => {
-                        let handler = ClientHandler::new(stream, peer, Arc::clone(&inner));
+                        let handler = ClientHandler::new(stream, peer, Arc::clone(&state));
                         tokio::spawn(async move { handler.run().await });
                     }
                     Err(e) => {
@@ -93,25 +93,25 @@ impl<'sf> Server<'sf> {
         guard.expect("server should have been started before calling this")
     }
 
-    pub fn state(&'_ self) -> RwLockReadGuard<'_, State> {
-        self.inner.state.blocking_read()
+    pub fn show_data(&'_ self) -> RwLockReadGuard<'_, ShowData> {
+        self.state.show_data.blocking_read()
     }
 }
 
 #[derive(Debug)]
-struct Inner {
-    state: RwLock<State>,
+struct ServerState {
+    show_data: RwLock<ShowData>,
 
     pending_attribute_values: RwLock<AttributeValues>,
     output_multiverse: RwLock<Multiverse>,
 }
 
-impl Inner {
+impl ServerState {
     pub fn new<'sf>(showfile: &'sf Showfile) -> Result<Self, Error> {
-        let state = state_builder::build_from_showfile(showfile)?;
+        let show_data = show_data_builder::build_from_showfile(showfile)?;
 
         Ok(Self {
-            state: RwLock::new(state),
+            show_data: RwLock::new(show_data),
 
             pending_attribute_values: RwLock::new(AttributeValues::new()),
             output_multiverse: RwLock::new(Multiverse::new()),
@@ -127,9 +127,9 @@ impl Inner {
         log::trace!("processing packet from {}", peer);
 
         let response = match packet.payload {
-            ServerPacketPayload::RequestState => {
-                let state = self.state.read().await.clone();
-                Some(ClientPacketPayload::ResponseState(state))
+            ServerPacketPayload::RequestShowData => {
+                let show_data = self.show_data.read().await.clone();
+                Some(ClientPacketPayload::ResponseShowData(show_data))
             }
             ServerPacketPayload::RequestDmxOutput => {
                 self.resolve_values().await;
@@ -168,11 +168,11 @@ struct ClientHandler {
     peer: SocketAddr,
     reader: FramedRead<OwnedReadHalf, PacketDecoder<ServerPacketPayload>>,
     writer: FramedWrite<OwnedWriteHalf, PacketEncoder<ClientPacketPayload>>,
-    inner: Arc<Inner>,
+    state: Arc<ServerState>,
 }
 
 impl ClientHandler {
-    fn new(stream: TcpStream, peer: SocketAddr, inner: Arc<Inner>) -> Self {
+    fn new(stream: TcpStream, peer: SocketAddr, state: Arc<ServerState>) -> Self {
         let (read_half, write_half) = stream.into_split();
         let decoder = PacketDecoder::<ServerPacketPayload>::default();
         let encoder = PacketEncoder::<ClientPacketPayload>::default();
@@ -180,7 +180,7 @@ impl ClientHandler {
         let framed_reader = FramedRead::new(read_half, decoder);
         let framed_writer = FramedWrite::new(write_half, encoder);
 
-        Self { peer, reader: framed_reader, writer: framed_writer, inner }
+        Self { peer, reader: framed_reader, writer: framed_writer, state }
     }
 
     async fn run(mut self) {
@@ -189,7 +189,7 @@ impl ClientHandler {
         while let Some(frame_res) = self.reader.next().await {
             match frame_res {
                 Ok(packet) => {
-                    self.inner.process_packet(packet, self.peer, &mut self.writer).await;
+                    self.state.process_packet(packet, self.peer, &mut self.writer).await;
                 }
                 Err(e) => {
                     log::error!("error reading packet from {}: {}", self.peer, e);

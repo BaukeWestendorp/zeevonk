@@ -6,9 +6,9 @@ pub fn dump_patch(showfile_path: PathBuf) -> anyhow::Result<()> {
     let showfile = Showfile::load_from_folder(&showfile_path)?;
 
     let server = zeevonk::server::Server::new(&showfile)?;
-    let state = server.state();
+    let show_data = server.show_data();
 
-    for (_, fixture) in state.patch().fixtures() {
+    for (_, fixture) in show_data.patch().fixtures() {
         dump::dump_fixture(fixture);
     }
 
@@ -16,7 +16,7 @@ pub fn dump_patch(showfile_path: PathBuf) -> anyhow::Result<()> {
 }
 
 mod dump {
-    use zeevonk::state::fixture::{Fixture, FixtureChannelFunctionKind};
+    use zeevonk::show::fixture::{Fixture, FixtureChannelFunctionKind};
 
     const RESET: &str = "\x1b[0m";
     const BOLD: &str = "\x1b[1m";
