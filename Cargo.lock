@@ -94,12 +94,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "arrayvec"
-version = "0.7.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
-
-[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1245,10 +1239,6 @@ dependencies = [
 name = "zeevonk"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "arrayvec",
- "bytes",
- "clap",
  "futures",
  "gdtf",
  "lazy_static",
@@ -1258,7 +1248,6 @@ dependencies = [
  "serde",
  "serde-big-array",
  "serde_json",
- "socket2",
  "spin_sleep",
  "thiserror 2.0.17",
  "tokio",
@@ -1354,4 +1343,15 @@ checksum = "91e19ebc2adc8f83e43039e79776e3fda8ca919132d68a1fed6a5faca2683748"
 dependencies = [
  "cc",
  "pkg-config",
+]
+
+[[package]]
+name = "zv"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "log",
+ "pretty_env_logger",
+ "zeevonk",
 ]
