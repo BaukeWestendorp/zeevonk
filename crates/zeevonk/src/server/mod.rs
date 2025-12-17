@@ -3,6 +3,7 @@
 
 use std::net::SocketAddr;
 use std::sync::Arc;
+use std::time::Instant;
 
 use futures::{SinkExt as _, StreamExt};
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
@@ -34,13 +35,20 @@ pub struct Server<'sf> {
 
 impl<'sf> Server<'sf> {
     pub fn new(showfile: &'sf Showfile) -> Result<Self, Error> {
+        let init_start = Instant::now();
+
         let state = Arc::new(ServerState::new(showfile)?);
+
+        let init_duration = init_start.elapsed();
+        log::info!("zeevonk server initialized (init time: {:.2?})", init_duration);
 
         Ok(Self { showfile, state, bound_addr: None })
     }
 
     pub async fn start(&mut self) -> Result<(), Error> {
         log::info!("starting server...");
+
+        let startup_start = Instant::now();
 
         let state = Arc::clone(&self.state);
 
@@ -54,7 +62,9 @@ impl<'sf> Server<'sf> {
         protocols::agent::start(self.showfile.protocols().clone(), Arc::clone(&state));
         log::debug!("protocol manager started");
 
-        log::info!("zeevonk server started!");
+        let startup_duration = startup_start.elapsed();
+        log::info!("server startup complete (startup time: {:.2?})", startup_duration);
+
         log::debug!("now accepting streams");
         loop {
             match listener.accept().await {
