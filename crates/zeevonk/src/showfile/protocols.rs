@@ -36,9 +36,10 @@ impl Sacn {
 pub struct SacnOutput {
     label: String,
     mode: SacnMode,
-    local_universes: Vec<u16>,
+    local_universe: u16,
     destination_universe: u16,
     priority: u8,
+    preview_data: bool,
 }
 
 impl SacnOutput {
@@ -55,8 +56,8 @@ impl SacnOutput {
     /// Returns the local universes for this output.
     ///
     /// These are Zeevonk's universes that will be sent to the target endpoint.
-    pub fn local_universes(&self) -> &[u16] {
-        &self.local_universes
+    pub fn local_universe(&self) -> u16 {
+        self.local_universe
     }
 
     /// Returns the destination universe for this output.
@@ -69,6 +70,12 @@ impl SacnOutput {
     /// Returns the sACN priority for this output.
     pub fn priority(&self) -> u8 {
         self.priority
+    }
+
+    /// Returns whether this sACN output is meant
+    /// for preview use cases (like visualizers).
+    pub fn preview_data(&self) -> bool {
+        self.preview_data
     }
 }
 

@@ -5,7 +5,6 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 
 use futures::{SinkExt as _, StreamExt};
-use std::sync::Mutex;
 use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{RwLock, RwLockReadGuard};
@@ -22,6 +21,7 @@ use crate::show::fixture::FixturePath;
 use crate::showfile::Showfile;
 use crate::value::ClampedValue;
 
+mod protocols;
 mod resolver;
 mod show_data_builder;
 
@@ -29,56 +29,45 @@ pub struct Server<'sf> {
     showfile: &'sf Showfile,
     state: Arc<ServerState>,
 
-    bound_addr: Arc<Mutex<Option<SocketAddr>>>,
+    bound_addr: Option<SocketAddr>,
 }
 
 impl<'sf> Server<'sf> {
     pub fn new(showfile: &'sf Showfile) -> Result<Self, Error> {
         let state = Arc::new(ServerState::new(showfile)?);
-        let bound_addr = Arc::new(Mutex::new(None));
-        Ok(Self { showfile, state, bound_addr })
+
+        Ok(Self { showfile, state, bound_addr: None })
     }
 
-    pub fn start(&mut self) -> Result<(), Error> {
+    pub async fn start(&mut self) -> Result<(), Error> {
         log::info!("starting server...");
 
-        let runtime = tokio::runtime::Builder::new_multi_thread().enable_io().build()?;
-
         let state = Arc::clone(&self.state);
-        let bound_addr = Arc::clone(&self.bound_addr);
-        let showfile = self.showfile;
 
-        runtime.block_on(async move {
-            log::debug!("binding listener...");
-            let address = showfile.config().address();
-            let listener = TcpListener::bind(address).await?;
-            log::debug!("listener bound");
+        log::debug!("binding listener...");
+        let address = self.showfile.config().address();
+        let listener = TcpListener::bind(address).await?;
+        self.bound_addr = Some(listener.local_addr().unwrap());
+        log::debug!("listener bound");
 
-            {
-                let local_addr = listener.local_addr()?;
-                let mut guard = bound_addr.lock().expect("failed to lock bound_addr mutex");
-                *guard = Some(local_addr);
-            }
+        log::debug!("starting protocol manager");
+        protocols::agent::start(self.showfile.protocols().clone(), Arc::clone(&state));
+        log::debug!("protocol manager started");
 
-            log::debug!("now accepting streams");
-
-            log::info!("zeevonk server started!");
-
-            loop {
-                match listener.accept().await {
-                    Ok((stream, peer)) => {
-                        let handler = ClientHandler::new(stream, peer, Arc::clone(&state));
-                        tokio::spawn(async move { handler.run().await });
-                    }
-                    Err(e) => {
-                        log::error!("accept error: {}", e);
-                        break;
-                    }
+        log::info!("zeevonk server started!");
+        log::debug!("now accepting streams");
+        loop {
+            match listener.accept().await {
+                Ok((stream, peer)) => {
+                    let handler = ClientHandler::new(stream, peer, Arc::clone(&state));
+                    tokio::spawn(async move { handler.run().await });
+                }
+                Err(e) => {
+                    log::error!("accept error: {}", e);
+                    break;
                 }
             }
-
-            Ok::<(), Error>(())
-        })?;
+        }
 
         Ok(())
     }
@@ -89,8 +78,7 @@ impl<'sf> Server<'sf> {
     ///
     /// Panics if the server has not been started yet.
     pub fn address(&self) -> SocketAddr {
-        let guard = self.bound_addr.lock().expect("failed to lock bound_addr mutex");
-        guard.expect("server should have been started before calling this")
+        self.bound_addr.expect("server should have been started before calling this")
     }
 
     pub fn show_data(&'_ self) -> RwLockReadGuard<'_, ShowData> {

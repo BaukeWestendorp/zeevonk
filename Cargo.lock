@@ -94,6 +94,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "arrayvec"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
+
+[[package]]
 name = "autocfg"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -256,6 +262,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9481c1c90cbf2ac953f07c8d4a58aa3945c425b7185c9154d67a65e4230da511"
 dependencies = [
  "cfg-if",
+]
+
+[[package]]
+name = "crossbeam-channel"
+version = "0.5.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82b8f8f868b36967f9606790d1903570de9ceaf870a7bf9fbbd3016d636a2cb2"
+dependencies = [
+ "crossbeam-utils",
 ]
 
 [[package]]
@@ -993,7 +1008,6 @@ version = "1.48.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff360e02eab121e0bc37a2d3b4d4dc622e6eda3a8e5253d5435ecf5bd4c68408"
 dependencies = [
- "bytes",
  "libc",
  "mio",
  "pin-project-lite",
@@ -1239,6 +1253,8 @@ dependencies = [
 name = "zeevonk"
 version = "0.1.0"
 dependencies = [
+ "arrayvec",
+ "crossbeam-channel",
  "futures",
  "gdtf",
  "lazy_static",
@@ -1248,6 +1264,7 @@ dependencies = [
  "serde",
  "serde-big-array",
  "serde_json",
+ "socket2",
  "spin_sleep",
  "thiserror 2.0.17",
  "tokio",
@@ -1353,5 +1370,6 @@ dependencies = [
  "clap",
  "log",
  "pretty_env_logger",
+ "tokio",
  "zeevonk",
 ]

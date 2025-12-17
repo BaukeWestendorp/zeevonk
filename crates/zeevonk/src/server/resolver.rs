@@ -12,6 +12,10 @@ use crate::value::ClampedValue;
 
 impl ServerState {
     pub async fn resolve_values(&self) {
+        // Use the defaulted multiverse as the new output multiverse.
+        *self.output_multiverse.write().await =
+            self.show_data.read().await.patch().default_multiverse().clone();
+
         Resolver::new(&self.pending_attribute_values, &self.show_data, &self.output_multiverse)
             .resolve()
             .await;
@@ -60,6 +64,8 @@ impl<'a> Resolver<'a> {
             self.resolve_fixture(fixture_path).await;
         }
 
+        // FIXME: This goes only one layer of deferring deep. It might be possible to have two or more
+        // FIXME: layers of virtual channel chaining, but only the first layer gets deferred.
         // Apply deferred relation writes. Each relation is looked up in the
         // current show data before applying so that channel functions are resolved
         // against the latest fixture definitions.

@@ -432,15 +432,16 @@
     "sacn": {
       "outputs": [
         {
-          "label": "Radiant U1",
+          "label": "Zeevonk U1",
           "mode": {
             "unicast": {
               "destination_ip": "127.0.0.1"
             }
           },
-          "local_universes": [1],
+          "local_universe": 1,
           "destination_universe": 1,
-          "priority": 100
+          "priority": 100,
+          "preview_data": false
         }
       ]
     }
