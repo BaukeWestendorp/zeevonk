@@ -80,7 +80,9 @@ impl ProtocolsProcess {
                     spin_sleep::sleep(target_time - now);
                 } else {
                     let overrun = now - target_time;
-                    log::warn!("frame {frame_count} overrun by {overrun:?}");
+                    if overrun > DMX_OUTPUT_FRAME_TIME {
+                        log::warn!("frame {frame_count} overrun by {overrun:?}");
+                    }
                 }
             }
 
@@ -89,6 +91,9 @@ impl ProtocolsProcess {
             let frame_end = Instant::now();
             let frame_time = frame_end - frame_start;
             total_frame_time += frame_time;
+
+            log::trace!("frame {frame_count} time: {frame_time:?}");
+
             frame_count += 1;
         }
     }
