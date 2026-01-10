@@ -1,6 +1,9 @@
+use std::collections::HashMap;
 use std::{fmt, num, str};
 
+use crate::attr::Attribute;
 use crate::dmx::{self, Address};
+use crate::show::fixture::FixturePath;
 
 /// A clamped value.
 ///
@@ -131,5 +134,39 @@ impl str::FromStr for ClampedValue {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(Self::new(s.parse()?))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+#[derive(serde::Serialize, serde::Deserialize)]
+pub struct AttributeValues {
+    values: HashMap<FixturePath, HashMap<Attribute, ClampedValue>>,
+}
+
+impl AttributeValues {
+    pub fn new() -> Self {
+        Self { values: HashMap::new() }
+    }
+
+    pub fn set(
+        &mut self,
+        fixture_path: FixturePath,
+        attribute: Attribute,
+        value: impl Into<ClampedValue>,
+    ) {
+        self.values
+            .entry(fixture_path)
+            .or_insert_with(HashMap::new)
+            .insert(attribute, value.into());
+    }
+
+    pub fn values(&self) -> impl Iterator<Item = (&FixturePath, &Attribute, &ClampedValue)> {
+        self.values.iter().flat_map(|(fixture_path, attrs)| {
+            attrs.iter().map(move |(attr, val)| (fixture_path, attr, val))
+        })
+    }
+
+    pub fn get(&self, path: &FixturePath, attribute: &Attribute) -> Option<&ClampedValue> {
+        self.values.get(path).and_then(|attrs| attrs.get(attribute))
     }
 }

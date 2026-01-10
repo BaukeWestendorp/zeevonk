@@ -2,13 +2,12 @@ use tokio::sync::RwLock;
 
 use crate::attr::Attribute;
 use crate::dmx::Multiverse;
-use crate::packet::AttributeValues;
 use crate::server::ServerState;
 use crate::show::ShowData;
 use crate::show::fixture::{
     FixtureChannelFunction, FixtureChannelFunctionKind, FixturePath, Relation, RelationKind,
 };
-use crate::value::ClampedValue;
+use crate::value::{AttributeValues, ClampedValue};
 
 impl ServerState {
     pub async fn resolve_values(&self) {

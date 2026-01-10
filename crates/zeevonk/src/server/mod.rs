@@ -11,11 +11,10 @@ use warp::Filter;
 use crate::Error;
 use crate::attr::Attribute;
 use crate::dmx::Multiverse;
-use crate::packet::AttributeValues;
 use crate::show::ShowData;
 use crate::show::fixture::FixturePath;
 use crate::showfile::Showfile;
-use crate::value::ClampedValue;
+use crate::value::{AttributeValues, ClampedValue};
 
 mod protocols;
 mod resolver;
