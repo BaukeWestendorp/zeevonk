@@ -5,9 +5,13 @@ pub enum Error {
     #[error("i/o error: {0}")]
     Io(#[from] io::Error),
 
+    // FIXME: Remove these from this general type.
     #[cfg(feature = "server")]
     #[error("server error: {message}")]
     Server { message: String },
+    #[cfg(feature = "client")]
+    #[error("client error: {message}")]
+    Client { message: String },
 
     #[error("{message}")]
     Other { message: String },
@@ -17,6 +21,11 @@ impl Error {
     #[cfg(feature = "server")]
     pub(crate) fn server(message: impl Into<String>) -> Self {
         Self::Server { message: message.into() }
+    }
+
+    #[cfg(feature = "client")]
+    pub(crate) fn client(message: impl Into<String>) -> Self {
+        Self::Client { message: message.into() }
     }
 
     pub(crate) fn other(message: impl Into<String>) -> Self {
