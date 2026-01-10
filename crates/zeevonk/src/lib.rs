@@ -6,8 +6,6 @@ pub mod show;
 pub mod showfile;
 pub mod value;
 
-#[cfg(feature = "client")]
-pub mod client;
 #[cfg(feature = "server")]
 pub mod server;
 

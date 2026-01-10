@@ -6,8 +6,8 @@ edition.workspace = true
 [features]
 default = []
 tokio = ["dep:tokio", "dep:tokio-util", "dep:futures"]
-client = ["tokio"]
 server = ["tokio", "dep:warp", "dep:crossbeam-channel", "dep:socket2", "dep:arrayvec", "dep:spin_sleep", "dep:gdtf"]
+client = ["dep:reqwest"]
 
 [dependencies]
 log.workspace = true
@@ -21,6 +21,7 @@ serde-big-array = "0.5.1"
 uuid = { version = "1.19.0", features = ["serde", "v4"] }
 lazy_static = "1.5.0"
 
+# feature = "tokio"
 tokio = { workspace = true, features = ["net", "time"], optional = true }
 tokio-util = { version = "0.7.17", features = ["codec"], optional = true }
 futures = { version = "0.3.31", default-features = false, optional = true }
@@ -33,11 +34,5 @@ crossbeam-channel = { version = "0.5.15", optional = true }
 socket2 = { version = "0.6.1", optional = true }
 arrayvec = { version = "0.7.6", optional = true }
 
-[dev-dependencies]
-pretty_env_logger = "0.5.0"
-tokio = { version = "1.48.0", features = ["macros"] }
-
-[[example]]
-name = "processor"
-path = "examples/processor.rs"
-required-features = ["client"]
+# feature = "client"
+reqwest = { version = "0.13.1", optional = true }
