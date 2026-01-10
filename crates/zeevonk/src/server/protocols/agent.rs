@@ -4,9 +4,8 @@ use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use crate::Error;
-use crate::server::ServerState;
 use crate::server::protocols::sacn;
+use crate::server::{self, ServerState};
 use crate::showfile::{Protocols, SacnMode};
 
 const DMX_OUTPUT_FRAME_TIME: Duration = Duration::from_millis(44);
@@ -37,7 +36,10 @@ pub struct ProtocolsProcess {
 }
 
 impl ProtocolsProcess {
-    pub fn new(protocols: Protocols, server_state: Arc<ServerState>) -> Result<Self, Error> {
+    pub fn new(
+        protocols: Protocols,
+        server_state: Arc<ServerState>,
+    ) -> Result<Self, server::Error> {
         let (tx, rx) = crossbeam_channel::unbounded();
         let this = Self {
             server_state,
@@ -117,7 +119,7 @@ impl ProtocolsProcess {
         ip: IpAddr,
         priority: u8,
         preview_data: bool,
-    ) -> Result<(), Error> {
+    ) -> Result<(), server::Error> {
         let source = sacn::Source::new(sacn::SourceConfig {
             cid: SACN_CID,
             name,
@@ -127,8 +129,7 @@ impl ProtocolsProcess {
             preview_data,
             synchronization_address: 0,
             force_synchronization: false,
-        })
-        .map_err(|err| Error::Server { message: err.to_string() })?;
+        })?;
 
         self.spawn_sacn_source_thread(source);
 

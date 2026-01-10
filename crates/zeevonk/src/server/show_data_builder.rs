@@ -7,9 +7,9 @@ use gdtf::fixture_type::FixtureType;
 use gdtf::geometry::{AnyGeometry, Geometry, ReferenceGeometry};
 use gdtf::values::Name;
 
-use crate::Error;
 use crate::attr::Attribute;
 use crate::dmx::{self, Address, Multiverse};
+use crate::server;
 use crate::show::ShowData;
 use crate::show::fixture::{
     Fixture, FixtureChannelFunction, FixtureChannelFunctionKind, FixtureId, FixturePath, Relation,
@@ -19,15 +19,18 @@ use crate::show::patch::Patch;
 use crate::showfile::Showfile;
 use crate::value::ClampedValue;
 
-pub(crate) fn build_from_showfile(showfile: &Showfile) -> Result<ShowData, Error> {
+pub(crate) fn build_from_showfile(showfile: &Showfile) -> Result<ShowData, server::Error> {
     let mut patch = Patch { fixtures: BTreeMap::new(), default_multiverse: Multiverse::new() };
 
     // Get all fixture types used in the showfile patch.
     let mut fixture_types = HashMap::new();
     for gdtf_file_path in showfile.gdtf_file_paths() {
-        let file = fs::File::open(gdtf_file_path)?;
-        let gdtf_file = gdtf::GdtfFile::new(file)
-            .map_err(|err| Error::server(format!("failed to read GDTF file: {err}")))?;
+        let file = fs::File::open(gdtf_file_path).map_err(|err| {
+            server::Error::GdtfFileOpenError { path: gdtf_file_path.clone(), source: err }
+        })?;
+        let gdtf_file = gdtf::GdtfFile::new(file).map_err(|err| {
+            server::Error::GdtfFileParseError { path: gdtf_file_path.clone(), source: err }
+        })?;
 
         for fixture_type in gdtf_file.description.fixture_types {
             let fixture_type_id = fixture_type.fixture_type_id;
@@ -39,18 +42,14 @@ pub(crate) fn build_from_showfile(showfile: &Showfile) -> Result<ShowData, Error
     for fixture in showfile.patch().fixtures() {
         let fixture_type =
             fixture_types.get(&fixture.kind().gdtf_fixture_type_id()).ok_or_else(|| {
-                Error::server(format!(
-                    "fixture type with id {:?} not found in loaded GDTF files",
-                    fixture.kind().gdtf_fixture_type_id()
-                ))
+                server::Error::FixtureTypeNotFound { id: fixture.kind().gdtf_fixture_type_id() }
             })?;
 
         let dmx_mode = fixture_type.dmx_mode(fixture.kind().gdtf_dmx_mode()).ok_or_else(|| {
-            Error::server(format!(
-                "dmx mode {:?} not found for fixture type {:?}",
-                fixture.kind().gdtf_dmx_mode(),
-                fixture.kind().gdtf_fixture_type_id()
-            ))
+            server::Error::DmxModeNotFound {
+                mode: fixture.kind().gdtf_dmx_mode().to_string(),
+                fixture_type_id: fixture.kind().gdtf_fixture_type_id(),
+            }
         })?;
 
         let builder = FixtureBuilder::new(
@@ -61,9 +60,7 @@ pub(crate) fn build_from_showfile(showfile: &Showfile) -> Result<ShowData, Error
             dmx_mode,
         );
 
-        let (built_fixtures, defaults) = builder
-            .build_fixture_tree()
-            .map_err(|err| Error::server(format!("failed to build fixture tree: {err}")))?;
+        let (built_fixtures, defaults) = builder.build_fixture_tree()?;
         for built_fixture in built_fixtures {
             patch.fixtures.insert(built_fixture.path(), built_fixture);
         }
@@ -132,7 +129,7 @@ impl<'a> FixtureBuilder<'a> {
 
     pub(crate) fn build_fixture_tree(
         mut self,
-    ) -> Result<(Vec<Fixture>, HashSet<(Address, dmx::Value)>), Error> {
+    ) -> Result<(Vec<Fixture>, HashSet<(Address, dmx::Value)>), server::Error> {
         // Find the root geometry for the chosen DMX mode and start the recursive building.
         let root_geometry = self.get_root_geometry()?.clone();
         let root_path = FixturePath::new(self.root_id);
@@ -144,9 +141,17 @@ impl<'a> FixtureBuilder<'a> {
         Ok((self.fixtures, self.defaults))
     }
 
-    fn get_root_geometry(&self) -> Result<&Geometry, Error> {
+    fn get_root_geometry(&self) -> Result<&Geometry, server::Error> {
         let Some(root_geometry) = self.gdtf_dmx_mode.geometry(&self.gdtf_fixture_type) else {
-            todo!("fixure out what to do with a `None` DMX mode geometry");
+            return Err(server::Error::RootGeometryNotFound {
+                fixture_type_id: self.gdtf_fixture_type.fixture_type_id,
+                dmx_mode_name: self
+                    .gdtf_dmx_mode
+                    .name
+                    .as_ref()
+                    .map(|n| n.to_string())
+                    .unwrap_or_else(|| "<no name>".to_string()),
+            });
         };
 
         Ok(root_geometry)
@@ -183,9 +188,10 @@ impl<'a> FixtureBuilder<'a> {
             geometry.name().map(|n| n.to_string()).unwrap_or_else(|| "<no name>".to_string())
         };
 
-        let geometry_name = geometry
-            .name()
-            .unwrap_or_else(|| todo!("figure out what a `None` value for a name should do"));
+        let geometry_name = match geometry.name() {
+            Some(n) => n,
+            None => return vec![], // Could also log or error, but for now skip
+        };
 
         self.create_sub_fixture(sub_fixture_path, name, geometry_name, geometry_name, 0)
     }
@@ -205,8 +211,14 @@ impl<'a> FixtureBuilder<'a> {
             None => 0,
         };
 
-        let geometry_name = reference_geometry.name().unwrap();
-        let referenced_geometry_name = reference_geometry.geometry.as_ref().unwrap();
+        let geometry_name = match reference_geometry.name() {
+            Some(n) => n,
+            None => return vec![], // Could also log or error, but for now skip
+        };
+        let referenced_geometry_name = match reference_geometry.geometry.as_ref() {
+            Some(n) => n,
+            None => return vec![], // Could also log or error, but for now skip
+        };
 
         self.create_sub_fixture(
             sub_fixture_path,
@@ -229,7 +241,13 @@ impl<'a> FixtureBuilder<'a> {
         let Some(referenced_geometry) =
             self.gdtf_fixture_type.nested_geometry(&referenced_geometry)
         else {
-            todo!("fixure out what to do with a `None` geometry");
+            // Instead of todo!, return empty or log error
+            log::error!(
+                "Referenced geometry {:?} not found in fixture type {:?}",
+                referenced_geometry,
+                self.gdtf_fixture_type.fixture_type_id
+            );
+            return vec![];
         };
 
         // Build child fixtures first (they will push/pop their own sibling counters).
@@ -249,8 +267,8 @@ impl<'a> FixtureBuilder<'a> {
             .gdtf_dmx_mode
             .name
             .as_ref()
-            .expect("dmx mode should exist for name as we just found it")
-            .to_string();
+            .map(|n| n.to_string())
+            .unwrap_or_else(|| "<no mode name>".to_string());
 
         let mut fixtures = vec![Fixture {
             path,
@@ -277,7 +295,13 @@ impl<'a> FixtureBuilder<'a> {
                 *last
             };
 
-            let sub_fixture_path = path.extended_with(FixtureId::new(sibling_count + 1).unwrap());
+            let sub_fixture_path = match FixtureId::new(sibling_count + 1) {
+                Ok(id) => path.extended_with(id),
+                Err(err) => {
+                    log::error!("invalid FixtureId: {}", err);
+                    continue; // Skip invalid id
+                }
+            };
             let fixtures_for_child = self.fixtures_from_geometry(sub_fixture_path, child_geometry);
 
             if fixtures_for_child.is_empty() {
@@ -424,8 +448,14 @@ impl<'a> FixtureBuilder<'a> {
                 // Physical channel: map each offset to an absolute DMX address.
                 let addresses = offsets
                     .iter()
-                    .map(|o| {
-                        self.address.with_channel_offset(geometry_address_offset + o - 1).unwrap()
+                    .filter_map(|o| {
+                        match self.address.with_channel_offset(geometry_address_offset + o - 1) {
+                            Ok(addr) => Some(addr),
+                            Err(err) => {
+                                log::error!("failed to compute channel offset: {}", err);
+                                None
+                            }
+                        }
                     })
                     .collect();
 

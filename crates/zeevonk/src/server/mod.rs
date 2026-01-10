@@ -8,7 +8,6 @@ use std::time::Instant;
 use tokio::sync::{RwLock, RwLockReadGuard};
 use warp::Filter;
 
-use crate::Error;
 use crate::attr::Attribute;
 use crate::dmx::Multiverse;
 use crate::show::ShowData;
@@ -16,9 +15,12 @@ use crate::show::fixture::FixturePath;
 use crate::showfile::Showfile;
 use crate::value::{AttributeValues, ClampedValue};
 
+mod error;
 mod protocols;
 mod resolver;
 mod show_data_builder;
+
+pub use error::Error;
 
 pub struct Server<'sf> {
     showfile: &'sf Showfile,
