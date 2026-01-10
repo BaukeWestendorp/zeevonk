@@ -102,7 +102,7 @@ impl<'a> Resolver<'a> {
 
         // For each channel function, get its explicit value (if any) and apply it.
         for (attribute, channel_function) in channel_functions {
-            if let Some(value) = self.get_channel_function_value(fixture_path, attribute).await {
+            if let Some(value) = self.get_channel_function_value(&fixture_path, &attribute).await {
                 self.set_channel_function_value(&channel_function, value).await;
             }
         }
@@ -111,11 +111,11 @@ impl<'a> Resolver<'a> {
     /// Determines the value for a specific channel function explicitly present in the GDCS's unresolved values map.
     async fn get_channel_function_value(
         &self,
-        fixture_path: FixturePath,
-        attribute: Attribute,
+        fixture_path: &FixturePath,
+        attribute: &Attribute,
     ) -> Option<ClampedValue> {
         let av = self.attribute_values.read().await;
-        av.get(fixture_path, attribute)
+        av.get(fixture_path, attribute).copied()
     }
 
     /// Apply a computed value to a channel function.
@@ -145,8 +145,8 @@ impl<'a> Resolver<'a> {
                         RelationKind::Multiply => {
                             if let Some(follower_value) = self
                                 .get_channel_function_value(
-                                    relation.fixture_path(),
-                                    relation.attribute(),
+                                    &relation.fixture_path(),
+                                    &relation.attribute(),
                                 )
                                 .await
                             {

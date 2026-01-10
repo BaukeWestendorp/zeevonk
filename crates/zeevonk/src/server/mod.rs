@@ -5,18 +5,13 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Instant;
 
-use futures::{SinkExt as _, StreamExt};
-use tokio::net::tcp::{OwnedReadHalf, OwnedWriteHalf};
-use tokio::net::{TcpListener, TcpStream};
 use tokio::sync::{RwLock, RwLockReadGuard};
-use tokio_util::codec::{FramedRead, FramedWrite};
+use warp::Filter;
 
 use crate::Error;
 use crate::attr::Attribute;
 use crate::dmx::Multiverse;
-use crate::packet::{
-    AttributeValues, ClientPacketPayload, Packet, PacketDecoder, PacketEncoder, ServerPacketPayload,
-};
+use crate::packet::AttributeValues;
 use crate::show::ShowData;
 use crate::show::fixture::FixturePath;
 use crate::showfile::Showfile;
@@ -47,17 +42,12 @@ impl<'sf> Server<'sf> {
 
     pub async fn start(&mut self) -> Result<(), Error> {
         log::info!("starting server...");
-
         let startup_start = Instant::now();
 
+        // Initialize state.
         let state = Arc::clone(&self.state);
 
-        log::debug!("binding listener...");
-        let address = self.showfile.config().address();
-        let listener = TcpListener::bind(address).await?;
-        self.bound_addr = Some(listener.local_addr().unwrap());
-        log::debug!("listener bound");
-
+        // Start protocol manager.
         log::debug!("starting protocol manager");
         protocols::agent::start(self.showfile.protocols().clone(), Arc::clone(&state));
         log::debug!("protocol manager started");
@@ -65,19 +55,47 @@ impl<'sf> Server<'sf> {
         let startup_duration = startup_start.elapsed();
         log::info!("server startup complete (startup time: {:.2?})", startup_duration);
 
-        log::debug!("now accepting streams");
-        loop {
-            match listener.accept().await {
-                Ok((stream, peer)) => {
-                    let handler = ClientHandler::new(stream, peer, Arc::clone(&state));
-                    tokio::spawn(async move { handler.run().await });
-                }
-                Err(e) => {
-                    log::error!("accept error: {}", e);
-                    break;
+        // Start server.
+        let address = self.showfile.config().address();
+        let get_show_data = warp::path("show-data").then({
+            let state = Arc::clone(&state);
+            move || {
+                let state = Arc::clone(&state);
+                async move {
+                    let show_data = state.show_data.read().await.clone();
+                    warp::reply::json(&show_data)
                 }
             }
-        }
+        });
+        let get_dmx_output = warp::path("dmx-output").then({
+            let state = Arc::clone(&state);
+            move || {
+                let state = Arc::clone(&state);
+                async move {
+                    state.resolve_values().await;
+                    let multiverse = state.output_multiverse.read().await.clone();
+                    warp::reply::json(&multiverse)
+                }
+            }
+        });
+        let post_attribute_values =
+            warp::path("attribute-values").and(warp::body::json()).and(warp::post()).then({
+                let state = Arc::clone(&state);
+                move |values: AttributeValues| {
+                    let state = Arc::clone(&state);
+                    async move {
+                        for (fixture_path, attribute, value) in values.values() {
+                            state.set_attribute_value(*fixture_path, *attribute, *value).await;
+                        }
+                        state.resolve_values().await;
+                        warp::reply::reply()
+                    }
+                }
+            });
+
+        let routes = get_show_data.or(get_dmx_output).or(post_attribute_values);
+
+        warp::serve(routes).run(address).await;
 
         Ok(())
     }
@@ -116,42 +134,6 @@ impl ServerState {
         })
     }
 
-    pub async fn process_packet(
-        &self,
-        packet: Packet<ServerPacketPayload>,
-        peer: SocketAddr,
-        writer: &mut FramedWrite<OwnedWriteHalf, PacketEncoder<ClientPacketPayload>>,
-    ) {
-        log::trace!("processing packet from {}", peer);
-
-        let response = match packet.payload {
-            ServerPacketPayload::RequestShowData => {
-                let show_data = self.show_data.read().await.clone();
-                Some(ClientPacketPayload::ResponseShowData(show_data))
-            }
-            ServerPacketPayload::RequestDmxOutput => {
-                self.resolve_values().await;
-                let multiverse = self.output_multiverse.read().await.clone();
-                Some(ClientPacketPayload::ResponseDmxOutput(multiverse))
-            }
-            ServerPacketPayload::RequestSetAttributeValues(values) => {
-                for ((fixture_path, attribute), value) in values.values() {
-                    self.set_attribute_value(*fixture_path, *attribute, *value).await;
-                }
-                self.resolve_values().await;
-                Some(ClientPacketPayload::ResponseSetAttributeValues)
-            }
-        };
-
-        // If we have a response, send it back to the client.
-        if let Some(payload) = response {
-            let packet = Packet::new(payload);
-            if let Err(e) = writer.send(packet).await {
-                log::error!("failed to send response to {}: {}", peer, e);
-            }
-        }
-    }
-
     async fn set_attribute_value(
         &self,
         fixture_path: FixturePath,
@@ -159,43 +141,5 @@ impl ServerState {
         value: ClampedValue,
     ) {
         self.pending_attribute_values.write().await.set(fixture_path, attribute, value);
-    }
-}
-
-struct ClientHandler {
-    peer: SocketAddr,
-    reader: FramedRead<OwnedReadHalf, PacketDecoder<ServerPacketPayload>>,
-    writer: FramedWrite<OwnedWriteHalf, PacketEncoder<ClientPacketPayload>>,
-    state: Arc<ServerState>,
-}
-
-impl ClientHandler {
-    fn new(stream: TcpStream, peer: SocketAddr, state: Arc<ServerState>) -> Self {
-        let (read_half, write_half) = stream.into_split();
-        let decoder = PacketDecoder::<ServerPacketPayload>::default();
-        let encoder = PacketEncoder::<ClientPacketPayload>::default();
-
-        let framed_reader = FramedRead::new(read_half, decoder);
-        let framed_writer = FramedWrite::new(write_half, encoder);
-
-        Self { peer, reader: framed_reader, writer: framed_writer, state }
-    }
-
-    async fn run(mut self) {
-        log::info!("client connected: {}", self.peer);
-
-        while let Some(frame_res) = self.reader.next().await {
-            match frame_res {
-                Ok(packet) => {
-                    self.state.process_packet(packet, self.peer, &mut self.writer).await;
-                }
-                Err(e) => {
-                    log::error!("error reading packet from {}: {}", self.peer, e);
-                    break;
-                }
-            }
-        }
-
-        log::info!("client disconnected: {}", self.peer);
     }
 }

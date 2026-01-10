@@ -42,11 +42,10 @@ impl<P: PacketPayload> Packet<P> {
             .map_err(|err| Error::InvalidPayload { message: err.to_string() })
     }
 }
-
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct AttributeValues {
-    values: HashMap<(FixturePath, Attribute), ClampedValue>,
+    values: HashMap<FixturePath, HashMap<Attribute, ClampedValue>>,
 }
 
 impl AttributeValues {
@@ -60,14 +59,19 @@ impl AttributeValues {
         attribute: Attribute,
         value: impl Into<ClampedValue>,
     ) {
-        self.values.insert((fixture_path, attribute), value.into());
+        self.values
+            .entry(fixture_path)
+            .or_insert_with(HashMap::new)
+            .insert(attribute, value.into());
     }
 
-    pub fn values(&self) -> impl Iterator<Item = (&(FixturePath, Attribute), &ClampedValue)> {
-        self.values.iter()
+    pub fn values(&self) -> impl Iterator<Item = (&FixturePath, &Attribute, &ClampedValue)> {
+        self.values.iter().flat_map(|(fixture_path, attrs)| {
+            attrs.iter().map(move |(attr, val)| (fixture_path, attr, val))
+        })
     }
 
-    pub fn get(&self, path: FixturePath, attribute: Attribute) -> Option<ClampedValue> {
-        self.values.get(&(path, attribute)).copied()
+    pub fn get(&self, path: &FixturePath, attribute: &Attribute) -> Option<&ClampedValue> {
+        self.values.get(path).and_then(|attrs| attrs.get(attribute))
     }
 }
