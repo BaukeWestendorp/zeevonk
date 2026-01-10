@@ -31,14 +31,14 @@ impl<P: PacketPayload> Packet<P> {
     }
 
     pub fn decode_payload_bytes(payload_bytes: &[u8]) -> Result<Self, Error> {
-        let payload = rmp_serde::from_slice(payload_bytes)
+        let payload = serde_json::from_slice(payload_bytes)
             .map_err(|err| Error::InvalidPayload { message: err.to_string() })?;
         let packet = Packet { payload };
         Ok(packet)
     }
 
     pub fn encode_payload_bytes(&self) -> Result<Vec<u8>, Error> {
-        rmp_serde::to_vec(&self.payload)
+        serde_json::to_vec(&self.payload)
             .map_err(|err| Error::InvalidPayload { message: err.to_string() })
     }
 }

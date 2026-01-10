@@ -477,7 +477,7 @@ macro_rules! fpath {
         p
     }};
     ( $first:expr $(, $rest:expr )* $(,)? ) => {{
-        let mut p = $crate::fixture::FixturePath::new($first);
+        let mut p = $crate::show::fixture::FixturePath::new($first);
         $( p.push($rest); )*
         p
     }};
