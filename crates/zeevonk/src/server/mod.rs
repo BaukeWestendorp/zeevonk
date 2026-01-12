@@ -94,7 +94,16 @@ impl<'sf> Server<'sf> {
                 }
             });
 
-        let routes = get_show_data.or(get_dmx_output).or(post_attribute_values);
+        let routes = get_show_data
+            .or(get_dmx_output)
+            .or(post_attribute_values)
+            // FIXME: Figure out if this CORS is actually fine for our use case.
+            .with(
+                warp::cors()
+                    .allow_any_origin()
+                    .allow_headers(["Content-Type"])
+                    .allow_methods(["GET", "POST", "PUT", "DELETE"]),
+            );
 
         warp::serve(routes).run(address).await;
 
