@@ -2,7 +2,6 @@ pub use error::*;
 
 pub mod attr;
 pub mod show;
-pub mod showfile;
 pub mod trigger;
 pub mod value;
 

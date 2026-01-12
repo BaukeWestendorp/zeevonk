@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use zeevonk::showfile::Showfile;
+use zeevonk::server::showfile::Showfile;
 
 pub fn dump_patch(showfile_path: PathBuf) -> anyhow::Result<()> {
     let showfile = Showfile::load_from_folder(&showfile_path)?;

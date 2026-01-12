@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use anyhow::Ok;
 use zeevonk::server::Server;
-use zeevonk::showfile::Showfile;
+use zeevonk::server::showfile::Showfile;
 
 /// Runs the showfile at the given path.
 pub fn run_showfile(showfile_path: PathBuf) -> anyhow::Result<()> {

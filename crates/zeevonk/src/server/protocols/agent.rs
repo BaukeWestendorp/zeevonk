@@ -5,8 +5,8 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use crate::server::protocols::sacn;
+use crate::server::showfile::{Protocols, SacnMode};
 use crate::server::{self, ServerState};
-use crate::showfile::{Protocols, SacnMode};
 
 const DMX_OUTPUT_FRAME_TIME: Duration = Duration::from_millis(44);
 

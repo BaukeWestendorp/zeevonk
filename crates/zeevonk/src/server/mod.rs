@@ -10,10 +10,12 @@ use tokio::sync::{RwLock, RwLockReadGuard};
 use warp::Filter;
 
 use crate::attr::Attribute;
+use crate::server::showfile::Showfile;
 use crate::show::ShowData;
 use crate::show::fixture::FixturePath;
-use crate::showfile::Showfile;
 use crate::value::{AttributeValues, ClampedValue};
+
+pub mod showfile;
 
 mod error;
 mod protocols;

@@ -10,13 +10,13 @@ use theymx::{self, Address, Multiverse};
 
 use crate::attr::Attribute;
 use crate::server;
+use crate::server::showfile::Showfile;
 use crate::show::ShowData;
 use crate::show::fixture::{
     Fixture, FixtureChannelFunction, FixtureChannelFunctionKind, FixtureId, FixturePath, Relation,
     RelationKind,
 };
 use crate::show::patch::Patch;
-use crate::showfile::Showfile;
 use crate::value::ClampedValue;
 
 pub(crate) fn build_from_showfile(showfile: &Showfile) -> Result<ShowData, server::Error> {
