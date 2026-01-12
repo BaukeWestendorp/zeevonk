@@ -7,6 +7,9 @@ pub enum Error {
 
     #[error("{message}")]
     Other { message: String },
+
+    #[error("invalid identifier")]
+    InvalidIdentifier,
 }
 
 impl Error {

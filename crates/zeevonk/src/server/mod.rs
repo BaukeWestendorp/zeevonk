@@ -93,10 +93,22 @@ impl<'sf> Server<'sf> {
                     }
                 }
             });
+        let post_trigger = warp::path!("trigger" / String).and(warp::post()).then({
+            let state = Arc::clone(&state);
+            move |id: String| {
+                let _state = Arc::clone(&state);
+                async move {
+                    // FIXME: Do something with trigger.
+                    log::info!("received trigger: {}", id);
+                    warp::reply::reply()
+                }
+            }
+        });
 
         let routes = get_show_data
             .or(get_dmx_output)
             .or(post_attribute_values)
+            .or(post_trigger)
             // FIXME: Figure out if this CORS is actually fine for our use case.
             .with(
                 warp::cors()

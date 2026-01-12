@@ -2,22 +2,29 @@ use std::net::SocketAddr;
 
 use theymx::Multiverse;
 
-use crate::client;
 use crate::show::ShowData;
+use crate::trigger::Trigger;
 use crate::value::AttributeValues;
+use crate::{Identifier, client};
 
 mod error;
 
 pub use error::Error;
 
 pub struct Client {
+    id: Identifier,
+
     address: SocketAddr,
     client: reqwest::Client,
 }
 
 impl Client {
-    pub fn new(address: SocketAddr) -> Self {
-        Self { address, client: reqwest::Client::new() }
+    pub fn new(id: Identifier, address: SocketAddr) -> Self {
+        Self { id: id.into(), address, client: reqwest::Client::new() }
+    }
+
+    pub fn id(&self) -> &Identifier {
+        &self.id
     }
 
     pub async fn show_data(&self) -> Result<ShowData, client::Error> {
@@ -38,6 +45,17 @@ impl Client {
             .send()
             .await
             .map_err(|err| client::Error::RequestFailed(err.to_string()))?;
+
+        Ok(())
+    }
+
+    pub async fn send_trigger(&self, trigger: Trigger) -> Result<(), client::Error> {
+        self.client
+            .post(self.url(&format!("/trigger/{}:{}", self.id, trigger)))
+            .send()
+            .await
+            .map_err(|err| client::Error::RequestFailed(err.to_string()))?;
+
         Ok(())
     }
 
