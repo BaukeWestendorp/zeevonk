@@ -14,6 +14,7 @@ use crate::value::ClampedValue;
 /// A configured fixture instance.
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Fixture {
     pub(crate) path: FixturePath,
     pub(crate) root_base_address: Address,
@@ -80,6 +81,7 @@ impl Fixture {
 /// and the range of values it accepts (min/max) and its default value.
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct FixtureChannelFunction {
     pub(crate) kind: FixtureChannelFunctionKind,
     pub(crate) min: ClampedValue,
@@ -113,6 +115,7 @@ impl FixtureChannelFunction {
 /// computed virtually from other attributes.
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum FixtureChannelFunctionKind {
     /// A physical channel mapping addresses to a channel functions.
     /// (multiple are used for fine-controlled channel functions like Pan or Tilt).
@@ -132,6 +135,7 @@ pub enum FixtureChannelFunctionKind {
 /// attribute.
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct Relation {
     pub(crate) kind: RelationKind,
     pub(crate) fixture_path: FixturePath,
@@ -163,6 +167,7 @@ impl Relation {
 /// The operation used when combining a source attribute into a virtual attribute.
 #[derive(Debug, Clone, Copy)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum RelationKind {
     /// Multiply the source attribute value with the target.
     Multiply,

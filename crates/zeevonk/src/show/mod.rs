@@ -5,6 +5,7 @@ pub mod patch;
 
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ShowData {
     pub(crate) patch: Patch,
 }
