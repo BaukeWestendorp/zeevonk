@@ -1756,6 +1756,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "theymx"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f2a40568046af1d001013da86b05f136ee25c979045b007b22d9a47fbf55f0ea"
+dependencies = [
+ "serde",
+ "serde-big-array",
+]
+
+[[package]]
 name = "thiserror"
 version = "1.0.69"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2501,6 +2511,7 @@ dependencies = [
  "serde_json",
  "socket2",
  "spin_sleep",
+ "theymx",
  "thiserror 2.0.17",
  "tokio",
  "tokio-util",

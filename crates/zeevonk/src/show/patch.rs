@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 
-use crate::dmx::Multiverse;
+use theymx::Multiverse;
+
 use crate::show::fixture::{Fixture, FixturePath};
 
 #[derive(Debug, Clone)]

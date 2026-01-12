@@ -1,7 +1,7 @@
+use theymx::Multiverse;
 use tokio::sync::RwLock;
 
 use crate::attr::Attribute;
-use crate::dmx::Multiverse;
 use crate::server::ServerState;
 use crate::show::ShowData;
 use crate::show::fixture::{

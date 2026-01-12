@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 use std::{fmt, num, str};
 
+use theymx::{self, Address};
+
 use crate::attr::Attribute;
-use crate::dmx::{self, Address};
 use crate::show::fixture::FixturePath;
 
 /// A clamped value.
@@ -80,7 +81,7 @@ impl ClampedValue {
     }
 
     /// Converts the value to values directly mappable at addresses.
-    pub fn to_address_values(&self, addresses: &[Address]) -> Vec<(Address, dmx::Value)> {
+    pub fn to_address_values(&self, addresses: &[Address]) -> Vec<(Address, theymx::Value)> {
         let bytes: Vec<u8> = match addresses.len() {
             1 => vec![self.to_u8()],
             2 => self.to_u16_bytes().to_vec(),
@@ -95,7 +96,7 @@ impl ClampedValue {
             }
         };
 
-        addresses.iter().copied().zip(bytes.into_iter().map(|b| dmx::Value::from(b))).collect()
+        addresses.iter().copied().zip(bytes.into_iter().map(|b| theymx::Value::from(b))).collect()
     }
 }
 
@@ -123,9 +124,9 @@ impl From<ClampedValue> for f64 {
     }
 }
 
-impl From<ClampedValue> for dmx::Value {
+impl From<ClampedValue> for theymx::Value {
     fn from(value: ClampedValue) -> Self {
-        dmx::Value((value.0 * (u8::MAX as f32)) as u8)
+        theymx::Value((value.0 * (u8::MAX as f32)) as u8)
     }
 }
 

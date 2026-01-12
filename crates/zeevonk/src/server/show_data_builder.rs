@@ -6,9 +6,9 @@ use gdtf::dmx_mode::{ChannelFunction, DmxChannel, DmxMode, RelationType};
 use gdtf::fixture_type::FixtureType;
 use gdtf::geometry::{AnyGeometry, Geometry, ReferenceGeometry};
 use gdtf::values::Name;
+use theymx::{self, Address, Multiverse};
 
 use crate::attr::Attribute;
-use crate::dmx::{self, Address, Multiverse};
 use crate::server;
 use crate::show::ShowData;
 use crate::show::fixture::{
@@ -100,7 +100,7 @@ struct FixtureBuilder<'a> {
     // them to resolve after the initial construction.
     unresolved_virtual_channels: Vec<(ChannelFunctionId, Attribute)>,
 
-    defaults: HashSet<(Address, dmx::Value)>,
+    defaults: HashSet<(Address, theymx::Value)>,
 }
 
 impl<'a> FixtureBuilder<'a> {
@@ -129,7 +129,7 @@ impl<'a> FixtureBuilder<'a> {
 
     pub(crate) fn build_fixture_tree(
         mut self,
-    ) -> Result<(Vec<Fixture>, HashSet<(Address, dmx::Value)>), server::Error> {
+    ) -> Result<(Vec<Fixture>, HashSet<(Address, theymx::Value)>), server::Error> {
         // Find the root geometry for the chosen DMX mode and start the recursive building.
         let root_geometry = self.get_root_geometry()?.clone();
         let root_path = FixturePath::new(self.root_id);

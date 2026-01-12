@@ -1,7 +1,8 @@
 use std::net::SocketAddr;
 
+use theymx::Multiverse;
+
 use crate::client;
-use crate::dmx::Multiverse;
 use crate::show::ShowData;
 use crate::value::AttributeValues;
 

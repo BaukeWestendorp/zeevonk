@@ -4,11 +4,11 @@ use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::{cmp, fmt, str};
 
+use theymx::Address;
 use uuid::Uuid;
 
 use crate::Error;
 use crate::attr::Attribute;
-use crate::dmx::Address;
 use crate::value::ClampedValue;
 
 /// A configured fixture instance.

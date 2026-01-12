@@ -1,7 +1,8 @@
 use std::str;
+
+use theymx::Address;
 use uuid::Uuid;
 
-use crate::dmx::Address;
 use crate::show::fixture::FixtureId;
 
 /// A patch containing a list of [`Fixture`]s.

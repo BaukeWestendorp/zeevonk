@@ -5,11 +5,11 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Instant;
 
+use theymx::Multiverse;
 use tokio::sync::{RwLock, RwLockReadGuard};
 use warp::Filter;
 
 use crate::attr::Attribute;
-use crate::dmx::Multiverse;
 use crate::show::ShowData;
 use crate::show::fixture::FixturePath;
 use crate::showfile::Showfile;

@@ -143,7 +143,7 @@ impl ProtocolsProcess {
             while let Ok(()) = rx.recv() {
                 let multiverse = server_state.output_multiverse.blocking_read().clone();
                 for (id, universe) in multiverse.universes() {
-                    let mut sacn_universe = sacn::Universe::new(**id);
+                    let mut sacn_universe = sacn::Universe::new(id.as_u16());
                     sacn_universe.data_slots = universe.values().iter().map(|v| v.0).collect();
                     source
                         .send_universe_data_packet(sacn_universe)
