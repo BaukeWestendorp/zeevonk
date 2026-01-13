@@ -5,7 +5,7 @@ edition.workspace = true
 
 [features]
 default = []
-server = ["dep:tokio", "dep:tokio-util", "dep:futures", "dep:tokio-tungstenite", "dep:crossbeam-channel", "dep:socket2", "dep:arrayvec", "dep:spin_sleep", "dep:gdtf"]
+server = ["dep:tokio", "dep:futures", "dep:tokio-tungstenite", "dep:crossbeam-channel", "dep:socket2", "dep:arrayvec", "dep:spin_sleep", "dep:gdtf"]
 client = ["dep:reqwest"]
 
 [dependencies]
@@ -22,8 +22,7 @@ serde-big-array = "0.5.1"
 uuid = { version = "1.19.0", features = ["serde", "v4"] }
 lazy_static = "1.5.0"
 
-tokio = { workspace = true, features = ["net", "time", "macros"], optional = true }
-tokio-util = { version = "0.7.17", features = ["codec"], optional = true }
+tokio = { workspace = true, features = ["net", "time", "macros", "sync"], optional = true }
 futures = { version = "0.3.31", default-features = false, optional = true }
 
 # feature = "server"
@@ -32,7 +31,7 @@ gdtf = { version = "0.2.0", optional = true }
 crossbeam-channel = { version = "0.5.15", optional = true }
 socket2 = { version = "0.6.1", optional = true }
 arrayvec = { version = "0.7.6", optional = true }
+tokio-tungstenite = { version = "0.28.0", optional = true }
 
 # feature = "client"
 reqwest = { version = "0.13.1", optional = true, features = ["json"] }
-tokio-tungstenite = { version = "0.28.0", optional = true }

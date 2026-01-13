@@ -9,14 +9,14 @@ use crate::show::fixture::FixturePath;
 use crate::value::{AttributeValues, ClampedValue};
 
 #[derive(Debug)]
-pub struct ServerState {
+pub struct State {
     pub show_data: RwLock<ShowData>,
 
     pub pending_attribute_values: RwLock<AttributeValues>,
     pub output_multiverse: RwLock<Multiverse>,
 }
 
-impl ServerState {
+impl State {
     pub fn new<'sf>(showfile: &'sf Showfile) -> Result<Self, server::Error> {
         let show_data = show_data_builder::build_from_showfile(showfile)?;
 

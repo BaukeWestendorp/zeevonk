@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use crate::server::output::sacn;
 use crate::server::showfile::{Output, SacnMode};
-use crate::server::{self, ServerState};
+use crate::server::{self, State};
 
 const DMX_OUTPUT_FRAME_TIME: Duration = Duration::from_millis(44);
 
@@ -16,7 +16,7 @@ const SACN_CID: sacn::ComponentIdentifier = sacn::ComponentIdentifier::from_byte
     0xa1, 0xa2, 0xa3, 0xa4, 0xb1, 0xb2, 0xc1, 0xc2, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8,
 ]);
 
-pub fn start(output: Output, server_state: Arc<ServerState>) {
+pub fn start(output: Output, server_state: Arc<State>) {
     thread::Builder::new()
         .name("output".to_string())
         .spawn(move || {
@@ -28,7 +28,7 @@ pub fn start(output: Output, server_state: Arc<ServerState>) {
 }
 
 pub struct OutputAgent {
-    server_state: Arc<ServerState>,
+    server_state: Arc<State>,
     tx: crossbeam_channel::Sender<()>,
     rx: crossbeam_channel::Receiver<()>,
     sacn_sources: RefCell<Vec<JoinHandle<()>>>,
@@ -36,7 +36,7 @@ pub struct OutputAgent {
 }
 
 impl OutputAgent {
-    pub fn new(output: Output, server_state: Arc<ServerState>) -> Result<Self, server::Error> {
+    pub fn new(output: Output, server_state: Arc<State>) -> Result<Self, server::Error> {
         let (tx, rx) = crossbeam_channel::unbounded();
         let this = Self {
             server_state,

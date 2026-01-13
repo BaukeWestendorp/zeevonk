@@ -2442,7 +2442,6 @@ dependencies = [
  "thiserror 2.0.17",
  "tokio",
  "tokio-tungstenite",
- "tokio-util",
  "uuid",
 ]
 
