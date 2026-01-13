@@ -7,6 +7,9 @@ use crate::server::output::sacn::SourceError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("i/o error: {0}")]
+    IoError(#[from] io::Error),
+
     #[error("Failed to open GDTF file at {path:?}: {source}")]
     GdtfFileOpenError { path: PathBuf, source: io::Error },
 

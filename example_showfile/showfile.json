@@ -1,7 +1,6 @@
 {
   "config": {
-    "controller_port": 7334,
-    "processor_port": 7335
+    "controller_port": 7334
   },
 
   "patch": {

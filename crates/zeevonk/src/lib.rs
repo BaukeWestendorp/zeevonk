@@ -5,19 +5,19 @@ pub mod show;
 pub mod trigger;
 pub mod value;
 
-#[cfg(feature = "client")]
-pub mod client;
 #[cfg(feature = "server")]
 pub mod server;
 
 mod error;
 
-pub const DEFAULT_PORT: u16 = 7334;
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub const DEFAULT_CONTROLLER_PORT: u16 = 7334;
+
 /// A validated identifier consisting of lowercase ASCII letters, digits, or hyphens.
 ///
 /// Use [`Identifier::new`] to construct a new identifier, which ensures the value
 /// contains only valid characters. The underlying string can be accessed with [`Identifier::as_str`].
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Identifier(String);
 
 impl Identifier {

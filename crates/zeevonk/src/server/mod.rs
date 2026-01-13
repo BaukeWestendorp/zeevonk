@@ -1,20 +1,19 @@
 //! The Zeevonk server serves as a hub to connect multiple clients
 //! together and generating DMX output over various protocols.
 
-use std::net::SocketAddr;
+use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
 use std::time::Instant;
 
 use tokio::sync::RwLockReadGuard;
-use warp::Filter;
 
 use crate::server::showfile::Showfile;
 use crate::server::state::ServerState;
 use crate::show::ShowData;
-use crate::value::AttributeValues;
 
 pub mod showfile;
 
+mod controller;
 mod error;
 mod output;
 mod resolver;
@@ -56,68 +55,11 @@ impl<'sf> Server<'sf> {
         let startup_duration = startup_start.elapsed();
         log::info!("server startup complete (startup time: {:.2?})", startup_duration);
 
-        // Start server.
-        let address = self.showfile.config().address();
-        let get_show_data = warp::path("show-data").then({
-            let state = Arc::clone(&state);
-            move || {
-                let state = Arc::clone(&state);
-                async move {
-                    let show_data = state.show_data.read().await.clone();
-                    warp::reply::json(&show_data)
-                }
-            }
-        });
-        let get_dmx_output = warp::path("dmx-output").then({
-            let state = Arc::clone(&state);
-            move || {
-                let state = Arc::clone(&state);
-                async move {
-                    state.resolve_values().await;
-                    let multiverse = state.output_multiverse.read().await.clone();
-                    warp::reply::json(&multiverse)
-                }
-            }
-        });
-        let post_attribute_values =
-            warp::path("attribute-values").and(warp::body::json()).and(warp::post()).then({
-                let state = Arc::clone(&state);
-                move |values: AttributeValues| {
-                    let state = Arc::clone(&state);
-                    async move {
-                        for (fixture_path, attribute, value) in values.values() {
-                            state.set_attribute_value(*fixture_path, *attribute, *value).await;
-                        }
-                        state.resolve_values().await;
-                        warp::reply::reply()
-                    }
-                }
-            });
-        let post_trigger = warp::path!("trigger" / String).and(warp::post()).then({
-            let state = Arc::clone(&state);
-            move |id: String| {
-                let _state = Arc::clone(&state);
-                async move {
-                    // FIXME: Do something with trigger.
-                    log::info!("received trigger: {}", id);
-                    warp::reply::reply()
-                }
-            }
-        });
-
-        let routes = get_show_data
-            .or(get_dmx_output)
-            .or(post_attribute_values)
-            .or(post_trigger)
-            // FIXME: Figure out if this CORS is actually fine for our use case.
-            .with(
-                warp::cors()
-                    .allow_any_origin()
-                    .allow_headers(["Content-Type"])
-                    .allow_methods(["GET", "POST", "PUT", "DELETE"]),
-            );
-
-        warp::serve(routes).run(address).await;
+        // Start controller listener.
+        let controller_port = self.showfile.config().controller_port();
+        let controller_addr =
+            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, controller_port));
+        controller::start_listener(controller_addr).await?;
 
         Ok(())
     }

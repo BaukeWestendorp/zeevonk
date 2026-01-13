@@ -1,24 +1,20 @@
-use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
-
 /// General configuration for the server.
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
 pub struct Config {
-    address: SocketAddr,
+    controller_port: u16,
 }
 
 impl Config {
-    /// Returns the socket address configured for the server.
-    pub fn address(&self) -> SocketAddr {
-        self.address
+    /// Returns the port for controller connections.
+    pub fn controller_port(&self) -> u16 {
+        self.controller_port
     }
 }
 
 impl Default for Config {
     fn default() -> Self {
-        Self {
-            address: SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, crate::DEFAULT_PORT)),
-        }
+        Self { controller_port: crate::DEFAULT_CONTROLLER_PORT }
     }
 }
