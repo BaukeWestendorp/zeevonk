@@ -1,4 +1,4 @@
-use std::io::{self, ErrorKind};
+use std::io::{self};
 use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use std::sync::Arc;
 
@@ -60,9 +60,8 @@ async fn handle_ws_client<H: PacketHandler>(
     address: SocketAddr,
     state: Arc<State>,
 ) -> Result<(), server::Error> {
-    let ws_stream = accept_async(stream)
-        .await
-        .map_err(|e| server::Error::from(io::Error::new(ErrorKind::Other, e.to_string())))?;
+    let ws_stream =
+        accept_async(stream).await.map_err(|e| server::Error::from(io::Error::other(e)))?;
 
     let (mut write, mut read) = ws_stream.split();
     let (tx, mut rx) = mpsc::channel::<H::ClientPacket>(16);
@@ -138,7 +137,7 @@ pub mod controller {
                     writer
                         .send(ClientPacket::ConfirmRegisterClient)
                         .await
-                        .map_err(|e| io::Error::other(e))?;
+                        .map_err(io::Error::other)?;
                 }
                 ServerPacket::Trigger { trigger } => {
                     state.trigger_router.write().await.handle_trigger(address, trigger);
@@ -197,21 +196,21 @@ pub mod processor {
                     writer
                         .send(ClientPacket::ConfirmRegisterClient)
                         .await
-                        .map_err(|e| io::Error::other(e))?;
+                        .map_err(io::Error::other)?;
                 }
                 ServerPacket::RequestShowData => {
                     let show_data = state.show_data.read().await.clone();
                     writer
                         .send(ClientPacket::ResponseShowData { show_data })
                         .await
-                        .map_err(|e| io::Error::other(e))?;
+                        .map_err(io::Error::other)?;
                 }
                 ServerPacket::RequestDmxOutput => {
                     let dmx_output = state.output_multiverse.read().await.clone();
                     writer
                         .send(ClientPacket::ResponseDmxOutput { dmx_output })
                         .await
-                        .map_err(|e| io::Error::other(e))?;
+                        .map_err(io::Error::other)?;
                 }
                 ServerPacket::SetAttributeValues {
                     fixture_path,

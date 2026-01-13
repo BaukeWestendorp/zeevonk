@@ -43,7 +43,7 @@ impl Showfile {
 
             let file_path = entry.path();
 
-            if !file_path.extension().is_some_and(|ext| ext == "gdtf") {
+            if file_path.extension().is_none_or(|ext| ext != "gdtf") {
                 continue;
             }
 

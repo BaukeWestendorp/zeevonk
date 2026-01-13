@@ -709,9 +709,10 @@ impl CustomName {
     }
 }
 
-impl ToString for CustomName {
-    fn to_string(&self) -> String {
-        CUSTOM_NAMES.lock().unwrap()[self.0].to_owned()
+impl std::fmt::Display for CustomName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = CUSTOM_NAMES.lock().unwrap()[self.0].to_owned();
+        write!(f, "{}", name)
     }
 }
 
@@ -1305,7 +1306,7 @@ impl fmt::Display for Attribute {
             Self::InputSource => write!(f, "InputSource"),
             Self::FieldOfView => write!(f, "FieldOfView"),
 
-            Self::Custom(name) => write!(f, "{}", name.to_string()),
+            Self::Custom(name) => write!(f, "{name}"),
         }
     }
 }

@@ -8,7 +8,7 @@ pub fn dump_patch(showfile_path: PathBuf) -> anyhow::Result<()> {
     let server = zeevonk::server::Server::new(&showfile)?;
     let show_data = server.show_data();
 
-    for (_, fixture) in show_data.patch().fixtures() {
+    for fixture in show_data.patch().fixtures().values() {
         dump::dump_fixture(fixture);
     }
 
@@ -63,7 +63,7 @@ mod dump {
             );
         }
 
-        let channels = fixture.channel_functions().into_iter().collect::<Vec<_>>();
+        let channels = fixture.channel_functions().collect::<Vec<_>>();
         if channels.is_empty() {
             println!("{secondary_indent}{DIM}<no fixture channels>{RESET}");
         } else {

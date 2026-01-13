@@ -9,7 +9,7 @@ pub struct Trigger {
 
 impl Trigger {
     pub fn new(id: Identifier, value: TriggerValue) -> Self {
-        Self { id: id.into(), value }
+        Self { id, value }
     }
 
     pub fn id(&self) -> &Identifier {

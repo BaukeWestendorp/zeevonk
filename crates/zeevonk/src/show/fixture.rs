@@ -218,7 +218,8 @@ impl str::FromStr for FixtureId {
     type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let id = s.parse::<u32>().map_err(|_| Error::other(format!("non-zero fixture id: 0")))?;
+        let id =
+            s.parse::<u32>().map_err(|_| Error::other("non-zero fixture id: 0".to_string()))?;
         FixtureId::new(id)
     }
 }
@@ -261,6 +262,11 @@ impl FixturePath {
         self.len as usize
     }
 
+    /// Returns true if the path contains no fixtures.
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
     /// Returns `true` if this path contains only the root fixture.
     pub fn is_root_fixture(&self) -> bool {
         self.len == 1
@@ -268,7 +274,7 @@ impl FixturePath {
 
     /// Returns the number of sub-fixtures (excluding the root).
     pub fn sub_len(&self) -> usize {
-        assert!(self.len() >= 1, "FixturePath must have at least a root");
+        assert!(!self.is_empty(), "FixturePath must have at least a root");
         self.len() - 1
     }
 

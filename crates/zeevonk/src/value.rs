@@ -96,7 +96,7 @@ impl ClampedValue {
             }
         };
 
-        addresses.iter().copied().zip(bytes.into_iter().map(|b| theymx::Value::from(b))).collect()
+        addresses.iter().copied().zip(bytes.into_iter().map(theymx::Value::from)).collect()
     }
 }
 
@@ -144,6 +144,12 @@ pub struct AttributeValues {
     values: HashMap<FixturePath, HashMap<Attribute, ClampedValue>>,
 }
 
+impl Default for AttributeValues {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AttributeValues {
     pub fn new() -> Self {
         Self { values: HashMap::new() }
@@ -157,7 +163,7 @@ impl AttributeValues {
     ) {
         self.values
             .entry(fixture_path)
-            .or_insert_with(HashMap::new)
+            .or_default()
             .insert(attribute, value.into());
     }
 

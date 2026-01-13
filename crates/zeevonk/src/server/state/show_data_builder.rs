@@ -147,7 +147,7 @@ impl<'a> FixtureBuilder<'a> {
     }
 
     fn get_root_geometry(&self) -> Result<&Geometry, server::Error> {
-        let Some(root_geometry) = self.gdtf_dmx_mode.geometry(&self.gdtf_fixture_type) else {
+        let Some(root_geometry) = self.gdtf_dmx_mode.geometry(self.gdtf_fixture_type) else {
             return Err(server::Error::RootGeometryNotFound {
                 fixture_type_id: self.gdtf_fixture_type.fixture_type_id,
                 dmx_mode_name: self
@@ -211,7 +211,7 @@ impl<'a> FixtureBuilder<'a> {
             log::warn!("multiple breaks not yet supported!");
         }
 
-        let geometry_address_offset = match reference_geometry.breaks.get(0) {
+        let geometry_address_offset = match reference_geometry.breaks.first() {
             Some(b) => b.dmx_offset.absolute() as i32 - 1,
             None => 0,
         };
@@ -228,8 +228,8 @@ impl<'a> FixtureBuilder<'a> {
         self.create_sub_fixture(
             sub_fixture_path,
             geometry_name.to_string(),
-            &geometry_name,
-            &referenced_geometry_name,
+            geometry_name,
+            referenced_geometry_name,
             geometry_address_offset,
         )
     }
@@ -244,7 +244,7 @@ impl<'a> FixtureBuilder<'a> {
     ) -> Vec<Fixture> {
         // Look up the nested geometry definition in the fixture type.
         let Some(referenced_geometry) =
-            self.gdtf_fixture_type.nested_geometry(&referenced_geometry)
+            self.gdtf_fixture_type.nested_geometry(referenced_geometry)
         else {
             // Instead of todo!, return empty or log error
             log::error!(
@@ -345,10 +345,10 @@ impl<'a> FixtureBuilder<'a> {
     }
 
     fn attribute_from_cf(&self, cf: &ChannelFunction) -> Option<Attribute> {
-        cf.attribute(&self.gdtf_fixture_type)
+        cf.attribute(self.gdtf_fixture_type)
             .and_then(|attribute| attribute.name.as_ref())
             // Unwrapping here is safe, as from_str for Attribute cannot fail.
-            .map(|attribute| Attribute::from_str(&*attribute).unwrap())
+            .map(|attribute| Attribute::from_str(attribute).unwrap())
     }
 
     fn create_channel_functions(
@@ -376,7 +376,7 @@ impl<'a> FixtureBuilder<'a> {
                     .channel_functions
                     .iter()
                     .filter(|cf| {
-                        cf.attribute(&self.gdtf_fixture_type).is_some_and(|a| {
+                        cf.attribute(self.gdtf_fixture_type).is_some_and(|a| {
                             a.name.as_ref().is_some_and(|name| &**name != "NoFeature")
                         })
                     })
@@ -468,7 +468,7 @@ impl<'a> FixtureBuilder<'a> {
             }
             None => {
                 // Virtual channel: register for resolution later and return an empty relation set.
-                self.register_virtual_channel(attribute.clone(), cf_id);
+                self.register_virtual_channel(*attribute, cf_id);
                 FixtureChannelFunctionKind::Virtual { relations: vec![] }
             }
         }
@@ -495,7 +495,7 @@ impl<'a> FixtureBuilder<'a> {
             };
 
             let Some(virtual_channel_function) =
-                fixture.channel_functions.get_mut(&virtual_attribute)
+                fixture.channel_functions.get_mut(virtual_attribute)
             else {
                 continue;
             };
@@ -515,12 +515,12 @@ impl<'a> FixtureBuilder<'a> {
 
         let relations = self.gdtf_dmx_mode.relations.iter().filter(|relation| {
             relation
-                .master(&self.gdtf_dmx_mode)
+                .master(self.gdtf_dmx_mode)
                 .is_some_and(|master| master.name() == dmx_channel.name())
         });
 
         for relation in relations {
-            let Some((_, _, follower_channel_function)) = relation.follower(&self.gdtf_dmx_mode)
+            let Some((_, _, follower_channel_function)) = relation.follower(self.gdtf_dmx_mode)
             else {
                 log::warn!(
                     "could not find follower for relation with master {}",
