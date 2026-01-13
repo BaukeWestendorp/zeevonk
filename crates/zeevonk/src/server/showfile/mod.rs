@@ -3,12 +3,12 @@ use std::path::{Path, PathBuf};
 
 pub use config::*;
 pub use error::*;
+pub use output::*;
 pub use patch::*;
-pub use protocols::*;
 
 mod config;
+mod output;
 mod patch;
-mod protocols;
 
 mod error;
 
@@ -25,7 +25,7 @@ pub struct Showfile {
 
     config: Config,
     patch: Patch,
-    protocols: Protocols,
+    output: Output,
 }
 
 impl Showfile {
@@ -92,7 +92,7 @@ impl Showfile {
         &self.patch
     }
 
-    pub fn protocols(&self) -> &Protocols {
-        &self.protocols
+    pub fn protocols(&self) -> &Output {
+        &self.output
     }
 }

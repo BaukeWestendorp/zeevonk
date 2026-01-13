@@ -1,32 +1,17 @@
 use std::net::IpAddr;
 
-/// Contains all DMX IO protocol configurations.
+/// Contains all DMX output configurations.
 #[derive(Debug, Clone, PartialEq, Default)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(default)]
-pub struct Protocols {
-    sacn: Sacn,
+pub struct Output {
+    sacn: Vec<SacnOutput>,
 }
 
-impl Protocols {
-    /// Returns a reference to the sACN protocol configuration.
-    pub fn sacn(&self) -> &Sacn {
+impl Output {
+    /// Returns a reference all the sACN output configurations.
+    pub fn sacn(&self) -> &[SacnOutput] {
         &self.sacn
-    }
-}
-
-/// Inputs and outputs for the sACN protocol.
-#[derive(Debug, Clone, PartialEq, Default)]
-#[derive(serde::Serialize, serde::Deserialize)]
-#[serde(default)]
-pub struct Sacn {
-    outputs: Vec<SacnOutput>,
-}
-
-impl Sacn {
-    /// Returns all sACN output configurations.
-    pub fn outputs(&self) -> &[SacnOutput] {
-        &self.outputs
     }
 }
 

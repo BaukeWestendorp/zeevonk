@@ -5,7 +5,7 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use crate::server::protocols::sacn;
-use crate::server::showfile::{Protocols, SacnMode};
+use crate::server::showfile::{Output, SacnMode};
 use crate::server::{self, ServerState};
 
 const DMX_OUTPUT_FRAME_TIME: Duration = Duration::from_millis(44);
@@ -16,18 +16,18 @@ const SACN_CID: sacn::ComponentIdentifier = sacn::ComponentIdentifier::from_byte
     0xa1, 0xa2, 0xa3, 0xa4, 0xb1, 0xb2, 0xc1, 0xc2, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8,
 ]);
 
-pub fn start(protocols: Protocols, server_state: Arc<ServerState>) {
+pub fn start(output: Output, server_state: Arc<ServerState>) {
     thread::Builder::new()
-        .name("protocols".to_string())
+        .name("output".to_string())
         .spawn(move || {
-            ProtocolsProcess::new(protocols, server_state)
-                .expect("should create new protocols process")
+            OutputAgent::new(output, server_state)
+                .expect("should create new output process")
                 .start();
         })
         .unwrap();
 }
 
-pub struct ProtocolsProcess {
+pub struct OutputAgent {
     server_state: Arc<ServerState>,
     tx: crossbeam_channel::Sender<()>,
     rx: crossbeam_channel::Receiver<()>,
@@ -35,11 +35,8 @@ pub struct ProtocolsProcess {
     shutdown: RefCell<bool>,
 }
 
-impl ProtocolsProcess {
-    pub fn new(
-        protocols: Protocols,
-        server_state: Arc<ServerState>,
-    ) -> Result<Self, server::Error> {
+impl OutputAgent {
+    pub fn new(output: Output, server_state: Arc<ServerState>) -> Result<Self, server::Error> {
         let (tx, rx) = crossbeam_channel::unbounded();
         let this = Self {
             server_state,
@@ -49,7 +46,7 @@ impl ProtocolsProcess {
             shutdown: RefCell::new(false),
         };
 
-        for sacn_output in protocols.sacn().outputs() {
+        for sacn_output in output.sacn() {
             let ip = match sacn_output.mode() {
                 SacnMode::Unicast { destination_ip } => destination_ip,
                 SacnMode::Multicast => todo!(),
@@ -88,7 +85,7 @@ impl ProtocolsProcess {
                 }
             }
 
-            self.tx.send(()).expect("should send new frame notifier to protocols");
+            self.tx.send(()).expect("should send new frame notifier to output");
 
             let frame_end = Instant::now();
             let frame_time = frame_end - frame_start;
@@ -157,7 +154,7 @@ impl ProtocolsProcess {
     }
 }
 
-impl Drop for ProtocolsProcess {
+impl Drop for OutputAgent {
     fn drop(&mut self) {
         self.shutdown();
     }

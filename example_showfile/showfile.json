@@ -1,6 +1,7 @@
 {
   "config": {
-    "address": "127.0.0.1:7334"
+    "controller_port": 7334,
+    "processor_port": 7335
   },
 
   "patch": {
@@ -428,22 +429,20 @@
     ]
   },
 
-  "protocols": {
-    "sacn": {
-      "outputs": [
-        {
-          "label": "Zeevonk U1",
-          "mode": {
-            "unicast": {
-              "destination_ip": "127.0.0.1"
-            }
-          },
-          "local_universe": 1,
-          "destination_universe": 1,
-          "priority": 100,
-          "preview_data": false
-        }
-      ]
-    }
+  "output": {
+    "sacn": [
+      {
+        "label": "Zeevonk U1",
+        "mode": {
+          "unicast": {
+            "destination_ip": "127.0.0.1"
+          }
+        },
+        "local_universe": 1,
+        "destination_universe": 1,
+        "priority": 100,
+        "preview_data": false
+      }
+    ]
   }
 }
