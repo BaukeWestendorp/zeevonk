@@ -2,7 +2,6 @@ use crate::Identifier;
 
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct Trigger {
     id: Identifier,
     value: TriggerValue,
@@ -25,12 +24,8 @@ impl Trigger {
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub enum TriggerValue {
-    #[serde(rename = "empty")]
     Empty,
-    #[serde(rename = "integer")]
     Integer(i64),
-    #[serde(rename = "float")]
     Float(f64),
-    #[serde(rename = "boolean")]
     Boolean(bool),
 }

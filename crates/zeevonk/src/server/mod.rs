@@ -6,14 +6,16 @@ use std::time::Instant;
 
 use tokio::sync::RwLockReadGuard;
 
+use crate::server::listener::controller::ControllerHandler;
+use crate::server::listener::processor::ProcessorHandler;
 use crate::server::showfile::Showfile;
 use crate::server::state::State;
 use crate::show::ShowData;
 
 pub mod showfile;
 
-mod controller;
 mod error;
+mod listener;
 mod output;
 mod state;
 
@@ -43,13 +45,39 @@ impl<'sf> Server<'sf> {
         // Start protocol manager.
         log::debug!("starting protocol manager");
         let state = Arc::clone(&self.state);
-        output::agent::start(self.showfile.protocols().clone(), state);
+        output::agent::start(self.showfile.protocols().clone(), Arc::clone(&state));
         log::debug!("protocol manager started");
 
         let startup_duration = startup_start.elapsed();
         log::info!("server startup complete (startup time: {:.2?})", startup_duration);
 
+        self.start_processor_listener().await;
+        self.start_controller_listener().await?;
+
         Ok(())
+    }
+
+    async fn start_processor_listener(&self) {
+        let processor_port = self.showfile.config().processor_port();
+        let state = Arc::clone(&self.state);
+        tokio::spawn(async move {
+            if let Err(e) =
+                listener::start_ws_listener::<ProcessorHandler>(processor_port, "processor", state)
+                    .await
+            {
+                log::error!("processor listener exited with error: {}", e);
+            }
+        });
+    }
+
+    async fn start_controller_listener(&self) -> Result<(), Error> {
+        let controller_port = self.showfile.config().controller_port();
+        listener::start_ws_listener::<ControllerHandler>(
+            controller_port,
+            "controller",
+            Arc::clone(&self.state),
+        )
+        .await
     }
 
     pub fn show_data(&self) -> RwLockReadGuard<'_, ShowData> {

@@ -6,7 +6,6 @@ use crate::show::fixture::{Fixture, FixturePath};
 
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct Patch {
     pub(crate) fixtures: BTreeMap<FixturePath, Fixture>,
     pub(crate) default_multiverse: Multiverse,
