@@ -5,8 +5,8 @@ use futures::StreamExt;
 use tokio::net::{TcpListener, TcpStream};
 use tokio_tungstenite::tungstenite::Message as WsMessage;
 
+use crate::server;
 use crate::server::processor::packet::ServerProcessorPacket;
-use crate::server::{self};
 
 pub mod packet;
 
@@ -28,7 +28,7 @@ pub async fn start_listener(address: SocketAddr) -> Result<(), server::Error> {
             }
             Err(e) => {
                 log::error!("failed to accept connection: {}", e);
-                // Continue listening on error
+                // Continue listening on error.
             }
         }
     }
@@ -44,27 +44,21 @@ async fn accept_stream(stream: TcpStream, address: SocketAddr) -> Result<(), ser
 
     let (_write, mut read) = ws_stream.split();
 
-    if let Some(msg_result) = read.next().await {
-        match msg_result {
+    while let Some(message) = read.next().await {
+        match message {
             Ok(WsMessage::Text(text)) => {
-                serde_json::from_str::<ServerProcessorPacket>(&text).map(handle_packet).map_err(
-                    |e| {
-                        log::error!("failed to decode json Message from {}: {}", address, e);
-                        server::Error::from(io::Error::other(e))
-                    },
-                )?;
+                serde_json::from_str(&text).map(handle_packet).map_err(|e| {
+                    log::error!("failed to decode json Message from {}: {}", address, e);
+                    server::Error::from(io::Error::other(e))
+                })?;
             }
             Ok(WsMessage::Binary(bin)) => {
-                serde_json::from_slice::<ServerProcessorPacket>(&bin).map(handle_packet).map_err(
-                    |e| {
-                        log::error!("failed to decode binary json Message from {}: {}", address, e);
-                        server::Error::from(io::Error::other(e))
-                    },
-                )?;
+                serde_json::from_slice(&bin).map(handle_packet).map_err(|e| {
+                    log::error!("failed to decode binary json Message from {}: {}", address, e);
+                    server::Error::from(io::Error::other(e))
+                })?;
             }
-            Ok(other) => {
-                log::warn!("received non-json packet from {}: {:?}", address, other);
-            }
+            Ok(_) => {}
             Err(e) => {
                 log::error!("WebSocket error from {}: {}", address, e);
                 return Err(server::Error::from(io::Error::other(e)));
@@ -72,7 +66,14 @@ async fn accept_stream(stream: TcpStream, address: SocketAddr) -> Result<(), ser
         }
     }
 
+    // If we exit the loop, the stream is disconnected.
+    handle_disconnect();
+
     Ok(())
+}
+
+fn handle_disconnect() {
+    eprintln!("handle disconnect");
 }
 
 fn handle_packet(packet: ServerProcessorPacket) {
