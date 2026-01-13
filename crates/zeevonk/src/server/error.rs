@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use uuid::Uuid;
 
-use crate::server::protocols::sacn::SourceError;
+use crate::server::output::sacn::SourceError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use crate::server::protocols::sacn;
+use crate::server::output::sacn;
 use crate::server::showfile::{Output, SacnMode};
 use crate::server::{self, ServerState};
 

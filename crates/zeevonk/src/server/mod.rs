@@ -18,7 +18,7 @@ use crate::value::{AttributeValues, ClampedValue};
 pub mod showfile;
 
 mod error;
-mod protocols;
+mod output;
 mod resolver;
 mod show_data_builder;
 
@@ -52,7 +52,7 @@ impl<'sf> Server<'sf> {
 
         // Start protocol manager.
         log::debug!("starting protocol manager");
-        protocols::agent::start(self.showfile.protocols().clone(), Arc::clone(&state));
+        output::agent::start(self.showfile.protocols().clone(), Arc::clone(&state));
         log::debug!("protocol manager started");
 
         let startup_duration = startup_start.elapsed();
