@@ -5,22 +5,20 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Instant;
 
-use theymx::Multiverse;
-use tokio::sync::{RwLock, RwLockReadGuard};
+use tokio::sync::RwLockReadGuard;
 use warp::Filter;
 
-use crate::attr::Attribute;
 use crate::server::showfile::Showfile;
+use crate::server::state::ServerState;
 use crate::show::ShowData;
-use crate::show::fixture::FixturePath;
-use crate::value::{AttributeValues, ClampedValue};
+use crate::value::AttributeValues;
 
 pub mod showfile;
 
 mod error;
 mod output;
 mod resolver;
-mod show_data_builder;
+mod state;
 
 pub use error::Error;
 
@@ -135,35 +133,5 @@ impl<'sf> Server<'sf> {
 
     pub fn show_data(&'_ self) -> RwLockReadGuard<'_, ShowData> {
         self.state.show_data.blocking_read()
-    }
-}
-
-#[derive(Debug)]
-struct ServerState {
-    show_data: RwLock<ShowData>,
-
-    pending_attribute_values: RwLock<AttributeValues>,
-    output_multiverse: RwLock<Multiverse>,
-}
-
-impl ServerState {
-    pub fn new<'sf>(showfile: &'sf Showfile) -> Result<Self, Error> {
-        let show_data = show_data_builder::build_from_showfile(showfile)?;
-
-        Ok(Self {
-            show_data: RwLock::new(show_data),
-
-            pending_attribute_values: RwLock::new(AttributeValues::new()),
-            output_multiverse: RwLock::new(Multiverse::new()),
-        })
-    }
-
-    async fn set_attribute_value(
-        &self,
-        fixture_path: FixturePath,
-        attribute: Attribute,
-        value: ClampedValue,
-    ) {
-        self.pending_attribute_values.write().await.set(fixture_path, attribute, value);
     }
 }

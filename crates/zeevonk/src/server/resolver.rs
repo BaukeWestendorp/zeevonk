@@ -2,7 +2,7 @@ use theymx::Multiverse;
 use tokio::sync::RwLock;
 
 use crate::attr::Attribute;
-use crate::server::ServerState;
+use crate::server::state::ServerState;
 use crate::show::ShowData;
 use crate::show::fixture::{
     FixtureChannelFunction, FixtureChannelFunctionKind, FixturePath, Relation, RelationKind,
