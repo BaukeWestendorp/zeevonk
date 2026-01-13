@@ -11,6 +11,7 @@ pub mod server;
 mod error;
 
 pub const DEFAULT_CONTROLLER_PORT: u16 = 7334;
+pub const DEFAULT_PROCESSOR_PORT: u16 = 7335;
 
 /// A validated identifier consisting of lowercase ASCII letters, digits, or hyphens.
 ///

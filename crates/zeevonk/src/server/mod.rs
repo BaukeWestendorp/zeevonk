@@ -16,7 +16,7 @@ pub mod showfile;
 mod controller;
 mod error;
 mod output;
-mod resolver;
+mod processor;
 mod state;
 
 pub use error::Error;
@@ -56,10 +56,28 @@ impl<'sf> Server<'sf> {
         log::info!("server startup complete (startup time: {:.2?})", startup_duration);
 
         // Start controller listener.
-        let controller_port = self.showfile.config().controller_port();
-        let controller_addr =
-            SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, controller_port));
-        controller::start_listener(controller_addr).await?;
+        tokio::spawn({
+            let port = self.showfile.config().controller_port();
+            let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, port));
+            async move {
+                if let Err(e) = controller::start_listener(addr).await {
+                    log::error!("controller listener failed: {}", e);
+                }
+            }
+        });
+
+        // Start processor listener.
+        tokio::spawn({
+            let port = self.showfile.config().processor_port();
+            let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, port));
+            async move {
+                if let Err(e) = processor::start_listener(addr).await {
+                    log::error!("processor listener failed: {}", e);
+                }
+            }
+        })
+        .await
+        .unwrap();
 
         Ok(())
     }
