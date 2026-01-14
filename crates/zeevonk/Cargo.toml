@@ -6,8 +6,8 @@ edition.workspace = true
 [features]
 default = []
 server = ["dep:async-trait", "dep:tokio", "dep:futures-util", "dep:tokio-tungstenite", "dep:crossbeam-channel", "dep:socket2", "dep:arrayvec", "dep:spin_sleep", "dep:gdtf"]
-client-processor = []
-client-controller = []
+client-processor = ["dep:async-trait", "dep:tokio", "dep:tokio-tungstenite", "dep:futures-util"]
+client-controller = ["dep:async-trait", "dep:tokio", "dep:tokio-tungstenite", "dep:futures-util"]
 
 [dependencies]
 log.workspace = true

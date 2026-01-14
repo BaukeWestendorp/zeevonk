@@ -1,29 +1,31 @@
 pub mod controller {
+    use crate::Identifier;
     use crate::trigger::Trigger;
 
-    #[derive(serde::Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub enum ServerPacket {
-        RegisterClient { name: String },
+        RegisterClient { id: Identifier },
         Trigger { trigger: Trigger },
     }
 
-    #[derive(serde::Serialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub enum ClientPacket {
         ConfirmRegisterClient,
     }
 }
 
 pub mod processor {
+    use crate::Identifier;
     use crate::attr::Attribute;
     use crate::show::ShowData;
     use crate::show::fixture::FixturePath;
     use crate::value::ClampedValue;
     use theymx::Multiverse;
 
-    #[derive(serde::Deserialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub enum ServerPacket {
         RegisterClient {
-            name: String,
+            id: Identifier,
         },
         RequestShowData,
         RequestDmxOutput,
@@ -35,7 +37,7 @@ pub mod processor {
         },
     }
 
-    #[derive(serde::Serialize)]
+    #[derive(serde::Serialize, serde::Deserialize)]
     pub enum ClientPacket {
         ConfirmRegisterClient,
         ResponseShowData { show_data: ShowData },

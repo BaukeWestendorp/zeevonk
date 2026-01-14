@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::net::SocketAddr;
 
+use crate::Identifier;
 use crate::trigger::Trigger;
 
 /// Routes triggers from controller clients and processor clients to the appropriate handler.
@@ -10,7 +11,7 @@ pub struct TriggerRouter {
 
 #[derive(Debug)]
 struct ClientInfo {
-    name: String,
+    id: Identifier,
     role: ClientRole,
 }
 
@@ -34,19 +35,19 @@ impl TriggerRouter {
         Self { clients: HashMap::new() }
     }
 
-    fn register_client(&mut self, address: SocketAddr, name: String, role: ClientRole) {
-        match self.clients.insert(address, ClientInfo { name: name.clone(), role }) {
+    fn register_client(&mut self, address: SocketAddr, id: Identifier, role: ClientRole) {
+        match self.clients.insert(address, ClientInfo { id: id.clone(), role }) {
             Some(old) => {
                 log::warn!(
                     "{} client re-registered: {} -> {} ({})",
                     role.as_str(),
-                    old.name,
-                    name,
+                    old.id,
+                    id,
                     address
                 );
             }
             None => {
-                log::info!("registered {} client {} ({})", role.as_str(), name, address);
+                log::info!("registered {} client {} ({})", role.as_str(), id, address);
             }
         }
     }
@@ -54,7 +55,7 @@ impl TriggerRouter {
     fn unregister_client(&mut self, address: SocketAddr, role: ClientRole) {
         match self.clients.remove(&address) {
             Some(info) => {
-                log::info!("unregistered {} client {} ({})", role.as_str(), info.name, address);
+                log::info!("unregistered {} client {} ({})", role.as_str(), info.id, address);
             }
             None => {
                 log::warn!(
@@ -66,16 +67,16 @@ impl TriggerRouter {
         }
     }
 
-    pub fn register_controller_client(&mut self, address: SocketAddr, name: String) {
-        self.register_client(address, name, ClientRole::Controller);
+    pub fn register_controller_client(&mut self, address: SocketAddr, id: Identifier) {
+        self.register_client(address, id, ClientRole::Controller);
     }
 
     pub fn unregister_controller_client(&mut self, address: SocketAddr) {
         self.unregister_client(address, ClientRole::Controller);
     }
 
-    pub fn register_processor_client(&mut self, address: SocketAddr, name: String) {
-        self.register_client(address, name, ClientRole::Processor);
+    pub fn register_processor_client(&mut self, address: SocketAddr, id: Identifier) {
+        self.register_client(address, id, ClientRole::Processor);
     }
 
     pub fn unregister_processor_client(&mut self, address: SocketAddr) {
@@ -84,11 +85,11 @@ impl TriggerRouter {
 
     pub fn handle_trigger(&self, address: SocketAddr, trigger: Trigger) {
         if let Some(info) = self.clients.get(&address) {
-            log::info!(
+            log::debug!(
                 "received trigger {:?} from {} client {} ({})",
                 trigger,
                 info.role.as_str(),
-                info.name,
+                info.id,
                 address
             );
         } else {
