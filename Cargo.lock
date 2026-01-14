@@ -1475,3 +1475,10 @@ dependencies = [
  "tokio",
  "zeevonk",
 ]
+
+[[package]]
+name = "zv-server"
+version = "0.1.0"
+dependencies = [
+ "theymx",
+]

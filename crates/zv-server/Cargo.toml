@@ -1,0 +1,7 @@
+[package]
+name = "zv-server"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+theymx.workspace = true
