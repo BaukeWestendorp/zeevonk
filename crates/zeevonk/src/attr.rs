@@ -697,7 +697,7 @@ pub enum Attribute {
 pub struct CustomName(usize);
 
 impl CustomName {
-    fn new(s: String) -> Self {
+    pub fn new(s: String) -> Self {
         let mut names = CUSTOM_NAMES.lock().unwrap();
         if let Some(ix) = names.iter().position(|name| name == &s) {
             Self(ix)

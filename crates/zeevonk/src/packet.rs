@@ -16,25 +16,16 @@ pub mod controller {
 
 pub mod processor {
     use crate::Identifier;
-    use crate::attr::Attribute;
     use crate::show::ShowData;
-    use crate::show::fixture::FixturePath;
-    use crate::value::ClampedValue;
+    use crate::value::AttributeValues;
     use theymx::Multiverse;
 
     #[derive(serde::Serialize, serde::Deserialize)]
     pub enum ServerPacket {
-        RegisterClient {
-            id: Identifier,
-        },
+        RegisterClient { id: Identifier },
         RequestShowData,
         RequestDmxOutput,
-        SetAttributeValues {
-            fixture_path: FixturePath,
-            attribute: Attribute,
-            value: ClampedValue,
-            include_children: bool,
-        },
+        SetAttributeValues { values: AttributeValues, include_children: bool },
     }
 
     #[derive(serde::Serialize, serde::Deserialize)]
