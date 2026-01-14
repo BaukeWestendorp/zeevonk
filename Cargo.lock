@@ -384,6 +384,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ftdi-mpsse"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5dd2c246fb727197d284bf7273718ed6b1c9a94a128bb618b97f13daec658a12"
+dependencies = [
+ "static_assertions",
+]
+
+[[package]]
 name = "futures-core"
 version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -577,6 +586,28 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37c93d8daa9d8a012fd8ab92f088405fb202ea0b6ab73ee2482ae66af4f42091"
 
 [[package]]
+name = "libftd2xx"
+version = "0.33.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e09fe202b49276fc72160c27c8af5ff34e6ee3db78625bbfe3bd9c2b2e595af6"
+dependencies = [
+ "ftdi-mpsse",
+ "libftd2xx-ffi",
+ "log",
+ "paste",
+ "static_assertions",
+]
+
+[[package]]
+name = "libftd2xx-ffi"
+version = "0.8.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ebd82d23ae0cbbf0fb65ad0310b474e45ddfdece8aa03a34130c59c04333c701"
+dependencies = [
+ "cfg-if",
+]
+
+[[package]]
 name = "log"
 version = "0.4.29"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -647,6 +678,12 @@ name = "once_cell_polyfill"
 version = "1.70.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "384b8ab6d37215f3c5301a95a4accb5d64aa607f1fcb26a11b5303878451b4fe"
+
+[[package]]
+name = "paste"
+version = "1.0.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "pbkdf2"
@@ -915,6 +952,12 @@ checksum = "9c07347b7c0301b9adba4350bdcf09c039d0e7160922050db0439b3c6723c8ab"
 dependencies = [
  "windows-sys 0.61.2",
 ]
+
+[[package]]
+name = "static_assertions"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
 name = "strsim"
@@ -1297,6 +1340,7 @@ dependencies = [
  "futures-util",
  "gdtf",
  "lazy_static",
+ "libftd2xx",
  "log",
  "serde",
  "serde-big-array",

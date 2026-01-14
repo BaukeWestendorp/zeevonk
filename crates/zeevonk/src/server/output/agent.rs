@@ -5,10 +5,12 @@ use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use crate::server::output::sacn;
+use crate::server::output::usb::enttec_open_dmx;
 use crate::server::showfile::{Output, SacnMode};
 use crate::server::{self, State};
 
-const DMX_OUTPUT_FRAME_TIME: Duration = Duration::from_millis(44);
+// 44 hz
+const DMX_OUTPUT_FRAME_TIME: Duration = Duration::from_micros(22_727);
 
 // FIXME: We should find a way to create a unique UUID for a device, without it
 // changing over it's lifetime.
@@ -32,6 +34,7 @@ pub struct OutputAgent {
     tx: crossbeam_channel::Sender<()>,
     rx: crossbeam_channel::Receiver<()>,
     sacn_sources: RefCell<Vec<JoinHandle<()>>>,
+    enttec_open_dmx_devices: RefCell<Vec<JoinHandle<()>>>,
     shutdown: RefCell<bool>,
 }
 
@@ -43,6 +46,7 @@ impl OutputAgent {
             tx,
             rx,
             sacn_sources: RefCell::new(Vec::new()),
+            enttec_open_dmx_devices: RefCell::new(Vec::new()),
             shutdown: RefCell::new(false),
         };
 
@@ -58,6 +62,10 @@ impl OutputAgent {
                 sacn_output.priority(),
                 sacn_output.preview_data(),
             )?;
+        }
+
+        for enttec_open_dmx in output.usb().enttec_open_dmx() {
+            this.add_enttec_open_dmx_device(enttec_open_dmx.serial_number())?;
         }
 
         Ok(this)
@@ -108,6 +116,11 @@ impl OutputAgent {
         for handle in self.sacn_sources.borrow_mut().drain(..) {
             let _ = handle.join();
         }
+
+        // Join all threads
+        for handle in self.enttec_open_dmx_devices.borrow_mut().drain(..) {
+            let _ = handle.join();
+        }
     }
 
     fn add_sacn_source(
@@ -133,6 +146,14 @@ impl OutputAgent {
         Ok(())
     }
 
+    fn add_enttec_open_dmx_device(&self, serial_number: &str) -> Result<(), server::Error> {
+        let interface = enttec_open_dmx::Interface::new(serial_number).unwrap();
+
+        self.spawn_enttec_open_dmx_device_thread(interface);
+
+        Ok(())
+    }
+
     fn spawn_sacn_source_thread(&self, source: sacn::Source) {
         let rx = self.rx.clone();
         let server_state = self.server_state.clone();
@@ -151,6 +172,26 @@ impl OutputAgent {
         });
 
         self.sacn_sources.borrow_mut().push(handle);
+    }
+
+    fn spawn_enttec_open_dmx_device_thread(&self, mut interface: enttec_open_dmx::Interface) {
+        let rx = self.rx.clone();
+        let server_state = self.server_state.clone();
+        let handle = thread::spawn(move || {
+            interface.open().unwrap();
+            while let Ok(()) = rx.recv() {
+                let multiverse = server_state.output_multiverse.blocking_read().clone();
+                for (_, universe) in multiverse.universes() {
+                    interface
+                        .write_universe(universe.clone())
+                        .map_err(|err| log::error!("failed to send universe data over sACN: {err}"))
+                        .ok();
+                }
+            }
+            interface.close().unwrap();
+        });
+
+        self.enttec_open_dmx_devices.borrow_mut().push(handle);
     }
 }
 

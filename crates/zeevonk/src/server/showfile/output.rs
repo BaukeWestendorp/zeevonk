@@ -6,12 +6,18 @@ use std::net::IpAddr;
 #[serde(default)]
 pub struct Output {
     sacn: Vec<SacnOutput>,
+    usb: Usb,
 }
 
 impl Output {
     /// Returns a reference all the sACN output configurations.
     pub fn sacn(&self) -> &[SacnOutput] {
         &self.sacn
+    }
+
+    /// Returns the USB output configuration.
+    pub fn usb(&self) -> &Usb {
+        &self.usb
     }
 }
 
@@ -28,7 +34,7 @@ pub struct SacnOutput {
 }
 
 impl SacnOutput {
-    /// Returns the label for this output.
+    /// User-friendly label for this output.
     pub fn label(&self) -> &str {
         &self.label
     }
@@ -76,4 +82,32 @@ pub enum SacnMode {
     },
     /// Multicast mode.
     Multicast,
+}
+
+/// Configuration for all USB DMX output devices.
+#[derive(Debug, Clone, PartialEq, Default)]
+#[derive(serde::Serialize, serde::Deserialize)]
+#[serde(default)]
+pub struct Usb {
+    enttec_open_dmx: Vec<EnttecOpenDmx>,
+}
+
+impl Usb {
+    /// Returns a reference to the list of Enttec Open DMX USB devices.
+    pub fn enttec_open_dmx(&self) -> &[EnttecOpenDmx] {
+        &self.enttec_open_dmx
+    }
+}
+
+/// Configuration for a single Enttec Open DMX USB device.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct EnttecOpenDmx {
+    serial_number: String,
+}
+
+impl EnttecOpenDmx {
+    /// Returns the serial number of the Enttec Open DMX device.
+    pub fn serial_number(&self) -> &str {
+        &self.serial_number
+    }
 }
