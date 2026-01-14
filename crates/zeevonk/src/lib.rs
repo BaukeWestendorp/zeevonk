@@ -1,6 +1,7 @@
 pub use error::*;
 
 pub mod attr;
+pub mod packet;
 pub mod show;
 pub mod trigger;
 pub mod value;
