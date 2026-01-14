@@ -9,6 +9,9 @@ pub mod value;
 #[cfg(feature = "server")]
 pub mod server;
 
+#[cfg(any(feature = "client-processor", feature = "client-controller"))]
+pub mod client;
+
 mod error;
 
 pub const DEFAULT_CONTROLLER_PORT: u16 = 7334;
