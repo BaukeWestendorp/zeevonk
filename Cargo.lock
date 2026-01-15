@@ -1486,4 +1486,5 @@ dependencies = [
  "pretty_env_logger",
  "spin_sleep",
  "theymx",
+ "thiserror 2.0.17",
 ]

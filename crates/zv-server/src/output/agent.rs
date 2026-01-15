@@ -35,8 +35,17 @@ impl OutputAgent {
             let output_rx = crossbeam_channel::Receiver::clone(&output_rx);
 
             thread::spawn(move || {
-                let mut instance = OutputInstance::from(instance_definition);
-                instance.run(output_rx)
+                let maybe_instance = OutputInstance::try_from(instance_definition);
+                match maybe_instance {
+                    Ok(mut instance) => {
+                        if let Err(err) = instance.run(output_rx) {
+                            log::error!("output instance errored: {}", err);
+                        }
+                    }
+                    Err(err) => {
+                        log::error!("failed to create output instance: {}", err);
+                    }
+                }
             });
         }
 
@@ -136,7 +145,7 @@ struct Updater {
 impl Updater {
     pub fn new(output_tx: crossbeam_channel::Sender<Multiverse>) -> Self {
         Self {
-            // Tick at 44Hz by default.
+            // FIXME: Tick at 44Hz by default.
             tick_interval: Duration::from_secs_f64(1.0 / 30.0),
 
             output_tx,

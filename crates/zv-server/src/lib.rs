@@ -9,8 +9,11 @@
 
 use crate::output::agent::OutputAgent;
 
+pub mod error;
 mod output;
 mod project;
+
+pub use error::{Error, Result};
 
 /// The main interface to start and manage a Zeevonk server.
 pub struct Server {
