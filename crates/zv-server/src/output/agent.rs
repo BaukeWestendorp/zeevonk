@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -132,10 +131,6 @@ struct Updater {
     tick_interval: Duration,
 
     output_tx: crossbeam_channel::Sender<Multiverse>,
-
-    // When true, we've already observed the output channel disconnected and
-    // will stop attempting to send to avoid repeated noisy warnings.
-    disconnected: AtomicBool,
 }
 
 impl Updater {
@@ -145,7 +140,6 @@ impl Updater {
             tick_interval: Duration::from_secs_f64(1.0 / 30.0),
 
             output_tx,
-            disconnected: AtomicBool::new(false),
         }
     }
 
@@ -166,16 +160,6 @@ impl Updater {
     }
 
     fn transmit_resolved_multiverse(&self, multiverse: Multiverse) {
-        // If we've already detected the channel disconnected, skip attempting to send.
-        if self.disconnected.load(Ordering::SeqCst) {
-            return;
-        }
-
-        if self.output_tx.send(multiverse).is_err() {
-            // Mark disconnected so we don't spam logs on every tick.
-            self.disconnected.store(true, Ordering::SeqCst);
-
-            log::warn!("output thread receiver disconnected");
-        }
+        let _ = self.output_tx.send(multiverse);
     }
 }
