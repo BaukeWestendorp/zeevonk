@@ -1,16 +1,181 @@
-use theymx::Multiverse;
+use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex, mpsc};
+use std::thread;
+use std::time::{Duration, Instant};
+
+use spin_sleep;
+use theymx::{Address, Channel, Multiverse, UniverseId};
+
+use crate::output::protocols::OutputInstance;
+use crate::project::OutputInstanceDefinition;
+
+type AttributeValues = HashMap<u16, u8>;
 
 pub struct OutputAgent {
-    /// The most recent multiverse that should be sent to all outputs.
-    multiverse: Multiverse,
+    updater: Arc<Updater>,
+    update_tx: mpsc::Sender<AttributeValues>,
+    update_rx: Mutex<Option<mpsc::Receiver<AttributeValues>>>,
 }
 
 impl OutputAgent {
     pub fn new() -> Self {
-        Self { multiverse: Multiverse::new() }
+        let (update_tx, update_rx) = mpsc::channel::<AttributeValues>();
+        // We make this a single frame buffer, because we
+        // do not need to show late frames. Just the most recent one.
+        let (output_tx, output_rx) = crossbeam_channel::bounded::<Multiverse>(1);
+
+        // FIXME: Get from project config.
+        let instance_definitions: Vec<OutputInstanceDefinition> =
+            vec![OutputInstanceDefinition::EnttecOpenDmx {
+                universe_id: UniverseId::new_unchecked(1),
+                serial_number: "BG00DNDB".to_string(),
+            }];
+
+        for instance_definition in instance_definitions {
+            let output_rx = crossbeam_channel::Receiver::clone(&output_rx);
+
+            thread::spawn(move || {
+                let mut instance = OutputInstance::from(instance_definition);
+                instance.initialize(output_rx)
+            });
+        }
+
+        Self {
+            updater: Arc::new(Updater::new(output_tx)),
+            update_tx,
+            update_rx: Mutex::new(Some(update_rx)),
+        }
     }
 
-    pub fn multiverse(&self) -> &Multiverse {
-        &self.multiverse
+    // TODO: REMOVE
+    pub fn test_send(&self, values: AttributeValues) {
+        self.update_tx.send(values).unwrap();
+    }
+
+    pub fn start(&self) {
+        // Try to take the receiver from the slot. This moves the receiver into
+        // the worker thread, avoiding the need to lock the receiver on each tick.
+        let rx_opt = { self.update_rx.lock().unwrap().take() };
+
+        let rx = match rx_opt {
+            Some(r) => r,
+            None => {
+                log::warn!("output agent is already running");
+                return;
+            }
+        };
+
+        let updater = Arc::clone(&self.updater);
+
+        thread::spawn(move || {
+            let mut multiverse = Multiverse::new();
+
+            let tick_interval = updater.tick_interval;
+            let mut deadline = Instant::now() + tick_interval;
+
+            loop {
+                let tick_start = Instant::now();
+
+                // Drain all pending updates that arrived since last tick.
+                let mut updates = Vec::<AttributeValues>::new();
+                loop {
+                    match rx.try_recv() {
+                        Ok(update) => updates.push(update),
+                        Err(mpsc::TryRecvError::Empty) => break,
+                        Err(mpsc::TryRecvError::Disconnected) => {
+                            log::warn!("update channel disconnected; continuing with local state");
+                            break;
+                        }
+                    }
+                }
+
+                // Apply updates to the multiverse.
+                if !updates.is_empty() {
+                    updater.resolve_updates_into_multiverse(&mut multiverse, &updates);
+                }
+
+                updater.transmit_resolved_multiverse(multiverse.clone());
+
+                let tick_end = Instant::now();
+                let actual_tick_duration = tick_end.duration_since(tick_start);
+                let exec_overrun =
+                    actual_tick_duration.checked_sub(tick_interval).unwrap_or(Duration::ZERO);
+
+                // Scheduling.
+                let now = Instant::now();
+                if now < deadline {
+                    spin_sleep::sleep(deadline - now);
+                    deadline += tick_interval;
+
+                    log::debug!(
+                        "tick ok: dur={:>8.3?} over={:>7.3?}",
+                        actual_tick_duration,
+                        exec_overrun
+                    );
+                } else {
+                    let deadline_lateness = now.duration_since(deadline);
+                    log::warn!(
+                        "tick late: dur={:08.3?} over={:08.3?} late={:08.3?}",
+                        actual_tick_duration,
+                        exec_overrun,
+                        deadline_lateness
+                    );
+                    deadline = now + tick_interval;
+                }
+            }
+        });
+    }
+}
+
+struct Updater {
+    tick_interval: Duration,
+
+    output_tx: crossbeam_channel::Sender<Multiverse>,
+
+    // When true, we've already observed the output channel disconnected and
+    // will stop attempting to send to avoid repeated noisy warnings.
+    disconnected: AtomicBool,
+}
+
+impl Updater {
+    pub fn new(output_tx: crossbeam_channel::Sender<Multiverse>) -> Self {
+        Self {
+            // Tick at 44Hz by default.
+            tick_interval: Duration::from_secs_f64(1.0 / 30.0),
+
+            output_tx,
+            disconnected: AtomicBool::new(false),
+        }
+    }
+
+    // TODO: PROPERLY IMPLEMENT
+    fn resolve_updates_into_multiverse(
+        &self,
+        multiverse: &mut Multiverse,
+        updates: &[AttributeValues],
+    ) {
+        for update in updates {
+            for (channel, value) in update {
+                multiverse.set_value(
+                    &Address::new(UniverseId::new_unchecked(1), Channel::new_unchecked(*channel)),
+                    theymx::Value(*value),
+                );
+            }
+        }
+    }
+
+    fn transmit_resolved_multiverse(&self, multiverse: Multiverse) {
+        // If we've already detected the channel disconnected, skip attempting to send.
+        if self.disconnected.load(Ordering::SeqCst) {
+            return;
+        }
+
+        if self.output_tx.send(multiverse).is_err() {
+            // Mark disconnected so we don't spam logs on every tick.
+            self.disconnected.store(true, Ordering::SeqCst);
+
+            log::warn!("output thread receiver disconnected");
+        }
     }
 }

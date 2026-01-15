@@ -7,11 +7,10 @@
 //! support for resolving attribute values into DMX universes and sending them
 //! over various output protocols like sACN.
 
-use theymx::Multiverse;
-
 use crate::output::agent::OutputAgent;
 
 mod output;
+mod project;
 
 /// The main interface to start and manage a Zeevonk server.
 pub struct Server {
@@ -24,13 +23,17 @@ impl Server {
         Self { output_agent: OutputAgent::new() }
     }
 
-    pub(crate) fn output_agent(&self) -> &OutputAgent {
-        &self.output_agent
+    /// Starts the server instance and its listeners.
+    pub fn start(&self) {
+        self.output_agent().start();
     }
 
-    /// Returns the latest [`Multiverse`] containing the resolved DMX
-    /// data of all universes that are used by this server.
-    pub fn multiverse(&self) -> &Multiverse {
-        self.output_agent().multiverse()
+    // FIXME: REMOVE
+    pub fn test_send(&self, values: std::collections::HashMap<u16, u8>) {
+        self.output_agent().test_send(values);
+    }
+
+    pub(crate) fn output_agent(&self) -> &OutputAgent {
+        &self.output_agent
     }
 }

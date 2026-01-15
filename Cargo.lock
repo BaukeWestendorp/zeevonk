@@ -1480,5 +1480,10 @@ dependencies = [
 name = "zv-server"
 version = "0.1.0"
 dependencies = [
+ "crossbeam-channel",
+ "libftd2xx",
+ "log",
+ "pretty_env_logger",
+ "spin_sleep",
  "theymx",
 ]
