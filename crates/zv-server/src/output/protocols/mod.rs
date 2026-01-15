@@ -21,7 +21,7 @@ impl OutputInstance {
         Self { implementation: Box::new(implementation) }
     }
 
-    pub fn initialize(&mut self, output_rx: crossbeam_channel::Receiver<Multiverse>) {
+    pub fn run(&mut self, output_rx: crossbeam_channel::Receiver<Multiverse>) {
         self.implementation.setup();
 
         while let Ok(frame) = output_rx.recv() {

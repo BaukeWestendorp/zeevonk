@@ -37,7 +37,7 @@ impl OutputAgent {
 
             thread::spawn(move || {
                 let mut instance = OutputInstance::from(instance_definition);
-                instance.initialize(output_rx)
+                instance.run(output_rx)
             });
         }
 
