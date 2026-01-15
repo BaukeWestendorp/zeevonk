@@ -144,12 +144,7 @@ struct Updater {
 
 impl Updater {
     pub fn new(output_tx: crossbeam_channel::Sender<Multiverse>) -> Self {
-        Self {
-            // FIXME: Tick at 44Hz by default.
-            tick_interval: Duration::from_secs_f64(1.0 / 30.0),
-
-            output_tx,
-        }
+        Self { tick_interval: Duration::from_secs_f64(1.0 / 44.0), output_tx }
     }
 
     // TODO: PROPERLY IMPLEMENT

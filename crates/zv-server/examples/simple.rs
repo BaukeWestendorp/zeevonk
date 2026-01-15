@@ -15,10 +15,10 @@ fn main() {
     let mut i = 0;
     loop {
         let (r, g, b) = rainbow(i);
-        values.insert(1, 127);
+        values.insert(1, 255);
         values.insert(2, 0);
         values.insert(3, 127);
-        values.insert(4, 0);
+        values.insert(4, 255);
         values.insert(5, r);
         values.insert(6, g);
         values.insert(7, b);
@@ -32,7 +32,7 @@ fn main() {
 }
 
 fn rainbow(i: i32) -> (u8, u8, u8) {
-    let hue = (i as f32 * 0.005) % 1.0;
+    let hue = (i as f32 * (1.0 / 60.0 / 10.0)) % 1.0;
     let s = 1.0;
     let v = 1.0;
 

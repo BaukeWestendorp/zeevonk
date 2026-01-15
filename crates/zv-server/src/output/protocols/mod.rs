@@ -43,7 +43,7 @@ impl TryFrom<OutputInstanceDefinition> for OutputInstance {
     fn try_from(definition: OutputInstanceDefinition) -> Result<Self, Self::Error> {
         let instance = match definition {
             OutputInstanceDefinition::EnttecOpenDmx { universe_id, serial_number } => {
-                let eod = enttec_open_dmx::EnttecOpenDmxOutput::new(universe_id, &serial_number)?;
+                let eod = enttec_open_dmx::EnttecOpenDmxOutput::new(universe_id, serial_number)?;
                 Self::new(eod)
             }
         };
