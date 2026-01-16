@@ -1,86 +1,58 @@
-//! The Zeevonk server serves as a hub to connect multiple clients
-//! together and generating DMX output over various protocols.
+#![warn(missing_docs)]
+
+//! # Zeevonk Server
+//!
+//! The Zeevonk server implementation, which serves as a hub
+//! for Zeevonk Clients (e.g. controllers and processors). It also has built in
+//! support for resolving attribute values into DMX universes and sending them
+//! over various output protocols like sACN.
 
 use std::sync::Arc;
-use std::time::Instant;
 
-use tokio::sync::RwLockReadGuard;
+use crate::project::definition::ProjectDefinition;
+use crate::project::{self, Project};
+use crate::server::output::agent::OutputAgent;
 
-use crate::server::listener::controller::ControllerHandler;
-use crate::server::listener::processor::ProcessorHandler;
-use crate::server::showfile::Showfile;
-use crate::server::state::State;
-use crate::show::ShowData;
-
-pub mod showfile;
-
-mod error;
-mod listener;
+pub mod error;
 mod output;
-mod state;
+mod resolver;
 
-pub use error::Error;
+pub use error::{Error, Result};
 
-pub struct Server<'sf> {
-    showfile: &'sf Showfile,
-    state: Arc<State>,
+/// The main interface to start and manage a Zeevonk server.
+pub struct Server {
+    project: Arc<Project>,
+
+    output_agent: OutputAgent,
 }
 
-impl<'sf> Server<'sf> {
-    pub fn new(showfile: &'sf Showfile) -> Result<Self, Error> {
-        let init_start = Instant::now();
+impl Server {
+    /// Creates a new [`Server`] instance.
+    pub fn new(project: ProjectDefinition) -> crate::Result<Self> {
+        let project_handle = Arc::new(project::builder::from_definition(project)?);
 
-        let state = Arc::new(State::new(showfile)?);
-
-        let init_duration = init_start.elapsed();
-        log::info!("zeevonk server initialized (init time: {:.2?})", init_duration);
-
-        Ok(Self { showfile, state })
+        Ok(Self {
+            project: Arc::clone(&project_handle),
+            output_agent: OutputAgent::new(project_handle),
+        })
     }
 
-    pub async fn start(&self) -> Result<(), Error> {
-        log::info!("starting server...");
-        let startup_start = Instant::now();
-
-        // Start protocol manager.
-        log::debug!("starting protocol manager");
-        let state = Arc::clone(&self.state);
-        output::agent::start(self.showfile.protocols().clone(), Arc::clone(&state));
-        log::debug!("protocol manager started");
-
-        let startup_duration = startup_start.elapsed();
-        log::info!("server startup complete (startup time: {:.2?})", startup_duration);
-
-        self.start_processor_listener().await;
-        self.start_controller_listener().await?;
-
-        Ok(())
+    /// Starts the server instance and its listeners.
+    pub fn start(&self) {
+        self.output_agent().start();
     }
 
-    async fn start_processor_listener(&self) {
-        let processor_port = self.showfile.config().processor_port();
-        let state = Arc::clone(&self.state);
-        tokio::spawn(async move {
-            if let Err(e) =
-                listener::start_ws_listener::<ProcessorHandler>(processor_port, "processor", state)
-                    .await
-            {
-                log::error!("processor listener exited with error: {}", e);
-            }
-        });
+    // FIXME: REMOVE
+    pub fn test_send(&self, values: crate::value::AttributeValues) {
+        self.output_agent().test_send(values);
     }
 
-    async fn start_controller_listener(&self) -> Result<(), Error> {
-        let controller_port = self.showfile.config().controller_port();
-        listener::start_ws_listener::<ControllerHandler>(
-            controller_port,
-            "controller",
-            Arc::clone(&self.state),
-        )
-        .await
+    /// Returns a reference to the [`Project`] associated with this server.
+    pub fn project(&self) -> &Project {
+        &self.project
     }
 
-    pub fn show_data(&self) -> RwLockReadGuard<'_, ShowData> {
-        self.state.show_data.blocking_read()
+    pub(crate) fn output_agent(&self) -> &OutputAgent {
+        &self.output_agent
     }
 }

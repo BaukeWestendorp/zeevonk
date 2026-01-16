@@ -1,18 +1,46 @@
 use std::path::PathBuf;
 
-use anyhow::Ok;
+use zeevonk::attr::{Attribute, CustomName};
+use zeevonk::project::definition::ProjectDefinition;
+use zeevonk::project::patch::{FixtureId, FixtureIdPart};
 use zeevonk::server::Server;
-use zeevonk::server::showfile::Showfile;
+use zeevonk::value::AttributeValues;
 
-/// Runs the showfile at the given path.
-pub fn run_showfile(showfile_path: PathBuf) -> anyhow::Result<()> {
-    tokio::runtime::Builder::new_multi_thread().enable_io().build().unwrap().block_on(async {
-        let showfile = Showfile::load_from_folder(&showfile_path)?;
-        let server = Server::new(&showfile)?;
-        server.start().await?;
+/// Runs the project at the given path.
+pub fn run_project(project_path: PathBuf) -> anyhow::Result<()> {
+    let project_definition = ProjectDefinition::load_from_folder(&project_path)?;
+    let server = Server::new(project_definition)?;
+    server.start();
 
-        anyhow::Result::<()>::Ok(())
-    })?;
+    let mut values = AttributeValues::new();
+    values.set(
+        FixtureId::new(FixtureIdPart::new(1).unwrap())
+            .extended_with(FixtureIdPart::new(1).unwrap()),
+        Attribute::Dimmer,
+        127.0,
+    );
+    values.set(
+        FixtureId::new(FixtureIdPart::new(1).unwrap())
+            .extended_with(FixtureIdPart::new(1).unwrap()),
+        Attribute::Ctc,
+        0.0,
+    );
+    values.set(
+        FixtureId::new(FixtureIdPart::new(1).unwrap())
+            .extended_with(FixtureIdPart::new(1).unwrap()),
+        Attribute::Tint,
+        0.5,
+    );
+    values.set(
+        FixtureId::new(FixtureIdPart::new(1).unwrap())
+            .extended_with(FixtureIdPart::new(1).unwrap()),
+        Attribute::Custom(CustomName::new("Color XF".to_string())),
+        0.0,
+    );
 
-    Ok(())
+    server.test_send(values);
+
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs_f32(1.0 / 60.0));
+    }
 }
