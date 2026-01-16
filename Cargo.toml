@@ -8,6 +8,7 @@ edition = "2024"
 
 [workspace.dependencies]
 zeevonk = { path = "crates/zeevonk" }
+zv-core = { path = "crates/zv-core" }
 
 theymx = "0.1.1"
 log = "0.4.29"

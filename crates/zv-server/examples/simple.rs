@@ -1,7 +1,9 @@
-use std::collections::HashMap;
 use std::thread;
 use std::time::Duration;
 
+use zv_core::attr::{Attribute, CustomName};
+use zv_core::fixture::{FixtureId, FixtureIdPart};
+use zv_core::value::AttributeValues;
 use zv_server::Server;
 
 fn main() {
@@ -10,18 +12,22 @@ fn main() {
     let server = Server::new();
     server.start();
 
-    let mut values = HashMap::new();
+    let mut values = AttributeValues::new();
+
+    let fid = FixtureId::from(
+        [FixtureIdPart::new(1).unwrap(), FixtureIdPart::new(1).unwrap()].as_slice(),
+    );
 
     let mut i = 0;
     loop {
         let (r, g, b) = rainbow(i);
-        values.insert(1, 255);
-        values.insert(2, 0);
-        values.insert(3, 127);
-        values.insert(4, 255);
-        values.insert(5, r);
-        values.insert(6, g);
-        values.insert(7, b);
+        values.set(fid, Attribute::Dimmer, 1.0);
+        values.set(fid, Attribute::Ctc, 0.0);
+        values.set(fid, Attribute::Tint, 0.5);
+        values.set(fid, Attribute::Custom(CustomName::new("Color XF".to_string())), 1.0);
+        values.set(fid, Attribute::ColorAddR, r as f32 / 255.0);
+        values.set(fid, Attribute::ColorAddG, g as f32 / 255.0);
+        values.set(fid, Attribute::ColorAddB, b as f32 / 255.0);
 
         server.test_send(values.clone());
 

@@ -4,6 +4,8 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+zv-core.workspace = true
+
 log.workspace = true
 theymx.workspace = true
 thiserror.workspace = true

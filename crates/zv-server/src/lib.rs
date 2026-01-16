@@ -12,6 +12,7 @@ use crate::output::agent::OutputAgent;
 pub mod error;
 mod output;
 mod project;
+mod resolver;
 
 pub use error::{Error, Result};
 
@@ -32,7 +33,7 @@ impl Server {
     }
 
     // FIXME: REMOVE
-    pub fn test_send(&self, values: std::collections::HashMap<u16, u8>) {
+    pub fn test_send(&self, values: zv_core::value::AttributeValues) {
         self.output_agent().test_send(values);
     }
 

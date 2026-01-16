@@ -1,15 +1,13 @@
-use std::collections::HashMap;
 use std::sync::{Arc, Mutex, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use spin_sleep;
-use theymx::{Address, Channel, Multiverse, UniverseId};
+use theymx::{Multiverse, UniverseId};
+use zv_core::value::AttributeValues;
 
 use crate::output::protocols::OutputInstance;
 use crate::project::OutputInstanceDefinition;
-
-type AttributeValues = HashMap<u16, u8>;
+use crate::resolver;
 
 pub struct OutputAgent {
     updater: Arc<Updater>,
@@ -147,19 +145,13 @@ impl Updater {
         Self { tick_interval: Duration::from_secs_f64(1.0 / 44.0), output_tx }
     }
 
-    // TODO: PROPERLY IMPLEMENT
     fn resolve_updates_into_multiverse(
         &self,
         multiverse: &mut Multiverse,
         updates: &[AttributeValues],
     ) {
         for update in updates {
-            for (channel, value) in update {
-                multiverse.set_value(
-                    &Address::new(UniverseId::new_unchecked(1), Channel::new_unchecked(*channel)),
-                    theymx::Value(*value),
-                );
-            }
+            resolver::resolve(update, multiverse);
         }
     }
 

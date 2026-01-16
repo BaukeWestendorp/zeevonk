@@ -4,10 +4,10 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-theymx.workspace = true
-serde.workspace = true
+theymx = { workspace = true, features = ["serde"] }
+serde = { workspace = true, features = ["derive"] }
 log.workspace = true
 thiserror.workspace = true
 
 lazy_static = "1.5.0"
-uuid = "1.19.0"
+uuid = { version = "1.19.0", features = ["serde"] }
