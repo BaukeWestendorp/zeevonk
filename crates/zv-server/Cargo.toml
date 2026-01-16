@@ -7,6 +7,7 @@ edition.workspace = true
 log.workspace = true
 theymx.workspace = true
 thiserror.workspace = true
+serde.workspace = true
 
 spin_sleep = "1.3.3"
 crossbeam-channel = "0.5.15"

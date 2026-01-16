@@ -1477,6 +1477,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "zv-core"
+version = "0.1.0"
+dependencies = [
+ "lazy_static",
+ "log",
+ "serde",
+ "theymx",
+ "thiserror 2.0.17",
+ "uuid",
+]
+
+[[package]]
 name = "zv-server"
 version = "0.1.0"
 dependencies = [
@@ -1484,6 +1496,7 @@ dependencies = [
  "libftd2xx",
  "log",
  "pretty_env_logger",
+ "serde",
  "spin_sleep",
  "theymx",
  "thiserror 2.0.17",
