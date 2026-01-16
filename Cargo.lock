@@ -1500,5 +1500,6 @@ dependencies = [
  "spin_sleep",
  "theymx",
  "thiserror 2.0.17",
+ "uuid",
  "zv-core",
 ]

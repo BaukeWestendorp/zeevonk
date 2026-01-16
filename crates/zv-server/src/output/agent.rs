@@ -3,6 +3,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use theymx::{Multiverse, UniverseId};
+use zv_core::patch::Patch;
 use zv_core::value::AttributeValues;
 
 use crate::output::protocols::OutputInstance;
@@ -147,11 +148,14 @@ impl Updater {
 
     fn resolve_updates_into_multiverse(
         &self,
+
         multiverse: &mut Multiverse,
         updates: &[AttributeValues],
     ) {
+        // FIXME: Get patch from project file.
+        let patch = Patch::new(Default::default());
         for update in updates {
-            resolver::resolve(update, multiverse);
+            resolver::resolve(update, &patch, multiverse);
         }
     }
 

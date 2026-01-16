@@ -1,6 +1,6 @@
 //! Patch management for collections of fixtures.
 
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use crate::fixture::{Fixture, FixtureId};
 
@@ -8,12 +8,16 @@ use crate::fixture::{Fixture, FixtureId};
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Patch {
-    pub(crate) fixtures: BTreeMap<FixtureId, Fixture>,
+    fixtures: HashMap<FixtureId, Fixture>,
 }
 
 impl Patch {
+    pub fn new(fixtures: HashMap<FixtureId, Fixture>) -> Self {
+        Self { fixtures }
+    }
+
     /// Returns the map of fixtures contained in this patch.
-    pub fn fixtures(&self) -> &BTreeMap<FixtureId, Fixture> {
+    pub fn fixtures(&self) -> &HashMap<FixtureId, Fixture> {
         &self.fixtures
     }
 }
