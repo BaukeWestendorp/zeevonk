@@ -1,18 +1,15 @@
 use std::path::PathBuf;
 
-use anyhow::Ok;
+use zeevonk::project::definition::ProjectDefinition;
 use zeevonk::server::Server;
-use zeevonk::server::showfile::Showfile;
 
-/// Runs the showfile at the given path.
-pub fn run_showfile(showfile_path: PathBuf) -> anyhow::Result<()> {
-    tokio::runtime::Builder::new_multi_thread().enable_io().build().unwrap().block_on(async {
-        let showfile = Showfile::load_from_folder(&showfile_path)?;
-        let server = Server::new(&showfile)?;
-        server.start().await?;
+/// Runs the project at the given path.
+pub fn run_project(project_path: PathBuf) -> anyhow::Result<()> {
+    let project_definition = ProjectDefinition::load_from_folder(&project_path)?;
+    let server = Server::new(project_definition)?;
+    server.start();
 
-        anyhow::Result::<()>::Ok(())
-    })?;
-
-    Ok(())
+    loop {
+        std::thread::sleep(std::time::Duration::from_secs_f32(1.0 / 60.0));
+    }
 }

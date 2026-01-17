@@ -1,3 +1,5 @@
 pub mod agent;
+pub mod error;
+pub mod protocols;
 
-pub(crate) mod sacn;
+pub use error::Error;

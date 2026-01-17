@@ -1,8 +1,6 @@
-//! Attribute helpers and types used by the GDCS.
+//! Contains the attribute type.
 //!
-//! This module contains types and utilities related to fixture attributes
-//! (e.g. pan, tilt, color) that are used when setting and resolving channel
-//! function values.
+//! This module contains the [`Attribute`] enum.
 
 use std::fmt;
 use std::str::FromStr;
@@ -12,7 +10,13 @@ lazy_static::lazy_static! {
     static ref CUSTOM_NAMES: Mutex<Vec<String>> = Mutex::new(Vec::new());
 }
 
-/// A GDTF attribute.
+/// A [GDTF](https://gdtf.eu) fixture attribute.
+///
+/// An attribute represents a specific
+/// controllable feature or parameter of a lighting fixture, such as intensity,
+/// color, pan, tilt, gobo selection, or strobe rate. Each attribute typically
+/// corresponds to one or more DMX channels. This enum
+/// contains all standard GDTF attributes, as well as custom attributes.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum Attribute {
     /// Controls the intensity of a fixture.
@@ -690,33 +694,12 @@ pub enum Attribute {
     Custom(CustomName),
 }
 
-/// Wrapper to make sure [`Attribute`] is [`Copy`].
-///
-/// To get the actual name of the custom attribute, you can use [CustomName::to_string].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CustomName(usize);
-
-impl CustomName {
-    fn new(s: String) -> Self {
-        let mut names = CUSTOM_NAMES.lock().unwrap();
-        if let Some(ix) = names.iter().position(|name| name == &s) {
-            Self(ix)
-        } else {
-            let ix = names.len();
-            names.push(s);
-            Self(ix)
-        }
-    }
-}
-
-impl std::fmt::Display for CustomName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let name = CUSTOM_NAMES.lock().unwrap()[self.0].to_owned();
-        write!(f, "{}", name)
-    }
-}
-
 impl Attribute {
+    /// Create a new [`Attribute::Custom`].
+    pub fn custom(name: impl Into<String>) -> Self {
+        Self::Custom(CustomName::new(name.into()))
+    }
+
     /// Get a pretty name of the attribute.
     pub fn pretty(&self) -> String {
         match self {
@@ -1710,6 +1693,38 @@ impl<'de> serde::Deserialize<'de> for Attribute {
         }
 
         deserializer.deserialize_str(AttributeVisitor)
+    }
+}
+
+/// Wrapper to make [`Attribute`] [`Copy`].
+///
+/// To get the actual name of the custom attribute, you can use [`CustomName::value].
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CustomName(usize);
+
+impl CustomName {
+    /// Create a new [`CustomName`].
+    pub fn new(s: String) -> Self {
+        let mut names = CUSTOM_NAMES.lock().unwrap();
+        if let Some(ix) = names.iter().position(|name| name == &s) {
+            Self(ix)
+        } else {
+            let ix = names.len();
+            names.push(s);
+            Self(ix)
+        }
+    }
+
+    /// The underlying value of the [`CustomName`].
+    pub fn value(&self) -> String {
+        self.to_string()
+    }
+}
+
+impl std::fmt::Display for CustomName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let name = CUSTOM_NAMES.lock().unwrap()[self.0].to_owned();
+        write!(f, "{}", name)
     }
 }
 

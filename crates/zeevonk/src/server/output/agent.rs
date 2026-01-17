@@ -1,161 +1,156 @@
-use std::cell::RefCell;
-use std::net::IpAddr;
-use std::sync::Arc;
-use std::thread::{self, JoinHandle};
+use std::sync::{Arc, Mutex, mpsc};
+use std::thread;
 use std::time::{Duration, Instant};
 
-use crate::server::output::sacn;
-use crate::server::showfile::{Output, SacnMode};
-use crate::server::{self, State};
+use theymx::Multiverse;
 
-const DMX_OUTPUT_FRAME_TIME: Duration = Duration::from_millis(44);
-
-// FIXME: We should find a way to create a unique UUID for a device, without it
-// changing over it's lifetime.
-const SACN_CID: sacn::ComponentIdentifier = sacn::ComponentIdentifier::from_bytes([
-    0xa1, 0xa2, 0xa3, 0xa4, 0xb1, 0xb2, 0xc1, 0xc2, 0xd1, 0xd2, 0xd3, 0xd4, 0xd5, 0xd6, 0xd7, 0xd8,
-]);
-
-pub fn start(output: Output, server_state: Arc<State>) {
-    thread::Builder::new()
-        .name("output".to_string())
-        .spawn(move || {
-            OutputAgent::new(output, server_state)
-                .expect("should create new output process")
-                .start();
-        })
-        .unwrap();
-}
+use crate::project::Project;
+use crate::server::output::protocols::OutputInstance;
+use crate::server::resolver;
+use crate::value::AttributeValues;
 
 pub struct OutputAgent {
-    server_state: Arc<State>,
-    tx: crossbeam_channel::Sender<()>,
-    rx: crossbeam_channel::Receiver<()>,
-    sacn_sources: RefCell<Vec<JoinHandle<()>>>,
-    shutdown: RefCell<bool>,
+    updater: Arc<Updater>,
+    update_tx: mpsc::Sender<AttributeValues>,
+    update_rx: Mutex<Option<mpsc::Receiver<AttributeValues>>>,
 }
 
 impl OutputAgent {
-    pub fn new(output: Output, server_state: Arc<State>) -> Result<Self, server::Error> {
-        let (tx, rx) = crossbeam_channel::unbounded();
-        let this = Self {
-            server_state,
-            tx,
-            rx,
-            sacn_sources: RefCell::new(Vec::new()),
-            shutdown: RefCell::new(false),
-        };
+    pub fn new(project: Arc<Project>) -> Self {
+        let (update_tx, update_rx) = mpsc::channel::<AttributeValues>();
+        // We make this a single frame buffer, because we
+        // do not need to show late frames. Just the most recent one.
+        let (output_tx, output_rx) = crossbeam_channel::bounded::<Multiverse>(1);
 
-        for sacn_output in output.sacn() {
-            let ip = match sacn_output.mode() {
-                SacnMode::Unicast { destination_ip } => destination_ip,
-                SacnMode::Multicast => todo!(),
-            };
+        let instance_definitions = project.dmx_output_definition().instances.clone();
 
-            this.add_sacn_source(
-                sacn_output.label().to_owned(),
-                ip,
-                sacn_output.priority(),
-                sacn_output.preview_data(),
-            )?;
-        }
+        for instance_definition in instance_definitions {
+            let output_rx = crossbeam_channel::Receiver::clone(&output_rx);
 
-        Ok(this)
-    }
-
-    pub fn start(self) {
-        let start_time = Instant::now();
-        let mut frame_count = 0;
-        let mut total_frame_time = Duration::ZERO;
-
-        loop {
-            let frame_start = Instant::now();
-
-            let target_time = start_time + DMX_OUTPUT_FRAME_TIME * frame_count;
-            let now = Instant::now();
-
-            if frame_count != 0 {
-                if now < target_time {
-                    spin_sleep::sleep(target_time - now);
-                } else {
-                    let overrun = now - target_time;
-                    if overrun > DMX_OUTPUT_FRAME_TIME {
-                        log::warn!("frame {frame_count} overrun by {overrun:?}");
+            thread::spawn(move || {
+                let maybe_instance = OutputInstance::try_from(instance_definition);
+                match maybe_instance {
+                    Ok(mut instance) => {
+                        if let Err(err) = instance.run(output_rx) {
+                            log::error!("output instance errored: {}", err);
+                        }
+                    }
+                    Err(err) => {
+                        log::error!("failed to create output instance: {}", err);
                     }
                 }
+            });
+        }
+
+        Self {
+            updater: Arc::new(Updater::new(output_tx, project)),
+            update_tx,
+            update_rx: Mutex::new(Some(update_rx)),
+        }
+    }
+
+    pub fn update_values(&self, values: AttributeValues) {
+        self.update_tx.send(values).unwrap();
+    }
+
+    pub fn start(&self) {
+        // Try to take the receiver from the slot. This moves the receiver into
+        // the worker thread, avoiding the need to lock the receiver on each tick.
+        let rx_opt = { self.update_rx.lock().unwrap().take() };
+
+        let rx = match rx_opt {
+            Some(r) => r,
+            None => {
+                log::warn!("output agent is already running");
+                return;
             }
+        };
 
-            self.tx.send(()).expect("should send new frame notifier to output");
+        let updater = Arc::clone(&self.updater);
 
-            let frame_end = Instant::now();
-            let frame_time = frame_end - frame_start;
-            total_frame_time += frame_time;
+        thread::spawn(move || {
+            let mut multiverse = Multiverse::new();
 
-            log::trace!("frame {frame_count} time: {frame_time:?}");
+            let tick_interval = updater.tick_interval;
+            let mut deadline = Instant::now() + tick_interval;
 
-            frame_count += 1;
-        }
-    }
+            loop {
+                let tick_start = Instant::now();
 
-    pub fn shutdown(&self) {
-        let mut shutdown = self.shutdown.borrow_mut();
-        if *shutdown {
-            return;
-        }
-        *shutdown = true;
+                // Drain all pending updates that arrived since last tick.
+                let mut updates = Vec::<AttributeValues>::new();
+                loop {
+                    match rx.try_recv() {
+                        Ok(update) => updates.push(update),
+                        Err(mpsc::TryRecvError::Empty) => break,
+                        Err(mpsc::TryRecvError::Disconnected) => {
+                            log::warn!("update channel disconnected; continuing with local state");
+                            break;
+                        }
+                    }
+                }
 
-        // Join all threads
-        for handle in self.sacn_sources.borrow_mut().drain(..) {
-            let _ = handle.join();
-        }
-    }
+                // Apply updates to the multiverse.
+                if !updates.is_empty() {
+                    updater.resolve_updates_into_multiverse(&mut multiverse, &updates);
+                }
 
-    fn add_sacn_source(
-        &self,
-        name: String,
-        ip: IpAddr,
-        priority: u8,
-        preview_data: bool,
-    ) -> Result<(), server::Error> {
-        let source = sacn::Source::new(sacn::SourceConfig {
-            cid: SACN_CID,
-            name,
-            ip,
-            port: sacn::DEFAULT_PORT,
-            priority,
-            preview_data,
-            synchronization_address: 0,
-            force_synchronization: false,
-        })?;
+                updater.transmit_resolved_multiverse(multiverse.clone());
 
-        self.spawn_sacn_source_thread(source);
+                let tick_end = Instant::now();
+                let actual_tick_duration = tick_end.duration_since(tick_start);
+                let exec_overrun =
+                    actual_tick_duration.checked_sub(tick_interval).unwrap_or(Duration::ZERO);
 
-        Ok(())
-    }
+                // Scheduling.
+                let now = Instant::now();
+                if now < deadline {
+                    spin_sleep::sleep(deadline - now);
+                    deadline += tick_interval;
 
-    fn spawn_sacn_source_thread(&self, source: sacn::Source) {
-        let rx = self.rx.clone();
-        let server_state = self.server_state.clone();
-        let handle = thread::spawn(move || {
-            while let Ok(()) = rx.recv() {
-                let multiverse = server_state.output_multiverse.blocking_read().clone();
-                for (id, universe) in multiverse.universes() {
-                    let mut sacn_universe = sacn::Universe::new(id.as_u16());
-                    sacn_universe.data_slots = universe.values().iter().map(|v| v.0).collect();
-                    source
-                        .send_universe_data_packet(sacn_universe)
-                        .map_err(|err| log::error!("failed to send universe data over sACN: {err}"))
-                        .ok();
+                    log::trace!(
+                        "tick ok: dur={:>8.3?} over={:>7.3?}",
+                        actual_tick_duration,
+                        exec_overrun
+                    );
+                } else {
+                    let deadline_lateness = now.duration_since(deadline);
+                    log::warn!(
+                        "tick late: dur={:08.3?} over={:08.3?} late={:08.3?}",
+                        actual_tick_duration,
+                        exec_overrun,
+                        deadline_lateness
+                    );
+                    deadline = now + tick_interval;
                 }
             }
         });
-
-        self.sacn_sources.borrow_mut().push(handle);
     }
 }
 
-impl Drop for OutputAgent {
-    fn drop(&mut self) {
-        self.shutdown();
+struct Updater {
+    project: Arc<Project>,
+
+    tick_interval: Duration,
+    output_tx: crossbeam_channel::Sender<Multiverse>,
+}
+
+impl Updater {
+    pub fn new(output_tx: crossbeam_channel::Sender<Multiverse>, project: Arc<Project>) -> Self {
+        Self { project, tick_interval: Duration::from_secs_f64(1.0 / 44.0), output_tx }
+    }
+
+    fn resolve_updates_into_multiverse(
+        &self,
+        multiverse: &mut Multiverse,
+        updates: &[AttributeValues],
+    ) {
+        for update in updates {
+            resolver::resolve(update, self.project.patch(), multiverse);
+        }
+    }
+
+    fn transmit_resolved_multiverse(&self, multiverse: Multiverse) {
+        let _ = self.output_tx.send(multiverse);
     }
 }

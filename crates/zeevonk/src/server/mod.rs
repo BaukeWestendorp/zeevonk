@@ -1,86 +1,72 @@
-//! The Zeevonk server serves as a hub to connect multiple clients
-//! together and generating DMX output over various protocols.
+//! A hub for managing clients, resolving attributes and sending DMX.
+//!
+//! **Note:** The `server` feature must be enabled to start and manage a server from your
+//! own code. If you prefer a ready-made program instead of embedding a server, use the standalone
+//! zeevonk command-line tool. See the [`zeevonk` CLI](FIXME) for installation and usage details.
+//!
+//! The Zeevonk server is a hub for managing clients. It has a few essential responsibilities:
+//! - Receiving [triggers](crate::trigger) from [controller clients](crate::client::controller) and routing them
+//!   to the correct [processor clients](crate::client::processor).
+//! - Receiving attribute updates from [processor clients](crate::client::processor)
+//!   and converting them to DMX output.
+//! - Sending DMX output over [various protocols](crate::project::dmx_output)
+//!   like [sACN](crate::project::definition::dmx_output::DmxOutputInstanceDefinition)
+//!   or [Entecc Open DMX](crate::project::definition::dmx_output::DmxOutputInstanceDefinition).
+//!
+//! # Examples
+//!
+//! FIXME: Add examples.
 
+use std::net::{Ipv4Addr, SocketAddrV4};
 use std::sync::Arc;
-use std::time::Instant;
+use std::thread;
 
-use tokio::sync::RwLockReadGuard;
+use crate::project::Project;
+use crate::project::definition::ProjectDefinition;
+use crate::server::output::agent::OutputAgent;
+use crate::server::processor::ProcessorListener;
 
-use crate::server::listener::controller::ControllerHandler;
-use crate::server::listener::processor::ProcessorHandler;
-use crate::server::showfile::Showfile;
-use crate::server::state::State;
-use crate::show::ShowData;
-
-pub mod showfile;
-
-mod error;
-mod listener;
+pub mod error;
 mod output;
-mod state;
+mod processor;
+mod resolver;
 
-pub use error::Error;
+mod project_builder;
 
-pub struct Server<'sf> {
-    showfile: &'sf Showfile,
-    state: Arc<State>,
+pub use error::{Error, Result};
+
+/// The main interface to start and manage a Zeevonk server.
+pub struct Server {
+    project: Arc<Project>,
+
+    output_agent: Arc<OutputAgent>,
 }
 
-impl<'sf> Server<'sf> {
-    pub fn new(showfile: &'sf Showfile) -> Result<Self, Error> {
-        let init_start = Instant::now();
+impl Server {
+    /// Creates a new [`Server`] instance.
+    pub fn new(project: ProjectDefinition) -> crate::Result<Self> {
+        let project_handle = Arc::new(project_builder::from_definition(project)?);
 
-        let state = Arc::new(State::new(showfile)?);
-
-        let init_duration = init_start.elapsed();
-        log::info!("zeevonk server initialized (init time: {:.2?})", init_duration);
-
-        Ok(Self { showfile, state })
+        Ok(Self {
+            project: Arc::clone(&project_handle),
+            output_agent: Arc::new(OutputAgent::new(project_handle)),
+        })
     }
 
-    pub async fn start(&self) -> Result<(), Error> {
-        log::info!("starting server...");
-        let startup_start = Instant::now();
+    /// Starts the server instance and its listeners.
+    pub fn start(&self) {
+        self.output_agent.start();
 
-        // Start protocol manager.
-        log::debug!("starting protocol manager");
-        let state = Arc::clone(&self.state);
-        output::agent::start(self.showfile.protocols().clone(), Arc::clone(&state));
-        log::debug!("protocol manager started");
-
-        let startup_duration = startup_start.elapsed();
-        log::info!("server startup complete (startup time: {:.2?})", startup_duration);
-
-        self.start_processor_listener().await;
-        self.start_controller_listener().await?;
-
-        Ok(())
-    }
-
-    async fn start_processor_listener(&self) {
-        let processor_port = self.showfile.config().processor_port();
-        let state = Arc::clone(&self.state);
-        tokio::spawn(async move {
-            if let Err(e) =
-                listener::start_ws_listener::<ProcessorHandler>(processor_port, "processor", state)
-                    .await
-            {
-                log::error!("processor listener exited with error: {}", e);
-            }
+        thread::spawn({
+            let port = self.project.config_definition().processor_port;
+            let address = SocketAddrV4::new(Ipv4Addr::LOCALHOST, port);
+            let output_agent = Arc::clone(&self.output_agent);
+            move || ProcessorListener::new(output_agent).start(address)
         });
     }
 
-    async fn start_controller_listener(&self) -> Result<(), Error> {
-        let controller_port = self.showfile.config().controller_port();
-        listener::start_ws_listener::<ControllerHandler>(
-            controller_port,
-            "controller",
-            Arc::clone(&self.state),
-        )
-        .await
-    }
-
-    pub fn show_data(&self) -> RwLockReadGuard<'_, ShowData> {
-        self.state.show_data.blocking_read()
+    /// Returns a reference to the [`Project`] associated with this server.
+    pub fn project(&self) -> &Project {
+        &self.project
     }
 }

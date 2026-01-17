@@ -2,7 +2,6 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
-mod info;
 mod init;
 mod run;
 
@@ -16,20 +15,15 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Initialize a new showfile.
+    /// Initialize a new project.
     Init {
-        /// Path to create the showfile at.
-        showfile_path: PathBuf,
+        /// Path to create the project at.
+        project_path: PathBuf,
     },
-    /// Run the showfile.
+    /// Run the project.
     Run {
-        /// Path to the showfile.
-        showfile_path: PathBuf,
-    },
-    /// Get info about a showfile.
-    Info {
-        #[command(subcommand)]
-        command: InfoSubcommand,
+        /// Path to the project.
+        project_path: PathBuf,
     },
 }
 
@@ -37,8 +31,8 @@ enum Commands {
 enum InfoSubcommand {
     /// Dump the patch tree.
     Patch {
-        /// Path to the showfile.
-        showfile_path: PathBuf,
+        /// Path to the project.
+        project_path: PathBuf,
     },
 }
 
@@ -51,14 +45,11 @@ fn main() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::Init { showfile_path } => {
-            init::init_showfile(showfile_path)?;
+        Commands::Init { project_path } => {
+            init::init_project(project_path)?;
         }
-        Commands::Run { showfile_path } => {
-            run::run_showfile(showfile_path)?;
-        }
-        Commands::Info { command: InfoSubcommand::Patch { showfile_path } } => {
-            info::dump_patch(showfile_path)?;
+        Commands::Run { project_path } => {
+            run::run_project(project_path)?;
         }
     }
 

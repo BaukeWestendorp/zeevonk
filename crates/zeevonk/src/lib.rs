@@ -1,59 +1,70 @@
-pub use error::*;
+#![warn(missing_docs)]
+
+//! Zeevonk is a modular lighting control system, consisting of a server and two kinds of client.
+//!
+//! <div class="warning">
+//!
+//! **Warning**
+//!
+//! Zeevonk is currently in early development. APIs, features, and behavior may change frequently and without notice.
+//! It is not yet recommended for production use.
+//!
+//! </div>
+//!
+//!
+//! # The Server
+//!
+//! **Note:** The `server` feature must be enabled to start and manage a server from your
+//! own code. If you prefer a ready-made program instead of embedding a server, use the standalone
+//! zeevonk command-line tool. See the [`zeevonk` CLI](FIXME) for installation and usage details.
+//!
+//! The Zeevonk server is a hub for managing clients. It has a few essential responsibilities:
+//! - Receiving [triggers](crate::trigger) from [controller clients](crate::client::controller) and routing them
+//!   to the correct [processor clients](crate::client::processor).
+//! - Receiving attribute updates from [processor clients](crate::client::processor)
+//!   and converting them to DMX output.
+//! - Sending DMX output over [various protocols](crate::project::dmx_output)
+//!   like [sACN](crate::project::definition::dmx_output::DmxOutputInstanceDefinition)
+//!   or [Entecc Open DMX](crate::project::definition::dmx_output::DmxOutputInstanceDefinition).
+//!
+//! # The Processor Client
+//!
+//! **Note:** The `client-processor` feature must be enabled to use a processor client in your code.
+//!
+//! A processor client is responsible for generating high-level [GDTF](https://gdtf.eu) attribute values for
+//! specific fixtures and sending them to the server.
+//!
+//! Typical responsibilities of a processor client include:
+//! - Subscribing to [triggers](crate::trigger).
+//! - Mapping [triggers](crate::trigger) to fixture/attribute targets and resolving which attributes should change.
+//! - Calculating or interpolating attribute values (effects, fades, curves, color mixing, etc.).
+//! - Sending attribute updates to the server for DMX output.
+//! - Maintaining local state and managing transitions (so updates are smooth and deterministic).
+//!
+//! # The Controller Client
+//!
+//! **Note:** The `client-controller` feature must be enabled to use a controller client in your code.
+//!
+//! A controller client is the origin of [triggers](crate::trigger).
+//!
+//! Typical responsibilities of a controller client include:
+//! - Sending [triggers](crate::trigger) (MIDI, OSC, button presses, fader changes, cue selections, etc.) to the server.
+//!
+//! # Examples
+//!
+//! FIXME: Add examples.
 
 pub mod attr;
+pub mod error;
+pub mod ident;
 pub mod packet;
-pub mod show;
+pub mod project;
 pub mod trigger;
 pub mod value;
 
+#[cfg(any(feature = "client-processor", feature = "client-controller"))]
+pub mod client;
 #[cfg(feature = "server")]
 pub mod server;
 
-#[cfg(any(feature = "client-processor", feature = "client-controller"))]
-pub mod client;
-
-mod error;
-
-pub const DEFAULT_CONTROLLER_PORT: u16 = 7334;
-pub const DEFAULT_PROCESSOR_PORT: u16 = 7335;
-
-/// A validated identifier consisting of lowercase ASCII letters, digits, or hyphens.
-///
-/// Use [`Identifier::new`] to construct a new identifier, which ensures the value
-/// contains only valid characters. The underlying string can be accessed with [`Identifier::as_str`].
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-#[derive(serde::Serialize, serde::Deserialize)]
-pub struct Identifier(String);
-
-impl Identifier {
-    /// Creates a new [`Identifier`] after validating the input.
-    ///
-    /// Returns an error if the input contains invalid characters.
-    pub fn new(id: impl Into<String>) -> Result<Self, crate::Error> {
-        let id_str = id.into();
-        if id_str.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-') {
-            Ok(Self(id_str))
-        } else {
-            Err(crate::Error::InvalidIdentifier)
-        }
-    }
-
-    /// Returns a reference to the underlying string.
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-}
-
-impl std::fmt::Display for Identifier {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-impl std::str::FromStr for Identifier {
-    type Err = crate::Error;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Identifier::new(s)
-    }
-}
+pub use error::{Error, Result};
