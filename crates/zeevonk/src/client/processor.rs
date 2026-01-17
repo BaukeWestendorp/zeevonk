@@ -1,20 +1,34 @@
-//! A processor client can tell the server what attributes have to be updated.
+//! The processor client can send fixture attribute values to the Zeevonk server.
 //!
 //! **Note:** The `client-processor` feature must be enabled to use a processor client in your code.
 //!
-//! A processor client is responsible for generating high-level [GDTF](https://gdtf.eu) attribute values for
-//! specific fixtures and sending them to the server.
+//! Use the processor client to generate and update lighting [GDTF](https://gdtf.eu) attributes
+//! (like color, position, or intensity) for fixtures, and send them to the server for DMX output.
 //!
-//! Typical responsibilities of a processor client include:
-//! - Subscribing to [triggers](crate::trigger).
-//! - Mapping [triggers](crate::trigger) to fixture/attribute targets and resolving which attributes should change.
-//! - Calculating or interpolating attribute values (effects, fades, curves, color mixing, etc.).
-//! - Sending attribute updates to the server for DMX output.
-//! - Maintaining local state and managing transitions (so updates are smooth and deterministic).
+//! ## Example
 //!
-//! # Examples
+//! ```rust
+//! use zeevonk::client::processor::Client;
+//! use zeevonk::value::AttributeValues;
 //!
-//! FIXME: Add examples.
+//! #[tokio::main]
+//! async fn main() -> zeevonk::client::Result<()> {
+//!     let mut client = Client::new();
+//!     client.connect("ws://localhost:9001").await?;
+//!     let mut values = AttributeValues::new();
+//!     // Set attribute values for your fixtures here...
+//!     client.update_attributes(values, false).await?;
+//!     Ok(())
+//! }
+//! ```
+//!
+//! The processor client is typically used to:
+//! - Subscribe to [triggers](crate::trigger)
+//! - Map triggers to fixture attributes
+//! - Calculate or interpolate attribute values (effects, fades, color mixing, etc.)
+//! - Send updates to the server for DMX output
+//!
+//! For advanced usage, you can maintain local state and manage transitions for smooth updates.
 
 use tokio::sync::mpsc;
 

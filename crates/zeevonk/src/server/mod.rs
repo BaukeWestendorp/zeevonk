@@ -1,21 +1,26 @@
-//! A hub for managing clients, resolving attributes and sending DMX.
+//! The Zeevonk server manages clients and the data they send, and sends DMX output to various protocols.
 //!
-//! **Note:** The `server` feature must be enabled to start and manage a server from your
-//! own code. If you prefer a ready-made program instead of embedding a server, use the standalone
-//! zeevonk command-line tool. See the [`zeevonk` CLI](FIXME) for installation and usage details.
+//! This server acts as the central hub for your lighting control system.
+//! It receives triggers from controller clients, processes attribute
+//! updates from processor clients, and outputs DMX data using various protocols.
 //!
-//! The Zeevonk server is a hub for managing clients. It has a few essential responsibilities:
-//! - Receiving [triggers](crate::trigger) from [controller clients](crate::client::controller) and routing them
-//!   to the correct [processor clients](crate::client::processor).
-//! - Receiving attribute updates from [processor clients](crate::client::processor)
-//!   and converting them to DMX output.
-//! - Sending DMX output over [various protocols](crate::project::dmx_output)
-//!   like [sACN](crate::project::definition::dmx_output::DmxOutputInstanceDefinition)
-//!   or [Entecc Open DMX](crate::project::definition::dmx_output::DmxOutputInstanceDefinition).
+//! ## Example
 //!
-//! # Examples
+//! ```rust
+//! use zeevonk::server::Server;
+//! use zeevonk::project::definition::ProjectDefinition;
 //!
-//! FIXME: Add examples.
+//! // Create a project definition.
+//! let project_def = ProjectDefinition::default();
+//!
+//! // Create and start the server.
+//! let server = Server::new(project_def).unwrap();
+//! server.start();
+//! ```
+//!
+//! The server will now listen for processor and controller clients, and handle DMX output automatically.
+//!
+//! For more advanced usage, see the documentation for [`Server`](crate::server::Server).
 
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::sync::Arc;

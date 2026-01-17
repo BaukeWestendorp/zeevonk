@@ -1,15 +1,26 @@
-//! A controller client is the origin of [triggers](crate::trigger).
+//! The controller client sends triggers (like button presses or fader moves) to the Zeevonk server.
 //!
 //! **Note:** The `client-controller` feature must be enabled to use a controller client in your code.
 //!
-//! A controller client acts as the source of triggers sent to the server.
-//! It sends user actions or external events to initiate responses.
+//! You can write software to, for example, receive MIDI or OSC messages from a control surface,
+//! and then use the controller client to send triggers to the Zeevonk server.
+//! This allows you to connect your own hardware or software controls—such as MIDI controllers,
+//! OSC apps, or custom UIs—to Zeevonk by translating their events into triggers
+//! that the server can route to processor clients.
 //!
-//! Typical responsibilities of a controller client include:
-//! - Sending [triggers](crate::trigger) (MIDI, OSC, button presses, fader changes, cue selections, etc.) to the server.
+//! ## Example
 //!
-//! # Examples
+//! ```rust
+//! use zeevonk::client::controller::Client;
+//! use zeevonk::ident::Identifier;
 //!
-//! FIXME: Add examples.
+//! #[tokio::main]
+//! async fn main() -> zeevonk::client::Result<()> {
+//!     let mut client = Client::new();
+//!     client.connect("ws://localhost:7334").await?;
+//!     client.send_trigger("button_1_pressed").await?;
+//!     Ok(())
+//! }
+//! ```
 
 // FIXME: Implement
