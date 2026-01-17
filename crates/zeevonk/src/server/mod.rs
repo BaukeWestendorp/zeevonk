@@ -6,12 +6,14 @@
 //!
 //! ## Example
 //!
-//! ```rust
+//! ```no_run
+//! use std::path::Path;
+//!
 //! use zeevonk::server::Server;
 //! use zeevonk::project::definition::ProjectDefinition;
 //!
 //! // Create a project definition.
-//! let project_def = ProjectDefinition::default();
+//! let project_def = ProjectDefinition::load_from_folder(&Path::new("path/to/project_folder")).unwrap();
 //!
 //! // Create and start the server.
 //! let server = Server::new(project_def).unwrap();
@@ -28,15 +30,17 @@ use std::thread;
 
 use crate::project::Project;
 use crate::project::definition::ProjectDefinition;
+use crate::server::controller::ControllerListener;
 use crate::server::output::agent::OutputAgent;
 use crate::server::processor::ProcessorListener;
 
 pub mod error;
+
+mod controller;
 mod output;
 mod processor;
-mod resolver;
-
 mod project_builder;
+mod resolver;
 
 pub use error::{Error, Result};
 
@@ -67,6 +71,12 @@ impl Server {
             let address = SocketAddrV4::new(Ipv4Addr::LOCALHOST, port);
             let output_agent = Arc::clone(&self.output_agent);
             move || ProcessorListener::new(output_agent).start(address)
+        });
+
+        thread::spawn({
+            let port = self.project.config_definition().controller_port;
+            let address = SocketAddrV4::new(Ipv4Addr::LOCALHOST, port);
+            move || ControllerListener::new().start(address)
         });
     }
 

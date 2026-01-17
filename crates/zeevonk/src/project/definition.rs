@@ -99,10 +99,17 @@ pub mod config {
         /// Port for the processor listener to bind to.
         #[serde(default = "default_processor_port")]
         pub processor_port: u16,
+        /// Port for the processor listener to bind to.
+        #[serde(default = "default_controller_port")]
+        pub controller_port: u16,
     }
 
     fn default_processor_port() -> u16 {
         7334
+    }
+
+    fn default_controller_port() -> u16 {
+        7335
     }
 }
 
