@@ -12,9 +12,7 @@ A modular lighting control system for modern DMX-based lighting setups.
 Zeevonk is a modular system for controlling lighting fixtures. It consists of a server and two types of clients:
 
 - **Server**: Manages clients, processes triggers and attribute updates, and sends DMX data.
-
 - **Processor Client**: Calculates and sends fixture attribute values (like color, position, intensity) to the server.
-
 - **Controller Client**: Sends triggers (such as button presses or fader moves) to the server.
 
 ## Run the Zeevonk server
@@ -30,8 +28,11 @@ cargo install --path crates/cli
 ### Features
 
 The crate has three main features you can enable:
+
 `server`: Start and configure the server from your own code instead of the CLI.
+
 `client-processor`: Use the processor client.
+
 `client-controller`: Use the controller client.
 
 ### Example: Starting the Server
