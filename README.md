@@ -55,7 +55,7 @@ use zeevonk::value::AttributeValues;
 #[tokio::main]
 async fn main() -> zeevonk::client::Result<()> {
     let mut client = Client::new();
-    client.connect("ws://localhost:9001").await?;
+    client.connect("ws://127.0.0.1:7334").await?;
     let mut values = AttributeValues::new();
     // Set attribute values for your fixtures here...
     client.update_attributes(values, false).await?;
@@ -67,13 +67,25 @@ async fn main() -> zeevonk::client::Result<()> {
 
 ```rust
 use zeevonk::client::controller::Client;
+use zeevonk::ident::Identifier;
+use zeevonk::trigger::{Trigger, TriggerValue};
 
 #[tokio::main]
-async fn main() -> zeevonk::client::Result<()> {
+async fn main() {
     let mut client = Client::new();
-    client.connect("ws://localhost:7334").await?;
-    client.send_trigger("button_1_pressed").await?;
-    Ok(())
+    client.connect("ws://127.0.0.1:7335").await.unwrap();
+
+    loop {
+        client
+            .send_trigger(Trigger::new(
+                Identifier::new("button-1").unwrap(),
+                TriggerValue::Boolean(true),
+            ))
+            .await
+            .unwrap();
+
+        std::thread::sleep(std::time::Duration::from_secs_f32(1.0 / 10.0));
+    }
 }
 ```
 

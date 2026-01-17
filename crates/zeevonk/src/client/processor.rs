@@ -7,14 +7,14 @@
 //!
 //! ## Example
 //!
-//! ```rust
+//! ```
 //! use zeevonk::client::processor::Client;
 //! use zeevonk::value::AttributeValues;
 //!
 //! #[tokio::main]
 //! async fn main() -> zeevonk::client::Result<()> {
 //!     let mut client = Client::new();
-//!     client.connect("ws://localhost:9001").await?;
+//!     client.connect("ws://127.0.0.1:7334").await?;
 //!     let mut values = AttributeValues::new();
 //!     // Set attribute values for your fixtures here...
 //!     client.update_attributes(values, false).await?;
@@ -50,7 +50,7 @@ impl Client {
         Self { outbound_tx, outbound_rx: Some(outbound_rx) }
     }
 
-    /// Connect to a processor server at the given WebSocket `uri`.
+    /// Connect to a Zeevonk server at the given WebSocket `uri`.
     ///
     /// If the client is already connected this method returns immediately with `Ok(())`.
     pub async fn connect(&mut self, uri: &str) -> crate::Result<()> {
@@ -76,7 +76,8 @@ impl Client {
         Ok(())
     }
 
-    /// Ask the server to update attributes.
+    /// Let the server know about new attribute values
+    /// it should update the DMX output for.
     pub async fn update_attributes(
         &self,
         values: AttributeValues,
