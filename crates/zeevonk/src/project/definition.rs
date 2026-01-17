@@ -18,6 +18,8 @@ pub struct ProjectDefinition {
     pub patch: patch::PatchDefinition,
     /// The DMX output configuration.
     pub dmx_output: dmx_output::DmxOutputDefinition,
+    /// The router configuration.
+    pub router: router::RouterDefinition,
 }
 
 impl ProjectDefinition {
@@ -183,5 +185,35 @@ pub mod dmx_output {
             /// The serial number of the Enttec Open DMX device.
             serial_number: String,
         },
+    }
+}
+
+pub mod router {
+    //! Contains types and definitions related to router configuration.
+
+    use crate::ident::Identifier;
+
+    /// Defines the router configuration for a project.
+    #[derive(Debug, Clone, PartialEq)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct RouterDefinition {
+        /// All the different routes from controller clients
+        /// to processor clients for this project.
+        pub routes: Vec<Route>,
+    }
+
+    /// A route from a controller client
+    /// to processor clients for this project.
+    #[derive(Debug, Clone, PartialEq)]
+    #[derive(serde::Serialize, serde::Deserialize)]
+    pub struct Route {
+        /// The identifier of the controller client that sends the trigger.
+        pub from_client: Identifier,
+        /// The identifier of the trigger that activates the route. If `None`,
+        /// all triggers from the controller client will be routed to the
+        /// processor clients.
+        pub from_trigger: Option<Identifier>,
+        /// The identifiers of the processor clients that receive the route.
+        pub to_clients: Vec<Identifier>,
     }
 }

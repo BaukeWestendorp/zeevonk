@@ -7,6 +7,7 @@ pub mod patch;
 use crate::project::definition::config::ConfigDefinition;
 use crate::project::definition::dmx_output::DmxOutputDefinition;
 use crate::project::definition::patch::PatchDefinition;
+use crate::project::definition::router::RouterDefinition;
 use crate::project::dmx_output::DmxOutput;
 use crate::project::patch::Patch;
 
@@ -19,6 +20,8 @@ pub struct Project {
     pub(crate) dmx_output_definition: DmxOutputDefinition,
 
     pub(crate) config_definition: ConfigDefinition,
+
+    pub(crate) router_definition: RouterDefinition,
 }
 
 impl Project {
@@ -45,5 +48,10 @@ impl Project {
     /// Returns a reference to the config definition.
     pub fn config_definition(&self) -> &ConfigDefinition {
         &self.config_definition
+    }
+
+    /// Returns a reference to the router definition.
+    pub fn router_definition(&self) -> &RouterDefinition {
+        &self.router_definition
     }
 }

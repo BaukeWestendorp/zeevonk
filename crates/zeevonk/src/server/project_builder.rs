@@ -12,6 +12,7 @@ pub fn from_definition(definition: ProjectDefinition) -> crate::Result<Project> 
         dmx_output: DmxOutput { default_multiverse },
         dmx_output_definition: definition.dmx_output,
         config_definition: definition.config,
+        router_definition: definition.router,
     })
 }
 
