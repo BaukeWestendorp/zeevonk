@@ -15,7 +15,24 @@ Zeevonk is a modular system for controlling lighting fixtures. It consists of a 
 - **Processor Client**: Calculates and sends fixture attribute values (like color, position, intensity) to the server.
 - **Controller Client**: Sends triggers (such as button presses or fader moves) to the server.
 
-## Example: Starting the Server
+## Run the Zeevonk server
+
+You can install zeevonk as a binary (called `zv`) using the following command:
+
+```sh
+cargo install --path crates/cli
+```
+
+## Use as a library
+
+### Features
+
+The crate has three main features you can enable:
+`server`: Start and configure the server from your own code instead of the CLI.
+`client-processor`: Use the processor client.
+`client-controller`: Use the controller client.
+
+### Example: Starting the Server
 
 ```rust
 use zeevonk::server::Server;
@@ -29,7 +46,7 @@ let server = Server::new(project_def).unwrap();
 server.start();
 ```
 
-## Example: Processor Client
+### Example: Processor Client
 
 ```rust
 use zeevonk::client::processor::Client;
@@ -46,7 +63,7 @@ async fn main() -> zeevonk::client::Result<()> {
 }
 ```
 
-## Example: Controller Client
+### Example: Controller Client
 
 ```rust
 use zeevonk::client::controller::Client;
