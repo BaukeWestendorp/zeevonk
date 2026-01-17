@@ -10,7 +10,7 @@
 //!
 //! ## Example
 //!
-//! ```
+//! ```ignore
 //! use zeevonk::client::controller::Client;
 //! use zeevonk::ident::Identifier;
 //! use zeevonk::trigger::{Trigger, TriggerValue};

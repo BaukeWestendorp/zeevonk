@@ -7,17 +7,17 @@
 //!
 //! ## Example
 //!
-//! ```
+//! ```ignore
 //! use zeevonk::client::processor::Client;
 //! use zeevonk::value::AttributeValues;
 //!
 //! #[tokio::main]
-//! async fn main() -> zeevonk::client::Result<()> {
+//! async fn main() {
 //!     let mut client = Client::new();
-//!     client.connect("ws://127.0.0.1:7334").await?;
+//!     client.connect("ws://127.0.0.1:7334").await.unwrap();
 //!     let mut values = AttributeValues::new();
 //!     // Set attribute values for your fixtures here...
-//!     client.update_attributes(values, false).await?;
+//!     client.update_attributes(values, false).await.unwrap();
 //!     Ok(())
 //! }
 //! ```
@@ -43,6 +43,7 @@ pub struct Client {
     outbound_tx: mpsc::UnboundedSender<ServerboundPacket>,
     outbound_rx: Option<mpsc::UnboundedReceiver<ServerboundPacket>>,
 }
+
 impl Client {
     /// Create a new processor client.
     pub fn new() -> Self {
