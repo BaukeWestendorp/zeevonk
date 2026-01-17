@@ -18,7 +18,6 @@
 //!     let mut values = AttributeValues::new();
 //!     // Set attribute values for your fixtures here...
 //!     client.update_attributes(values, false).await.unwrap();
-//!     Ok(())
 //! }
 //! ```
 //!

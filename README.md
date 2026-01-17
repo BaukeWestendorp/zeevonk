@@ -56,13 +56,12 @@ use zeevonk::client::processor::Client;
 use zeevonk::value::AttributeValues;
 
 #[tokio::main]
-async fn main() -> zeevonk::client::Result<()> {
+async fn main() {
     let mut client = Client::new();
-    client.connect("ws://127.0.0.1:7334").await?;
+    client.connect("ws://127.0.0.1:7334").await.unwrap();
     let mut values = AttributeValues::new();
     // Set attribute values for your fixtures here...
-    client.update_attributes(values, false).await?;
-    Ok(())
+    client.update_attributes(values, false).await.unwrap();
 }
 ```
 
