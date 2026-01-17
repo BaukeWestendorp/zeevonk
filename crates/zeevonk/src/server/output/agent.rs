@@ -49,8 +49,7 @@ impl OutputAgent {
         }
     }
 
-    // TODO: REMOVE
-    pub fn test_send(&self, values: AttributeValues) {
+    pub fn update_values(&self, values: AttributeValues) {
         self.update_tx.send(values).unwrap();
     }
 

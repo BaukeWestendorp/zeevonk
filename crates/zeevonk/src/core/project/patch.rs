@@ -1,3 +1,6 @@
+//! Baked information about each fixture and their subfixtures,
+//! including attributes and their channels.
+
 use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::{cmp, fmt, str};

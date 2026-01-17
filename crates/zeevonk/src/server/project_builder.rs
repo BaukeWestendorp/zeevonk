@@ -11,6 +11,7 @@ pub fn from_definition(definition: ProjectDefinition) -> crate::Result<Project> 
         patch,
         dmx_output: DmxOutput { default_multiverse },
         dmx_output_definition: definition.dmx_output,
+        config_definition: definition.config,
     })
 }
 
@@ -264,7 +265,6 @@ mod patch {
             let Some(referenced_geometry) =
                 self.gdtf_fixture_type.nested_geometry(referenced_geometry)
             else {
-                // Instead of todo!, return empty or log error
                 log::error!(
                     "Referenced geometry {:?} not found in fixture type {:?}",
                     referenced_geometry,

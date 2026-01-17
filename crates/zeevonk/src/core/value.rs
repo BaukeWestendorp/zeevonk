@@ -146,6 +146,7 @@ impl str::FromStr for ClampedValue {
 /// attribute-value pairs, where each value is a [`ClampedValue`] in the range [0.0, 1.0].
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
+#[serde(transparent)]
 pub struct AttributeValues {
     values: HashMap<FixtureId, HashMap<Attribute, ClampedValue>>,
 }

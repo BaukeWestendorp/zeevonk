@@ -1,3 +1,5 @@
+//! Information about the DMX output instances used for a project.
+
 use theymx::Multiverse;
 
 /// Represents a DMX output, holding a default multiverse.

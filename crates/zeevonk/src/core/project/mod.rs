@@ -5,20 +5,21 @@ pub mod definition;
 pub mod dmx_output;
 pub mod patch;
 
-pub(crate) mod builder;
-
+use crate::project::definition::config::ConfigDefinition;
 use crate::project::definition::dmx_output::DmxOutputDefinition;
 use crate::project::definition::patch::PatchDefinition;
 use crate::project::dmx_output::DmxOutput;
 use crate::project::patch::Patch;
 
-/// Represents a complete project, including patch and DMX output configuration.
+/// Represents a complete project.
 pub struct Project {
-    patch: Patch,
-    patch_definition: PatchDefinition,
+    pub(crate) patch: Patch,
+    pub(crate) patch_definition: PatchDefinition,
 
-    dmx_output: DmxOutput,
-    dmx_output_definition: DmxOutputDefinition,
+    pub(crate) dmx_output: DmxOutput,
+    pub(crate) dmx_output_definition: DmxOutputDefinition,
+
+    pub(crate) config_definition: ConfigDefinition,
 }
 
 impl Project {
@@ -40,5 +41,10 @@ impl Project {
     /// Returns a reference to the DMX output definition.
     pub fn dmx_output_definition(&self) -> &DmxOutputDefinition {
         &self.dmx_output_definition
+    }
+
+    /// Returns a reference to the config definition.
+    pub fn config_definition(&self) -> &ConfigDefinition {
+        &self.config_definition
     }
 }

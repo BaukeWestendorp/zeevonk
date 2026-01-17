@@ -1,21 +1,4 @@
-pub use error::*;
-
-pub mod attr;
-pub mod packet;
-pub mod show;
-pub mod trigger;
-pub mod value;
-
-#[cfg(feature = "server")]
-pub mod server;
-
-#[cfg(any(feature = "client-processor", feature = "client-controller"))]
-pub mod client;
-
-mod error;
-
-pub const DEFAULT_CONTROLLER_PORT: u16 = 7334;
-pub const DEFAULT_PROCESSOR_PORT: u16 = 7335;
+//! A validated identifier consisting of lowercase ASCII letters, digits, or hyphens.
 
 /// A validated identifier consisting of lowercase ASCII letters, digits, or hyphens.
 ///

@@ -1,5 +1,3 @@
-#![warn(missing_docs)]
-
 //! # Zeevonk Core
 //!
 //! Core types and logic for the Zeevonk lighting control system.
@@ -10,7 +8,10 @@
 
 pub mod attr;
 pub mod error;
+pub mod ident;
+pub mod packet;
 pub mod project;
+pub mod trigger;
 pub mod value;
 
 pub use error::{Error, Result};
