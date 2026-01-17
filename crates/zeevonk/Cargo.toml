@@ -16,6 +16,11 @@ client-processor = [
     "dep:tokio-tungstenite",
     "dep:futures-util",
 ]
+client-controller = [
+    "dep:tokio",
+    "dep:tokio-tungstenite",
+    "dep:futures-util",
+]
 
 [dependencies]
 log.workspace = true

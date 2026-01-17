@@ -1,6 +1,20 @@
 //! A processor client can tell the server what attributes have to be updated.
 //!
-//! # Processor Client
+//! **Note:** The `client-processor` feature must be enabled to use a processor client in your code.
+//!
+//! A processor client is responsible for generating high-level [GDTF](https://gdtf.eu) attribute values for
+//! specific fixtures and sending them to the server.
+//!
+//! Typical responsibilities of a processor client include:
+//! - Subscribing to [triggers](crate::trigger).
+//! - Mapping [triggers](crate::trigger) to fixture/attribute targets and resolving which attributes should change.
+//! - Calculating or interpolating attribute values (effects, fades, curves, color mixing, etc.).
+//! - Sending attribute updates to the server for DMX output.
+//! - Maintaining local state and managing transitions (so updates are smooth and deterministic).
+//!
+//! # Examples
+//!
+//! FIXME: Add examples.
 
 use tokio::sync::mpsc;
 

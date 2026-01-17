@@ -1,5 +1,4 @@
-//! This module contains the definitions for the project file, and the resolved values
-//! for the project.
+//! FIXME: Refactor and then improve docs.
 
 pub mod definition;
 pub mod dmx_output;

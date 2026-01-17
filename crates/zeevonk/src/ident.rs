@@ -1,4 +1,4 @@
-//! A validated identifier consisting of lowercase ASCII letters, digits, or hyphens.
+//! Identifiers for tracking triggers or clients.
 
 /// A validated identifier consisting of lowercase ASCII letters, digits, or hyphens.
 ///

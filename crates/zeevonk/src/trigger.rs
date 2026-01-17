@@ -1,4 +1,4 @@
-//! Trigger definitions.
+//! Represents a trigger sent from a controller client to be processed and routed by the server.
 //!
 //! A trigger can be sent from a controller client, and will be processed by the server.
 //! The server will route it to the correct processor client according to the project configuration.

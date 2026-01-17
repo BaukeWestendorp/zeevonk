@@ -1,11 +1,21 @@
-#![warn(missing_docs)]
-
-//! # Zeevonk Server
+//! A hub for managing clients, resolving attributes and sending DMX.
 //!
-//! The Zeevonk server implementation, which serves as a hub
-//! for Zeevonk Clients (e.g. controllers and processors). It also has built in
-//! support for resolving attribute values into DMX universes and sending them
-//! over various output protocols like sACN.
+//! **Note:** The `server` feature must be enabled to start and manage a server from your
+//! own code. If you prefer a ready-made program instead of embedding a server, use the standalone
+//! zeevonk command-line tool. See the [`zeevonk` CLI](FIXME) for installation and usage details.
+//!
+//! The Zeevonk server is a hub for managing clients. It has a few essential responsibilities:
+//! - Receiving [triggers](crate::trigger) from [controller clients](crate::client::controller) and routing them
+//!   to the correct [processor clients](crate::client::processor).
+//! - Receiving attribute updates from [processor clients](crate::client::processor)
+//!   and converting them to DMX output.
+//! - Sending DMX output over [various protocols](crate::project::dmx_output)
+//!   like [sACN](crate::project::definition::dmx_output::DmxOutputInstanceDefinition)
+//!   or [Entecc Open DMX](crate::project::definition::dmx_output::DmxOutputInstanceDefinition).
+//!
+//! # Examples
+//!
+//! FIXME: Add examples.
 
 use std::net::{Ipv4Addr, SocketAddrV4};
 use std::sync::Arc;
