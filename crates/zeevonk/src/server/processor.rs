@@ -25,7 +25,7 @@ impl ProcessorListener {
                 Ok(stream) => {
                     let output_agent = Arc::clone(&self.output_agent);
                     thread::spawn(move || {
-                        if let Err(err) = accept_stream(output_agent, stream) {
+                        if let Err(err) = accept_stream(stream, output_agent) {
                             log::error!("processor client handler failed: {err}");
                         }
                     });
@@ -41,7 +41,7 @@ impl ProcessorListener {
     }
 }
 
-fn accept_stream(output_agent: Arc<OutputAgent>, stream: TcpStream) -> crate::Result<()> {
+fn accept_stream(stream: TcpStream, output_agent: Arc<OutputAgent>) -> crate::Result<()> {
     let peer_addr = stream.peer_addr().unwrap();
 
     log::info!("connected to processor at {}", peer_addr);
@@ -75,7 +75,7 @@ fn accept_stream(output_agent: Arc<OutputAgent>, stream: TcpStream) -> crate::Re
                     }
                 };
 
-                if let Err(e) = handle_packet(&output_agent, packet) {
+                if let Err(e) = handle_packet(packet, &output_agent) {
                     log::error!("error handling packet: {e}");
                 }
             }
@@ -93,7 +93,7 @@ fn accept_stream(output_agent: Arc<OutputAgent>, stream: TcpStream) -> crate::Re
     Ok(())
 }
 
-fn handle_packet(output_agent: &OutputAgent, packet: ServerboundPacket) -> crate::Result<()> {
+fn handle_packet(packet: ServerboundPacket, output_agent: &OutputAgent) -> crate::Result<()> {
     match packet {
         ServerboundPacket::RegisterClient { .. } => todo!(),
         ServerboundPacket::UpdateAttributes { values, include_children } => {

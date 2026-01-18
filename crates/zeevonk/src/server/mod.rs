@@ -33,6 +33,7 @@ use crate::project::definition::ProjectDefinition;
 use crate::server::controller::ControllerListener;
 use crate::server::output::agent::OutputAgent;
 use crate::server::processor::ProcessorListener;
+use crate::server::router::Router;
 
 pub mod error;
 
@@ -41,6 +42,7 @@ mod output;
 mod processor;
 mod project_builder;
 mod resolver;
+mod router;
 
 pub use error::{Error, Result};
 
@@ -49,6 +51,7 @@ pub struct Server {
     project: Arc<Project>,
 
     output_agent: Arc<OutputAgent>,
+    router: Arc<Router>,
 }
 
 impl Server {
@@ -58,7 +61,9 @@ impl Server {
 
         Ok(Self {
             project: Arc::clone(&project_handle),
-            output_agent: Arc::new(OutputAgent::new(project_handle)),
+
+            output_agent: Arc::new(OutputAgent::new(project_handle.clone())),
+            router: Arc::new(Router::new(project_handle)),
         })
     }
 
@@ -76,12 +81,18 @@ impl Server {
         thread::spawn({
             let port = self.project.config_definition().controller_port;
             let address = SocketAddrV4::new(Ipv4Addr::LOCALHOST, port);
-            move || ControllerListener::new().start(address)
+            let router = Arc::clone(&self.router);
+            move || ControllerListener::new(router).start(address)
         });
     }
 
-    /// Returns a reference to the [`Project`] associated with this server.
+    /// Returns a reference to the [`Project`]..
     pub fn project(&self) -> &Project {
         &self.project
+    }
+
+    /// Returns a reference to the [`Router`]..
+    pub fn router(&self) -> &Router {
+        &self.router
     }
 }

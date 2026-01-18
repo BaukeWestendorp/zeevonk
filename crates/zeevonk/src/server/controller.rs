@@ -1,16 +1,21 @@
 use std::net::{TcpListener, TcpStream, ToSocketAddrs};
+use std::sync::Arc;
 use std::{io, thread};
 
 use tungstenite::Message;
 
+use crate::ident::Identifier;
 use crate::packet::controller::ServerboundPacket;
-use crate::server::{self};
+use crate::server;
+use crate::server::router::Router;
 
-pub struct ControllerListener {}
+pub struct ControllerListener {
+    router: Arc<Router>,
+}
 
 impl ControllerListener {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(router: Arc<Router>) -> Self {
+        Self { router }
     }
 
     pub fn start<A: ToSocketAddrs>(&mut self, address: A) -> Result<(), server::Error> {
@@ -19,8 +24,9 @@ impl ControllerListener {
         for stream in listener.incoming() {
             match stream {
                 Ok(stream) => {
+                    let router = Arc::clone(&self.router);
                     thread::spawn(move || {
-                        if let Err(err) = accept_stream(stream) {
+                        if let Err(err) = accept_stream(stream, router) {
                             log::error!("controller client handler failed: {err}");
                         }
                     });
@@ -36,7 +42,7 @@ impl ControllerListener {
     }
 }
 
-fn accept_stream(stream: TcpStream) -> crate::Result<()> {
+fn accept_stream(stream: TcpStream, router: Arc<Router>) -> crate::Result<()> {
     let peer_addr = stream.peer_addr().unwrap();
 
     log::info!("connected to controller at {}", peer_addr);
@@ -70,7 +76,7 @@ fn accept_stream(stream: TcpStream) -> crate::Result<()> {
                     }
                 };
 
-                if let Err(e) = handle_packet(packet) {
+                if let Err(e) = handle_packet(packet, &router) {
                     log::error!("error handling packet: {e}");
                 }
             }
@@ -88,10 +94,12 @@ fn accept_stream(stream: TcpStream) -> crate::Result<()> {
     Ok(())
 }
 
-fn handle_packet(packet: ServerboundPacket) -> crate::Result<()> {
+fn handle_packet(packet: ServerboundPacket, router: &Arc<Router>) -> crate::Result<()> {
     match packet {
         ServerboundPacket::Trigger { trigger } => {
             log::info!("received trigger: {trigger:?}");
+            let client_id = Identifier::new("fixme-impl-client-id").unwrap();
+            router.handle_trigger(&client_id, trigger);
         }
     }
 
