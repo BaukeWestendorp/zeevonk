@@ -1,37 +1,41 @@
-use std::collections::HashMap;
-use std::sync::{Arc, mpsc};
+use std::sync::Arc;
 
 use crate::ident::Identifier;
 use crate::project::Project;
 use crate::project::definition::router::Route;
+use crate::server::client::controller::ControllerManager;
+use crate::server::client::processor::ProcessorManager;
 use crate::trigger::Trigger;
 
 pub struct Router {
     project: Arc<Project>,
-
-    registered_processors: HashMap<Identifier, mpsc::Sender<Trigger>>,
+    _controller_agent: Arc<ControllerManager>,
+    processor_agent: Arc<ProcessorManager>,
 }
 
 impl Router {
-    pub fn new(project: Arc<Project>) -> Self {
-        Self { project, registered_processors: HashMap::new() }
+    pub fn new(
+        project: Arc<Project>,
+        _controller_agent: Arc<ControllerManager>,
+        processor_agent: Arc<ProcessorManager>,
+    ) -> Self {
+        Self { project, _controller_agent, processor_agent }
     }
 
-    pub fn handle_trigger(&self, client_id: &Identifier, trigger: Trigger) {
+    pub async fn handle_trigger(&self, client_id: &Identifier, trigger: Trigger) {
         let Some(route) = self.route_for_trigger_source(client_id, trigger.id()) else {
             log::warn!("unrouted trigger from client '{client_id}': {trigger:?}");
             return;
         };
 
-        for target_client in &route.to_clients {
-            let Some(client) = self.registered_processor(target_client) else {
-                log::warn!("route to unregistered processor client: {target_client}");
-                continue;
-            };
-
-            client
-                .send(trigger.clone())
-                .expect("client should be unregistered before channel is closed");
+        for to_client_id in &route.to_clients {
+            if let Err(e) = self
+                .processor_agent
+                .send_trigger(route.from_client.clone(), to_client_id.clone(), trigger.clone())
+                .await
+            {
+                log::debug!("route to unregistered processor client: '{to_client_id}': {e}");
+            }
         }
     }
 
@@ -43,11 +47,9 @@ impl Router {
         let routes = &self.project.router_definition().routes;
 
         routes.iter().find(|route| {
-            &route.from_client == client_id && route.from_trigger.as_ref() == Some(trigger_id)
+            let trigger_matches =
+                route.from_trigger.as_ref() == Some(trigger_id) || route.from_trigger.is_none();
+            &route.from_client == client_id && trigger_matches
         })
-    }
-
-    fn registered_processor(&self, client: &Identifier) -> Option<&mpsc::Sender<Trigger>> {
-        self.registered_processors.get(client)
     }
 }

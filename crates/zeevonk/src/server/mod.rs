@@ -22,24 +22,21 @@
 //!
 //! The server will now listen for processor and controller clients, and handle DMX output automatically.
 //!
-//! For more advanced usage, see the documentation for [`Server`](crate::server::Server).
+//! For more advanced usage, see the documentation for [`Server`].
 
-use std::net::{Ipv4Addr, SocketAddrV4};
 use std::sync::Arc;
-use std::thread;
 
 use crate::project::Project;
 use crate::project::definition::ProjectDefinition;
-use crate::server::controller::ControllerListener;
+use crate::server::client::controller::{ControllerListener, ControllerManager};
+use crate::server::client::processor::{ProcessorListener, ProcessorManager};
 use crate::server::output::agent::OutputAgent;
-use crate::server::processor::ProcessorListener;
 use crate::server::router::Router;
 
 pub mod error;
 
-mod controller;
+mod client;
 mod output;
-mod processor;
 mod project_builder;
 mod resolver;
 mod router;
@@ -49,8 +46,9 @@ pub use error::{Error, Result};
 /// The main interface to start and manage a Zeevonk server.
 pub struct Server {
     project: Arc<Project>,
-
     output_agent: Arc<OutputAgent>,
+    controller_agent: Arc<ControllerManager>,
+    processor_agent: Arc<ProcessorManager>,
     router: Arc<Router>,
 }
 
@@ -59,40 +57,54 @@ impl Server {
     pub fn new(project: ProjectDefinition) -> crate::Result<Self> {
         let project_handle = Arc::new(project_builder::from_definition(project)?);
 
+        let output_agent = Arc::new(OutputAgent::new(project_handle.clone()));
+        let controller_agent = Arc::new(ControllerManager::new());
+        let processor_agent = Arc::new(ProcessorManager::new());
+
+        let router = Arc::new(Router::new(
+            project_handle.clone(),
+            controller_agent.clone(),
+            processor_agent.clone(),
+        ));
+
         Ok(Self {
             project: Arc::clone(&project_handle),
-
-            output_agent: Arc::new(OutputAgent::new(project_handle.clone())),
-            router: Arc::new(Router::new(project_handle)),
+            output_agent,
+            controller_agent,
+            processor_agent,
+            router,
         })
     }
 
     /// Starts the server instance and its listeners.
-    pub fn start(&self) {
+    pub async fn start(&self) -> crate::server::Result<()> {
         self.output_agent.start();
 
-        thread::spawn({
-            let port = self.project.config_definition().processor_port;
-            let address = SocketAddrV4::new(Ipv4Addr::LOCALHOST, port);
-            let output_agent = Arc::clone(&self.output_agent);
-            move || ProcessorListener::new(output_agent).start(address)
-        });
+        let project = &self.project;
+        let controller_port = project.config_definition().controller_port;
+        let processor_port = project.config_definition().processor_port;
 
-        thread::spawn({
-            let port = self.project.config_definition().controller_port;
-            let address = SocketAddrV4::new(Ipv4Addr::LOCALHOST, port);
-            let router = Arc::clone(&self.router);
-            move || ControllerListener::new(router).start(address)
-        });
+        let (controller_res, processor_res) = tokio::join!(
+            ControllerListener::start(
+                self.controller_agent.clone(),
+                self.router.clone(),
+                controller_port
+            ),
+            ProcessorListener::start(
+                self.processor_agent.clone(),
+                self.output_agent.clone(),
+                processor_port
+            )
+        );
+
+        controller_res?;
+        processor_res?;
+
+        Ok(())
     }
 
-    /// Returns a reference to the [`Project`]..
+    /// Returns a reference to the [`Project`].
     pub fn project(&self) -> &Project {
         &self.project
-    }
-
-    /// Returns a reference to the [`Router`]..
-    pub fn router(&self) -> &Router {
-        &self.router
     }
 }

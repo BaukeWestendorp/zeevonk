@@ -8,6 +8,8 @@ zeevonk = { workspace = true, features = ["server"] }
 
 log.workspace = true
 
+tokio = { workspace = true, features = ["rt", "rt-multi-thread"] }
+
 pretty_env_logger = "0.5.0"
 anyhow = "1.0"
 clap = { version = "4.5.53", features = ["derive"] }

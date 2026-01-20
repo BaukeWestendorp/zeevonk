@@ -2,6 +2,7 @@
 
 use std::io;
 
+use crate::ident::Identifier;
 use crate::server::output;
 
 /// A [`Result`] wrapper for Zeevonk errors.
@@ -17,4 +18,12 @@ pub enum Error {
     /// An error occurred while handling output.
     #[error("output error: {0}")]
     OutputError(#[from] output::Error),
+
+    /// A client was not found with the provided identifier.
+    #[error("client not found with identifier '{0}'")]
+    ClientNotFound(Identifier),
+
+    /// Failed to decode packet.
+    #[error("packet decoding failed")]
+    PacketDecodingFailed,
 }

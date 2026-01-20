@@ -1,7 +1,7 @@
 //! Contains the different kind of client implementations.
 //!
-//! - For processor client details, see [`processor`](crate::client::processor).
-//! - For controller client details, see [`controller`](crate::client::controller).
+//! - For processor client details, see [`processor`].
+//! - For controller client details, see [`controller`].
 
 #[cfg(feature = "client-controller")]
 pub mod controller;

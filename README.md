@@ -52,17 +52,30 @@ server.start();
 ### Example: Processor Client
 
 ```rust
+use zeevonk::attr::Attribute;
 use zeevonk::client::processor::Client;
+use zeevonk::ident::Identifier;
+use zeevonk::project::patch::{FixtureId, FixtureIdPart};
 use zeevonk::value::AttributeValues;
 
 #[tokio::main]
 async fn main() {
-    let mut client = Client::new();
+    let mut client = Client::new(Identifier::new("zv-example-processor").unwrap());
+    client.on_trigger(|from_client, trigger| eprintln!("{from_client}: {trigger:?}"));
     client.connect("ws://127.0.0.1:7334").await.unwrap();
+
+    let fid = FixtureId::new(FixtureIdPart::new(101).unwrap());
+
     let mut values = AttributeValues::new();
+    
     // Set attribute values for your fixtures here...
+    values.set(fid, Attribute::Dimmer, 1.0);
+    
     client.update_attributes(values, false).await.unwrap();
+
+    loop {}
 }
+
 ```
 
 ### Example: Controller Client
@@ -74,7 +87,9 @@ use zeevonk::trigger::{Trigger, TriggerValue};
 
 #[tokio::main]
 async fn main() {
-    let mut client = Client::new();
+    pretty_env_logger::init();
+
+    let mut client = Client::new(Identifier::new("zv-example-controller").unwrap());
     client.connect("ws://127.0.0.1:7335").await.unwrap();
 
     loop {
