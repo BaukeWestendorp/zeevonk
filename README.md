@@ -15,6 +15,9 @@ Zeevonk is a modular system for controlling lighting fixtures. It consists of a 
 - **Processor Client**: Calculates and sends fixture attribute values (like color, position, intensity) to the server.
 - **Controller Client**: Sends triggers (such as button presses or fader moves) to the server.
 
+## Some notable controllers:
+- [**zv-ctrl-bmdse**](https://github.com/BaukeWestendorp/zv-ctrl-bmdse): A Black Magic Design Speed Editor controller client based on [bmdse](https://crates.io/crates/bmdse).
+
 ## Run the Zeevonk server
 
 You can install zeevonk as a binary (called `zv`) using the following command:
