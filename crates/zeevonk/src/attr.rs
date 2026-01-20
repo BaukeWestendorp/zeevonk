@@ -4,10 +4,10 @@
 
 use std::fmt;
 use std::str::FromStr;
-use std::sync::Mutex;
+use std::sync::RwLock;
 
 lazy_static::lazy_static! {
-    static ref CUSTOM_NAMES: Mutex<Vec<String>> = Mutex::new(Vec::new());
+    static ref CUSTOM_NAMES: RwLock<Vec<String>> = RwLock::new(Vec::new());
 }
 
 /// A [GDTF](https://gdtf.eu) fixture attribute.
@@ -1705,7 +1705,8 @@ pub struct CustomName(usize);
 impl CustomName {
     /// Create a new [`CustomName`].
     pub fn new(s: String) -> Self {
-        let mut names = CUSTOM_NAMES.lock().unwrap();
+        let mut names = CUSTOM_NAMES.write().unwrap_or_else(|poisoned| poisoned.into_inner());
+
         if let Some(ix) = names.iter().position(|name| name == &s) {
             Self(ix)
         } else {
@@ -1723,7 +1724,8 @@ impl CustomName {
 
 impl std::fmt::Display for CustomName {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let name = CUSTOM_NAMES.lock().unwrap()[self.0].to_owned();
+        let names = CUSTOM_NAMES.read().unwrap_or_else(|poisoned| poisoned.into_inner());
+        let name = names[self.0].to_owned();
         write!(f, "{}", name)
     }
 }
