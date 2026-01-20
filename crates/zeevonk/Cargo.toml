@@ -3,6 +3,7 @@ name = "zeevonk"
 authors = ["Bauke Westendorp"]
 description = "A crate for zeevonk project"
 license = "MIT OR Apache-2.0"
+readme = "../../README.md"
 repository = "https://github.com/BaukeWestendorp/zeevonk"
 keywords = ["zeevonk", "lighting", "dmx", "sacn"]
 categories = ["multimedia", "network-programming"]
