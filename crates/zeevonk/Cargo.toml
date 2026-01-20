@@ -1,7 +1,7 @@
 [package]
 name = "zeevonk"
 authors = ["Bauke Westendorp"]
-description = "A crate for zeevonk project"
+description = "A new lighting control system server, that serves as a hub for lighting communication, processing and interaction."
 license = "MIT OR Apache-2.0"
 readme = "../../README.md"
 documentation = "https://docs.rs/zeevonk"
