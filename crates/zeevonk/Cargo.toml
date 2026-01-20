@@ -1,5 +1,11 @@
 [package]
 name = "zeevonk"
+authors = ["Bauke Westendorp"]
+description = "A crate for zeevonk project"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/BaukeWestendorp/zeevonk"
+keywords = ["zeevonk", "lighting", "dmx", "sacn"]
+categories = ["multimedia", "network-programming"]
 version.workspace = true
 edition.workspace = true
 
@@ -43,7 +49,6 @@ libftd2xx = { version = "0.33.1", optional = true }
 gdtf = { version = "0.2.0", optional = true }
 tungstenite = { version = "0.28.0", optional = true }
 futures-util = { version = "0.3.31", optional = true }
-
 
 [dev-dependencies]
 pretty_env_logger = "0.5.0"
