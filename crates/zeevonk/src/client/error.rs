@@ -9,4 +9,11 @@ pub enum Error {
     /// The connection with the server has been closed.
     #[error("the connection with the server has been closed")]
     ConnectionClosed,
+
+    /// Could not connect to the server
+    #[error("the server was not found at the address {uri}")]
+    ServerConnectionFailed {
+        /// The URI of the targeted server.
+        uri: String,
+    },
 }

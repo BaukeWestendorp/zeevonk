@@ -34,7 +34,6 @@
 //!     }
 //! }
 //! ```
-
 use tokio::sync::mpsc;
 
 use futures_util::{SinkExt, StreamExt};
@@ -68,7 +67,9 @@ impl Client {
     ///
     /// If the client is already connected this method returns immediately with `Ok(())`.
     pub async fn connect(&mut self, uri: &str) -> crate::client::Result<()> {
-        let (ws_stream, _) = tokio_tungstenite::connect_async(uri).await.unwrap();
+        let (ws_stream, _) = tokio_tungstenite::connect_async(uri)
+            .await
+            .map_err(|_| crate::client::Error::ServerConnectionFailed { uri: uri.to_string() })?;
         let (mut message_write, mut message_read) = ws_stream.split();
 
         let Some(mut outbound_rx) = self.outbound_rx.take() else {
@@ -84,14 +85,21 @@ impl Client {
                     outbound = outbound_rx.recv() => {
                         match outbound {
                             Some(packet) => {
-                                let message = Message::Text(serde_json::to_string(&packet).unwrap().into());
-                                if message_write.send(message).await.is_err() {
-                                    log::info!("connection with the server has been closed (outbound)");
+                                let message = match serde_json::to_string(&packet) {
+                                    Ok(json) => Message::Text(json.into()),
+                                    Err(e) => {
+                                        log::error!("failed to serialize packet: {e}");
+                                        // Could not serialize, skip this packet.
+                                        continue;
+                                    }
+                                };
+                                if let Err(e) = message_write.send(message).await {
+                                    log::info!("connection with the server has been closed (outbound): {e}");
                                     break;
                                 }
                             }
                             None => {
-                                // Channel closed.
+                                log::info!("outbound channel closed");
                                 break;
                             }
                         }
@@ -104,7 +112,7 @@ impl Client {
                                         log::debug!("received packet: {:?}", packet);
                                     }
                                     Err(e) => {
-                                        log::warn!("failed to parse packet: {e}");
+                                        log::warn!("failed to parse packet: {e} (raw: {text:?})");
                                     }
                                 }
                             }
