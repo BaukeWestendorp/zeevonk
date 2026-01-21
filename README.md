@@ -110,3 +110,13 @@ async fn main() {
 ```
 
 For more details, see the documentation for each module in the crate.
+
+## Licensing
+
+This project is dual-licensed under:
+
+- MIT License
+- Apache License, Version 2.0
+
+You may choose either license to govern your use of this project.
+See the LICENSE-MIT and LICENSE-APACHE files for details.
