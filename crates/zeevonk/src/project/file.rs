@@ -1,4 +1,4 @@
-//! Contains the project definition that is used to store the project to a file.
+//! Project file management module.
 
 use std::path::Path;
 use std::{fs, io};
@@ -8,22 +8,22 @@ const RELATIVE_DESCRIPTION_FILE_PATH: &str = "project.json";
 /// The relative path to the directory containing GDTF files within a project folder.
 const RELATIVE_GDTF_FILES_PATH: &str = "gdtf_files";
 
-/// Represents the complete definition of a project.
+/// Represents the main project file, containing all configuration sections.
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct ProjectDefinition {
-    /// The general configuration,
-    pub config: config::ConfigDefinition,
-    /// The patch definition.
-    pub patch: patch::PatchDefinition,
-    /// The DMX output configuration.
+pub struct ProjectFile {
+    /// The general configuration for the project.
+    pub config: config::Config,
+    /// The patch configuration, including fixtures and GDTF file references.
+    pub patch: patch::Patch,
+    /// The DMX output configuration for the project.
     pub dmx_output: dmx_output::DmxOutputDefinition,
-    /// The router configuration.
-    pub router: router::RouterDefinition,
+    /// The router configuration, defining routes between controller and processor clients.
+    pub router: router::Router,
 }
 
-impl ProjectDefinition {
-    /// Loads a [`ProjectDefinition`] from the specified project folder.
+impl ProjectFile {
+    /// Loads a [`ProjectFile`] from the specified project folder.
     ///
     /// # Errors
     ///
@@ -31,11 +31,10 @@ impl ProjectDefinition {
     /// or if the GDTF files directory cannot be read.
     pub fn load_from_folder(project_path: &Path) -> crate::Result<Self> {
         // Load project from description file.
-        let project_file = fs::File::open(project_path.join(RELATIVE_DESCRIPTION_FILE_PATH))?;
-        let mut project: ProjectDefinition =
-            serde_json::from_reader(project_file).map_err(|err| {
-                io::Error::other(format!("failed to deserialize project file: {err}"))
-            })?;
+        let file = fs::File::open(project_path.join(RELATIVE_DESCRIPTION_FILE_PATH))?;
+        let mut project: ProjectFile = serde_json::from_reader(file).map_err(|err| {
+            io::Error::other(format!("failed to deserialize project file: {err}"))
+        })?;
 
         // Get GDTF file paths.
         let gdtf_dir_path = project_path.join(RELATIVE_GDTF_FILES_PATH);
@@ -58,7 +57,7 @@ impl ProjectDefinition {
         Ok(project)
     }
 
-    /// Saves the [`ProjectDefinition`] to the specified project folder.
+    /// Saves the [`ProjectFile`] to the specified project folder.
     ///
     /// # Errors
     ///
@@ -97,7 +96,7 @@ pub mod config {
     /// Represents a DMX output, holding a default multiverse.
     #[derive(Debug, Clone, PartialEq)]
     #[derive(serde::Serialize, serde::Deserialize)]
-    pub struct ConfigDefinition {
+    pub struct Config {
         /// Port for the processor listener to bind to.
         #[serde(default = "default_processor_port")]
         pub processor_port: u16,
@@ -116,26 +115,26 @@ pub mod config {
 }
 
 pub mod patch {
-    //! Contains types and definitions related to patching fixtures.
+    //! Contains types and files related to patching fixtures.
 
-    use crate::project::patch::FixtureIdPart;
+    use crate::project::stage::FixtureIdPart;
     use std::path::PathBuf;
     use theymx::Address;
     use uuid::Uuid;
 
-    /// Defines the patch configuration.
+    /// Defines the stage configuration.
     #[derive(Debug, Clone, PartialEq)]
     #[derive(serde::Serialize, serde::Deserialize)]
-    pub struct PatchDefinition {
-        /// The list of GDTF file paths used in this patch.
+    pub struct Patch {
+        /// The list of GDTF file paths used in this stage.
         #[serde(skip)]
         pub gdtf_file_paths: Vec<PathBuf>,
 
-        /// The list of fixture definitions in the patch.
+        /// The list of fixture files in the stage.
         pub fixtures: Vec<FixtureDefinition>,
     }
 
-    /// Represents a single fixture instance in the patch.
+    /// Represents a single fixture instance in the stage.
     #[derive(Debug, Clone, PartialEq)]
     #[derive(serde::Serialize, serde::Deserialize)]
     pub struct FixtureDefinition {
@@ -211,7 +210,7 @@ pub mod router {
     /// Defines the router configuration for a project.
     #[derive(Debug, Clone, PartialEq)]
     #[derive(serde::Serialize, serde::Deserialize)]
-    pub struct RouterDefinition {
+    pub struct Router {
         /// All the different routes from controller clients
         /// to processor clients for this project.
         pub routes: Vec<Route>,

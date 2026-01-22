@@ -29,7 +29,7 @@ enum Commands {
 
 #[derive(Subcommand)]
 enum InfoSubcommand {
-    /// Dump the patch tree.
+    /// Dump the stage tree.
     Patch {
         /// Path to the project.
         project_path: PathBuf,

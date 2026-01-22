@@ -1,22 +1,13 @@
-use crate::project::Project;
-use crate::project::definition::ProjectDefinition;
-use crate::project::dmx_output::DmxOutput;
+use crate::project::{Project, file::ProjectFile};
 
-/// Converts a [`ProjectDefinition`] to a [`Project`].
-pub fn from_definition(definition: ProjectDefinition) -> crate::Result<Project> {
-    let (patch, default_multiverse) = patch::from_definition(&definition.patch)?;
+/// Converts a [`ProjectFile`] to a [`Project`].
+pub fn from_file(file: ProjectFile) -> crate::Result<Project> {
+    let stage = stage::from_file(&file)?;
 
-    Ok(Project {
-        patch_definition: definition.patch,
-        patch,
-        dmx_output: DmxOutput { default_multiverse },
-        dmx_output_definition: definition.dmx_output,
-        config_definition: definition.config,
-        router_definition: definition.router,
-    })
+    Ok(Project { file, stage })
 }
 
-mod patch {
+mod stage {
     use std::collections::{HashMap, HashSet};
     use std::fs;
     use std::str::FromStr;
@@ -28,20 +19,19 @@ mod patch {
     use theymx::{Address, Multiverse};
 
     use crate::attr::Attribute;
-    use crate::project::definition::patch::PatchDefinition;
-    use crate::project::patch::{
+    use crate::project::file::ProjectFile;
+    use crate::project::stage::{
         Fixture, FixtureChannelFunction, FixtureChannelFunctionKind, FixtureId, FixtureIdPart,
-        Patch, Relation, RelationKind,
+        Relation, RelationKind, Stage,
     };
     use crate::value::ClampedValue;
 
-    pub fn from_definition(definition: &PatchDefinition) -> crate::Result<(Patch, Multiverse)> {
-        let mut patch = Patch { fixtures: HashMap::new() };
-        let mut default_multiverse = Multiverse::new();
+    pub fn from_file(file: &ProjectFile) -> crate::Result<Stage> {
+        let mut stage = Stage { fixtures: HashMap::new(), defaulted_multiverse: Multiverse::new() };
 
-        // Get all fixture types used in the project patch.
+        // Get all fixture types used in the project stage.
         let mut fixture_types = HashMap::new();
-        for gdtf_file_path in &definition.gdtf_file_paths {
+        for gdtf_file_path in &file.patch.gdtf_file_paths {
             let file = fs::File::open(gdtf_file_path).map_err(|err| {
                 std::io::Error::other(format!(
                     "Failed to open GDTF file '{}': {}",
@@ -64,7 +54,7 @@ mod patch {
         }
 
         // Build all fixtures in in the project.
-        for fixture in &definition.fixtures {
+        for fixture in &file.patch.fixtures {
             let fixture_type =
                 fixture_types.get(&fixture.kind.gdtf_fixture_type_id).ok_or_else(|| {
                     crate::Error::FixtureTypeNotFound { id: fixture.kind.gdtf_fixture_type_id }
@@ -87,14 +77,14 @@ mod patch {
 
             let (built_fixtures, defaults) = builder.build_fixture_tree()?;
             for built_fixture in built_fixtures {
-                patch.fixtures.insert(built_fixture.id(), built_fixture);
+                stage.fixtures.insert(built_fixture.id(), built_fixture);
             }
             for (address, value) in defaults {
-                default_multiverse.set_value(&address, value);
+                stage.defaulted_multiverse.set_value(&address, value);
             }
         }
 
-        Ok((patch, default_multiverse))
+        Ok(stage)
     }
 
     /// Helper for building the fixture tree from a GDTF fixture type + DMX mode.

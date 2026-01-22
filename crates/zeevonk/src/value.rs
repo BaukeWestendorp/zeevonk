@@ -6,7 +6,7 @@ use std::{fmt, num, str};
 use theymx::{self, Address};
 
 use crate::attr::Attribute;
-use crate::project::patch::FixtureId;
+use crate::project::stage::FixtureId;
 
 /// A clamped value.
 ///

@@ -6,7 +6,7 @@ use theymx::Multiverse;
 
 use crate::attr::Attribute;
 use crate::project::Project;
-use crate::project::patch::FixtureId;
+use crate::project::stage::FixtureId;
 use crate::server::output::protocols::OutputInstance;
 use crate::server::resolver;
 use crate::value::{AttributeValues, ClampedValue};
@@ -26,7 +26,7 @@ impl OutputAgent {
         // do not need to show late frames. Just the most recent one.
         let (output_tx, output_rx) = crossbeam_channel::bounded::<Multiverse>(1);
 
-        let instance_definitions = project.dmx_output_definition().instances.clone();
+        let instance_definitions = project.file().dmx_output.instances.clone();
 
         for instance_definition in instance_definitions {
             let output_rx = crossbeam_channel::Receiver::clone(&output_rx);
@@ -80,9 +80,9 @@ impl OutputAgent {
 
         let updater = Arc::clone(&self.updater);
 
-        let default_multiverse = self.project.dmx_output().default_multiverse().clone();
+        let defaulted_multiverse = self.project.stage().defaulted_multiverse().clone();
         thread::spawn(move || {
-            let mut multiverse = default_multiverse.clone();
+            let mut multiverse = defaulted_multiverse.clone();
 
             let tick_interval = updater.tick_interval;
             let mut deadline = Instant::now() + tick_interval;
@@ -159,7 +159,7 @@ impl Updater {
         updates: &[AttributeValues],
     ) {
         for update in updates {
-            resolver::resolve(update, self.project.patch(), multiverse);
+            resolver::resolve(update, self.project.stage(), multiverse);
         }
     }
 

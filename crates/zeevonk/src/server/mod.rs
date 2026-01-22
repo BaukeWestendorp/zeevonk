@@ -27,7 +27,7 @@
 use std::sync::Arc;
 
 use crate::project::Project;
-use crate::project::definition::ProjectDefinition;
+use crate::project::file::ProjectFile;
 use crate::server::client::controller::{ControllerListener, ControllerManager};
 use crate::server::client::processor::{ProcessorListener, ProcessorManager};
 use crate::server::output::agent::OutputAgent;
@@ -54,8 +54,8 @@ pub struct Server {
 
 impl Server {
     /// Creates a new [`Server`] instance.
-    pub fn new(project: ProjectDefinition) -> crate::Result<Self> {
-        let project_handle = Arc::new(project_builder::from_definition(project)?);
+    pub fn new(project: ProjectFile) -> crate::Result<Self> {
+        let project_handle = Arc::new(project_builder::from_file(project)?);
 
         let output_agent = Arc::new(OutputAgent::new(project_handle.clone()));
         let controller_agent = Arc::new(ControllerManager::new());
@@ -81,8 +81,8 @@ impl Server {
         self.output_agent.start();
 
         let project = &self.project;
-        let controller_port = project.config_definition().controller_port;
-        let processor_port = project.config_definition().processor_port;
+        let controller_port = project.file().config.controller_port;
+        let processor_port = project.file().config.processor_port;
 
         let (controller_res, processor_res) = tokio::join!(
             ControllerListener::start(

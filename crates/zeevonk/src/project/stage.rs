@@ -5,27 +5,34 @@ use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::{cmp, fmt, str};
 
-use theymx::Address;
+use theymx::{Address, Multiverse};
 use uuid::Uuid;
 
 use crate::Error;
 use crate::attr::Attribute;
 use crate::value::ClampedValue;
-
-/// A patch containing a set of [`Fixture`]s.
+/// Represents a stage containing all fixtures and their configuration.
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct Patch {
+pub struct Stage {
+    /// The defaulted multiverse used for address resolution.
+    pub(crate) defaulted_multiverse: Multiverse,
+
+    /// Map of all fixtures in this stage, keyed by their [`FixtureId`].
     pub(crate) fixtures: HashMap<FixtureId, Fixture>,
 }
 
-impl Patch {
-    /// Returns the map of fixtures contained in this patch.
+impl Stage {
+    /// Returns a reference to the defaulted [`Multiverse`] used for address resolution.
+    pub fn defaulted_multiverse(&self) -> &Multiverse {
+        &self.defaulted_multiverse
+    }
+
+    /// Returns the map of fixtures contained in this stage.
     pub fn fixtures(&self) -> &HashMap<FixtureId, Fixture> {
         &self.fixtures
     }
 }
-
 /// A configured fixture instance.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Fixture {

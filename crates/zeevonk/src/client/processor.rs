@@ -11,7 +11,7 @@
 //! use zeevonk::attr::Attribute;
 //! use zeevonk::client::processor::Client;
 //! use zeevonk::ident::Identifier;
-//! use zeevonk::project::patch::{FixtureId, FixtureIdPart};
+//! use zeevonk::project::stage::{FixtureId, FixtureIdPart};
 //! use zeevonk::value::AttributeValues;
 //!
 //! #[tokio::main]

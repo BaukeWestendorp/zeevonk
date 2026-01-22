@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::ident::Identifier;
 use crate::project::Project;
-use crate::project::definition::router::Route;
+use crate::project::file::router::Route;
 use crate::server::client::controller::ControllerManager;
 use crate::server::client::processor::ProcessorManager;
 use crate::trigger::Trigger;
@@ -44,7 +44,7 @@ impl Router {
         client_id: &Identifier,
         trigger_id: &Identifier,
     ) -> Option<&Route> {
-        let routes = &self.project.router_definition().routes;
+        let routes = &self.project.file().router.routes;
 
         routes.iter().find(|route| {
             let trigger_matches =
