@@ -7,6 +7,8 @@ pub mod stage;
 use crate::project::{file::ProjectFile, stage::Stage};
 
 /// Represents a project, containing its file and stage information.
+#[derive(Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct Project {
     pub(crate) file: ProjectFile,
 

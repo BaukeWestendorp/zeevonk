@@ -235,6 +235,10 @@ impl ProcessorConnection {
                             }
                         }
                     }
+                    ServerboundPacket::RequestProjectData => {
+                        let project = (*self.project).clone();
+                        self.send_packet(ClientboundPacket::ProjectData { project }).await?;
+                    }
                 }
             }
             _ => {}

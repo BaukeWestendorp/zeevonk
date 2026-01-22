@@ -42,13 +42,14 @@
 //! For advanced usage, you can maintain local state and manage transitions for smooth updates.
 
 use std::sync::Arc;
-use tokio::sync::mpsc;
+use tokio::sync::{Mutex, mpsc, oneshot};
 
 use futures_util::{SinkExt, StreamExt};
 use tokio_tungstenite::tungstenite::protocol::Message;
 
 use crate::ident::Identifier;
 use crate::packet::processor::{ClientboundPacket, ServerboundPacket};
+use crate::project::Project;
 use crate::trigger::Trigger;
 use crate::value::AttributeValues;
 
@@ -60,13 +61,22 @@ pub struct Client {
     outbound_rx: Option<mpsc::UnboundedReceiver<ServerboundPacket>>,
 
     on_trigger: Option<Arc<dyn Fn(Identifier, Trigger) + Send + Sync>>,
+
+    // Used to deliver project data responses for RequestProjectData.
+    project_request: Arc<Mutex<Option<oneshot::Sender<Project>>>>,
 }
 
 impl Client {
     /// Create a new processor client.
     pub fn new(client_id: Identifier) -> Self {
         let (outbound_tx, outbound_rx) = mpsc::unbounded_channel::<ServerboundPacket>();
-        Self { client_id, outbound_tx, outbound_rx: Some(outbound_rx), on_trigger: None }
+        Self {
+            client_id,
+            outbound_tx,
+            outbound_rx: Some(outbound_rx),
+            on_trigger: None,
+            project_request: Arc::new(Mutex::new(None)),
+        }
     }
 
     /// This client's identifier. It's used to identify this client on the server so
@@ -108,14 +118,36 @@ impl Client {
         };
 
         let on_trigger = self.on_trigger.clone();
+        let project_request = self.project_request.clone();
 
         self.send_packet(ServerboundPacket::Register { client_id: self.client_id.clone() }).await?;
 
-        let handle_packet = move |packet| match packet {
-            ClientboundPacket::Trigger { from_client_id, trigger } => {
-                log::debug!("received trigger from {}: {:?}", from_client_id, trigger);
-                if let Some(cb) = &on_trigger {
-                    (cb)(from_client_id, trigger);
+        let handle_packet = {
+            // Async closure that can handle different incoming packet types.
+            let on_trigger = on_trigger.clone();
+            let project_request = project_request.clone();
+            async move |packet: ClientboundPacket| {
+                match packet {
+                    ClientboundPacket::Trigger { from_client_id, trigger } => {
+                        log::debug!("received trigger from {}: {:?}", from_client_id, trigger);
+                        if let Some(cb) = &on_trigger {
+                            (cb)(from_client_id, trigger);
+                        }
+                    }
+                    ClientboundPacket::ProjectData { project } => {
+                        log::debug!("received project data");
+                        // If there's a waiter for project data, send it the project.
+                        let mut guard = project_request.lock().await;
+                        if let Some(tx) = guard.take() {
+                            if tx.send(project).is_err() {
+                                log::warn!(
+                                    "project data receiver dropped before response could be sent"
+                                );
+                            }
+                        } else {
+                            log::debug!("no active waiter for project data");
+                        }
+                    }
                 }
             }
         };
@@ -150,7 +182,8 @@ impl Client {
                             Some(Ok(Message::Text(text))) => {
                                 match serde_json::from_str::<ClientboundPacket>(&text) {
                                     Ok(packet) => {
-                                        handle_packet(packet);
+                                        // Call the async handler and await it.
+                                        handle_packet(packet).await;
                                     }
                                     Err(e) => {
                                         log::warn!("failed to parse packet: {e} (raw: {text:?})");
@@ -185,6 +218,22 @@ impl Client {
     ) -> crate::client::Result<()> {
         self.send_packet(ServerboundPacket::UpdateAttributes { values, include_children }).await?;
         Ok(())
+    }
+
+    /// Request the full project data from the server.
+    ///
+    /// The server will respond with a ClientboundPacket::ProjectData { project } which is
+    /// delivered back to the caller.
+    pub async fn project_data(&self) -> crate::client::Result<Project> {
+        let (tx, rx) = oneshot::channel::<Project>();
+        *self.project_request.lock().await = Some(tx);
+
+        self.send_packet(ServerboundPacket::RequestProjectData).await?;
+
+        match rx.await {
+            Ok(project) => Ok(project),
+            Err(_) => Err(crate::client::Error::ConnectionClosed),
+        }
     }
 
     async fn send_packet(&self, packet: ServerboundPacket) -> crate::client::Result<()> {

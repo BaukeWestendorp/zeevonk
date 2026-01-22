@@ -117,10 +117,12 @@ pub mod config {
 pub mod patch {
     //! Contains types and files related to patching fixtures.
 
-    use crate::project::stage::FixtureIdPart;
     use std::path::PathBuf;
+
     use theymx::Address;
     use uuid::Uuid;
+
+    use crate::project::stage::FixtureIdPart;
 
     /// Defines the stage configuration.
     #[derive(Debug, Clone, PartialEq)]
