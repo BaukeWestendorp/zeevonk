@@ -93,6 +93,7 @@ impl Server {
             ProcessorListener::start(
                 self.processor_agent.clone(),
                 self.output_agent.clone(),
+                self.project.clone(),
                 processor_port
             )
         );
