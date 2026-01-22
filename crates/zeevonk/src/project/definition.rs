@@ -163,6 +163,8 @@ pub mod patch {
 pub mod dmx_output {
     //! Contains types and definitions related to DMX output configuration.
 
+    use std::net::SocketAddr;
+
     use theymx::UniverseId;
 
     /// Defines the DMX output configuration for a project.
@@ -184,6 +186,19 @@ pub mod dmx_output {
             universe_id: UniverseId,
             /// The serial number of the Enttec Open DMX device.
             serial_number: String,
+        },
+        /// A sACN network output.
+        Sacn {
+            /// The name of this sACN output instance.
+            name: String,
+            /// The universe IDs this output instance is assigned to.
+            universe_ids: Vec<UniverseId>,
+            /// Whether this output is in preview mode.
+            preview_mode: bool,
+            /// The sACN priority for this output.
+            priority: u8,
+            /// The address to send the sACN output to.
+            target_address: SocketAddr,
         },
     }
 }

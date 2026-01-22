@@ -4,6 +4,7 @@ use crate::project::definition::dmx_output::DmxOutputInstanceDefinition;
 use crate::server::output;
 
 pub mod enttec_open_dmx;
+pub mod sacn;
 
 pub trait OutputInstanceImplementation {
     fn setup(&mut self) -> Result<(), output::Error>;
@@ -46,6 +47,22 @@ impl TryFrom<DmxOutputInstanceDefinition> for OutputInstance {
             DmxOutputInstanceDefinition::EnttecOpenDmx { universe_id, serial_number } => {
                 let eod = enttec_open_dmx::EnttecOpenDmxOutput::new(universe_id, serial_number)?;
                 Self::new(eod)
+            }
+            DmxOutputInstanceDefinition::Sacn {
+                name,
+                universe_ids,
+                preview_mode,
+                priority,
+                target_address,
+            } => {
+                let sacn = sacn::SacnOutput::new(
+                    name,
+                    universe_ids,
+                    preview_mode,
+                    priority,
+                    target_address,
+                )?;
+                Self::new(sacn)
             }
         };
 

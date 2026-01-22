@@ -12,6 +12,8 @@ use crate::server::resolver;
 use crate::value::{AttributeValues, ClampedValue};
 
 pub struct OutputAgent {
+    project: Arc<Project>,
+
     updater: Arc<Updater>,
     update_tx: mpsc::Sender<AttributeValues>,
     update_rx: Mutex<Option<mpsc::Receiver<AttributeValues>>>,
@@ -45,6 +47,8 @@ impl OutputAgent {
         }
 
         Self {
+            project: project.clone(),
+
             updater: Arc::new(Updater::new(output_tx, project)),
             update_tx,
             update_rx: Mutex::new(Some(update_rx)),
@@ -76,8 +80,9 @@ impl OutputAgent {
 
         let updater = Arc::clone(&self.updater);
 
+        let default_multiverse = self.project.dmx_output().default_multiverse().clone();
         thread::spawn(move || {
-            let mut multiverse = Multiverse::new();
+            let mut multiverse = default_multiverse.clone();
 
             let tick_interval = updater.tick_interval;
             let mut deadline = Instant::now() + tick_interval;
