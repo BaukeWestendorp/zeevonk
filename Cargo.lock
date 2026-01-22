@@ -94,6 +94,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "arrayvec"
+version = "0.7.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c02d123df017efcdfbd739ef81735b36c5ba83ec3c59c80a9d7ecc718f92e50"
+
+[[package]]
 name = "block-buffer"
 version = "0.10.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1134,6 +1140,7 @@ version = "1.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2e054861b4bd027cd373e18e8d8d8e6548085000e41290d95ce0c373a654b4a"
 dependencies = [
+ "getrandom",
  "js-sys",
  "serde_core",
  "wasm-bindgen",
@@ -1322,6 +1329,7 @@ dependencies = [
 name = "zeevonk"
 version = "0.1.2"
 dependencies = [
+ "arrayvec",
  "crossbeam-channel",
  "futures-util",
  "gdtf",
@@ -1331,6 +1339,7 @@ dependencies = [
  "pretty_env_logger",
  "serde",
  "serde_json",
+ "socket2",
  "spin_sleep",
  "theymx",
  "thiserror 2.0.17",
