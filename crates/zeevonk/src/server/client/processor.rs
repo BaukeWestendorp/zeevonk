@@ -10,10 +10,14 @@ use tokio::sync::{Mutex, RwLock, mpsc};
 use tokio_tungstenite::tungstenite::protocol::Message;
 use tokio_tungstenite::{WebSocketStream, accept_async};
 
+use crate::attr::Attribute;
 use crate::ident::Identifier;
 use crate::packet::processor::{ClientboundPacket, ServerboundPacket};
+use crate::project::Project;
+use crate::project::patch::FixtureId;
 use crate::server::output::agent::OutputAgent;
 use crate::trigger::Trigger;
+use crate::value::ClampedValue;
 
 pub struct ProcessorManager {
     processors: Mutex<HashMap<Identifier, Arc<ProcessorConnection>>>,
@@ -66,6 +70,7 @@ impl ProcessorListener {
     pub async fn start(
         agent: Arc<ProcessorManager>,
         output_agent: Arc<OutputAgent>,
+        project: Arc<Project>,
         port: u16,
     ) -> crate::server::Result<()> {
         let addr = format!("127.0.0.1:{}", port);
@@ -76,6 +81,7 @@ impl ProcessorListener {
             let (stream, peer_addr) = listener.accept().await?;
             let agent = agent.clone();
             let output_agent = output_agent.clone();
+            let project = project.clone();
             tokio::spawn(async move {
                 match accept_async(stream).await {
                     Ok(ws_stream) => {
@@ -83,6 +89,7 @@ impl ProcessorListener {
                             peer_addr,
                             output_agent.clone(),
                             agent.clone(),
+                            project.clone(),
                         ));
                         conn.run(ws_stream).await;
                     }
@@ -97,6 +104,7 @@ pub struct ProcessorConnection {
     peer_addr: SocketAddr,
     output_agent: Arc<OutputAgent>,
     agent: Arc<ProcessorManager>,
+    project: Arc<Project>,
     client_id: RwLock<Option<Identifier>>,
     outbound_tx: RwLock<Option<mpsc::UnboundedSender<ClientboundPacket>>>,
 }
@@ -106,11 +114,13 @@ impl ProcessorConnection {
         peer_addr: SocketAddr,
         output_agent: Arc<OutputAgent>,
         agent: Arc<ProcessorManager>,
+        project: Arc<Project>,
     ) -> Self {
         Self {
             peer_addr,
             output_agent,
             agent,
+            project,
             client_id: RwLock::new(None),
             outbound_tx: RwLock::new(None),
         }
@@ -186,11 +196,44 @@ impl ProcessorConnection {
                         self.agent.unregister(&client_id).await;
                     }
                     ServerboundPacket::UpdateAttributes { values, include_children } => {
-                        if include_children {
-                            todo!();
-                        }
+                        self.output_agent.update_values(values.clone());
 
-                        self.output_agent.update_values(values);
+                        if include_children {
+                            fn set_values_recursively(
+                                project: &Project,
+                                output_agent: &OutputAgent,
+                                fixture_id: &FixtureId,
+                                attribute: Attribute,
+                                value: ClampedValue,
+                            ) {
+                                let Some(fixture) = project.patch().fixtures().get(fixture_id)
+                                else {
+                                    return;
+                                };
+
+                                for sub_id in fixture.sub_ids() {
+                                    output_agent.update_value(*sub_id, attribute, value);
+
+                                    set_values_recursively(
+                                        project,
+                                        output_agent,
+                                        &sub_id,
+                                        attribute,
+                                        value,
+                                    );
+                                }
+                            }
+
+                            for (fixture_id, attribute, value) in values.values() {
+                                set_values_recursively(
+                                    &self.project,
+                                    &self.output_agent,
+                                    fixture_id,
+                                    *attribute,
+                                    *value,
+                                );
+                            }
+                        }
                     }
                 }
             }

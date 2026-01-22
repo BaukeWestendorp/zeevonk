@@ -4,10 +4,12 @@ use std::time::{Duration, Instant};
 
 use theymx::Multiverse;
 
+use crate::attr::Attribute;
 use crate::project::Project;
+use crate::project::patch::FixtureId;
 use crate::server::output::protocols::OutputInstance;
 use crate::server::resolver;
-use crate::value::AttributeValues;
+use crate::value::{AttributeValues, ClampedValue};
 
 pub struct OutputAgent {
     updater: Arc<Updater>,
@@ -50,6 +52,12 @@ impl OutputAgent {
     }
 
     pub fn update_values(&self, values: AttributeValues) {
+        self.update_tx.send(values).unwrap();
+    }
+
+    pub fn update_value(&self, fixture_id: FixtureId, attribute: Attribute, value: ClampedValue) {
+        let mut values = AttributeValues::new();
+        values.set(fixture_id, attribute, value);
         self.update_tx.send(values).unwrap();
     }
 
