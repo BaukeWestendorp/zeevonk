@@ -46,13 +46,13 @@ The crate has three main features you can enable:
 
 ```rust
 use zeevonk::server::Server;
-use zeevonk::project::definition::ProjectDefinition;
+use zeevonk::project::file::ProjectFile;
 
-// Create a project definition.
-let project_def = ProjectDefinition::default();
+// Create a project file.
+let project_file = ProjectFile::default();
 
 // Create and start the server.
-let server = Server::new(project_def).unwrap();
+let server = Server::new(project_file).unwrap();
 server.start();
 ```
 
@@ -62,7 +62,7 @@ server.start();
 use zeevonk::attr::Attribute;
 use zeevonk::client::processor::Client;
 use zeevonk::ident::Identifier;
-use zeevonk::project::patch::{FixtureId, FixtureIdPart};
+use zeevonk::project::stage::{FixtureId, FixtureIdPart};
 use zeevonk::value::AttributeValues;
 
 #[tokio::main]

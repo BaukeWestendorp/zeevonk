@@ -14,7 +14,7 @@ use crate::attr::Attribute;
 use crate::ident::Identifier;
 use crate::packet::processor::{ClientboundPacket, ServerboundPacket};
 use crate::project::Project;
-use crate::project::patch::FixtureId;
+use crate::project::stage::FixtureId;
 use crate::server::output::agent::OutputAgent;
 use crate::trigger::Trigger;
 use crate::value::ClampedValue;
@@ -206,7 +206,7 @@ impl ProcessorConnection {
                                 attribute: Attribute,
                                 value: ClampedValue,
                             ) {
-                                let Some(fixture) = project.patch().fixtures().get(fixture_id)
+                                let Some(fixture) = project.stage().fixtures().get(fixture_id)
                                 else {
                                     return;
                                 };
@@ -234,6 +234,10 @@ impl ProcessorConnection {
                                 );
                             }
                         }
+                    }
+                    ServerboundPacket::RequestProjectData => {
+                        let project = (*self.project).clone();
+                        self.send_packet(ClientboundPacket::ProjectData { project }).await?;
                     }
                 }
             }

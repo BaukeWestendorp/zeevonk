@@ -45,6 +45,7 @@ pub mod controller {
 pub mod processor {
     use crate::ident::Identifier;
     use crate::packet::Packet;
+    use crate::project::Project;
     use crate::trigger::Trigger;
     use crate::value::AttributeValues;
 
@@ -68,6 +69,9 @@ pub mod processor {
             #[serde(default)]
             include_children: bool,
         },
+
+        /// Request the server to provide project data.
+        RequestProjectData,
     }
 
     impl Packet for ServerboundPacket {}
@@ -82,6 +86,11 @@ pub mod processor {
             from_client_id: Identifier,
             /// The trigger.
             trigger: Trigger,
+        },
+        /// Project data sent from the server.
+        ProjectData {
+            /// The project data.
+            project: Project,
         },
     }
 

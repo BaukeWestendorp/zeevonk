@@ -1,13 +1,13 @@
 use theymx::Multiverse;
 
 use crate::attr::Attribute;
-use crate::project::patch::{
-    FixtureChannelFunction, FixtureChannelFunctionKind, FixtureId, Patch, Relation, RelationKind,
+use crate::project::stage::{
+    FixtureChannelFunction, FixtureChannelFunctionKind, FixtureId, Relation, RelationKind, Stage,
 };
 use crate::value::{AttributeValues, ClampedValue};
 
-pub fn resolve(values: &AttributeValues, patch: &Patch, multiverse: &mut Multiverse) {
-    Resolver::new(values, patch, multiverse).resolve();
+pub fn resolve(values: &AttributeValues, stage: &Stage, multiverse: &mut Multiverse) {
+    Resolver::new(values, stage, multiverse).resolve();
 }
 
 /// Resolver for translating Zeevonk state into a physical DMX multiverse.
@@ -20,7 +20,7 @@ pub fn resolve(values: &AttributeValues, patch: &Patch, multiverse: &mut Multive
 /// resolved against the master's computed values.
 struct Resolver<'a> {
     attribute_values: &'a AttributeValues,
-    patch: &'a Patch,
+    stage: &'a Stage,
     multiverse: &'a mut Multiverse,
 
     /// Relations whose writes are deferred until after the initial fixture
@@ -33,15 +33,15 @@ impl<'a> Resolver<'a> {
     /// Create a new resolver.
     pub fn new(
         attribute_values: &'a AttributeValues,
-        patch: &'a Patch,
+        stage: &'a Stage,
         multiverse: &'a mut Multiverse,
     ) -> Self {
-        Self { attribute_values, patch, multiverse, deferred_relations: Vec::new() }
+        Self { attribute_values, stage, multiverse, deferred_relations: Vec::new() }
     }
 
     /// Perform resolution and return the populated multiverse.
     pub fn resolve(mut self) {
-        let fixture_ids: Vec<FixtureId> = { self.patch.fixtures().keys().cloned().collect() };
+        let fixture_ids: Vec<FixtureId> = { self.stage.fixtures().keys().cloned().collect() };
 
         // Resolve each fixture independently.
         for fixture_id in fixture_ids {
@@ -57,7 +57,7 @@ impl<'a> Resolver<'a> {
         for (relation, value) in deferred_writes {
             // Look up the target channel function from show data.
             let channel_function_opt = {
-                self.patch
+                self.stage
                     .fixtures()
                     .get(&relation.fixture_id())
                     .and_then(|f| f.channel_function(&relation.attribute()))
@@ -74,7 +74,7 @@ impl<'a> Resolver<'a> {
     fn resolve_fixture(&mut self, fixture_id: FixtureId) {
         // Snapshot the fixture's channel functions.
         let channel_functions: Vec<(Attribute, FixtureChannelFunction)> = {
-            if let Some(fixture) = self.patch.fixtures().get(&fixture_id) {
+            if let Some(fixture) = self.stage.fixtures().get(&fixture_id) {
                 fixture.channel_functions().map(|(a, cf)| (*a, cf.clone())).collect()
             } else {
                 Vec::new()

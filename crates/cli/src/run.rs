@@ -1,11 +1,10 @@
 use std::path::PathBuf;
 
-use zeevonk::project::definition::ProjectDefinition;
-use zeevonk::server::Server;
+use zeevonk::{project::file::ProjectFile, server::Server};
 
 /// Runs the project at the given path.
 pub async fn run_project(project_path: PathBuf) -> anyhow::Result<()> {
-    let project_definition = ProjectDefinition::load_from_folder(&project_path)?;
+    let project_definition = ProjectFile::load_from_folder(&project_path)?;
     let server = Server::new(project_definition)?;
     server.start().await?;
 
