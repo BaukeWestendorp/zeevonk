@@ -188,7 +188,6 @@ pub mod dmx_output {
             serial_number: String,
         },
         /// A sACN network output.
-        /// A sACN network output.
         Sacn {
             /// The name of this sACN output instance.
             name: String,
