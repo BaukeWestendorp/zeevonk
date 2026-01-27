@@ -17,7 +17,7 @@ Zeevonk is a modular system for controlling lighting fixtures. It consists of a 
 
 Processor and controller clients could even be combined into a single client. This can be useful if your program is not supposed to be modular. 
 
-![Zeevonk system diagram](zeevonk-diagram.png)
+![Zeevonk system diagram](zeevonk-diagram.svg)
 
 This project is the result of a deep rabbithole I went into, when creating [Radiant](https://github.com/BaukeWestendorp/radiant). I realized I was writing the same DMX resolvers for GDTF files over and over again. Zeevonk is my way of consolidating all of my research into a hub for DMX lighting.
 
