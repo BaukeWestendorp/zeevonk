@@ -1,6 +1,8 @@
 #![warn(missing_docs)]
 
-//! Zeevonk is a modular lighting control system, consisting of a server and two kinds of client.
+//! Zeevonk is a modular lighting control system.
+//! The Zeevonk server is a hub for multiple clients that can update attribute values,
+//! which the server then will output to the configured DMX protocols.
 //!
 //! <div class="warning">
 //!
@@ -14,8 +16,7 @@
 //! # Components
 //!
 //! - [Server](crate::server): Manages clients, resolves attributes, and sends DMX.
-//! - [Processor Client](crate::client::processor): Generates and sends attribute values to the server.
-//! - [Controller Client](crate::client::controller): Originates triggers sent to the server.
+//! - [Client](crate::client): Can generate and send attribute values to the server, or talk to other clients using [`Trigger`][trigger::Trigger]s.
 //!
 //! See the respective module documentation for details.
 
@@ -27,7 +28,7 @@ pub mod project;
 pub mod trigger;
 pub mod value;
 
-#[cfg(any(feature = "client-processor", feature = "client-controller"))]
+#[cfg(any(feature = "client"))]
 pub mod client;
 #[cfg(feature = "server")]
 pub mod server;

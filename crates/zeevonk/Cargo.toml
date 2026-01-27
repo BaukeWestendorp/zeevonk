@@ -23,12 +23,7 @@ server = [
     "dep:arrayvec",
     "dep:socket2",
 ]
-client-processor = [
-    "dep:tokio",
-    "dep:tokio-tungstenite",
-    "dep:futures-util",
-]
-client-controller = [
+client = [
     "dep:tokio",
     "dep:tokio-tungstenite",
     "dep:futures-util",

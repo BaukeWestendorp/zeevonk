@@ -9,11 +9,13 @@ A modular lighting control system for modern DMX-based lighting setups.
 
 ## What is Zeevonk?
 
-Zeevonk is a modular system for controlling lighting fixtures. It consists of a server and two types of clients:
+Zeevonk is a modular system for controlling lighting fixtures. It consists of a server and two types of client:
 
 - **Server**: Manages clients, processes triggers and attribute updates, and sends DMX data.
 - **Processor Client**: Calculates and sends fixture attribute values (like color, position, intensity) to the server.
 - **Controller Client**: Sends triggers (such as button presses or fader moves) to the server.
+
+Processor and controller clients could even be combined into a single client. This can be useful if your program is not supposed to be modular. 
 
 ![Zeevonk system diagram](zeevonk-diagram.png)
 
@@ -34,13 +36,11 @@ cargo install --path crates/cli
 
 ### Features
 
-The crate has three main features you can enable:
+The crate has two main features you can enable:
 
 `server`: Start and configure the server from your own code instead of the CLI.
 
-`client-processor`: Use the processor client.
-
-`client-controller`: Use the controller client.
+`client`: Create a new client to communicate with the server.
 
 ### Example: Starting the Server
 
@@ -60,7 +60,7 @@ server.start();
 
 ```rust
 use zeevonk::attr::Attribute;
-use zeevonk::client::processor::Client;
+use zeevonk::client::Client;
 use zeevonk::ident::Identifier;
 use zeevonk::project::stage::{FixtureId, FixtureIdPart};
 use zeevonk::value::AttributeValues;
@@ -88,7 +88,7 @@ async fn main() {
 ### Example: Controller Client
 
 ```rust
-use zeevonk::client::controller::Client;
+use zeevonk::client::Client;
 use zeevonk::ident::Identifier;
 use zeevonk::trigger::{Trigger, TriggerValue};
 
@@ -97,7 +97,7 @@ async fn main() {
     pretty_env_logger::init();
 
     let mut client = Client::new(Identifier::new("zv-example-controller").unwrap());
-    client.connect("ws://127.0.0.1:7335").await.unwrap();
+    client.connect("ws://127.0.0.1:7334").await.unwrap();
 
     loop {
         client
