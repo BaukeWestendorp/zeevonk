@@ -1,6 +1,6 @@
 //! Identifiers for tracking triggers or clients.
 
-/// A validated identifier consisting of lowercase ASCII letters, digits, or hyphens.
+/// A validated identifier consisting of lowercase ASCII letters, digits, slashes or hyphens.
 ///
 /// Use [`Identifier::new`] to construct a new identifier, which ensures the value
 /// contains only valid characters. The underlying string can be accessed with [`Identifier::as_str`].
@@ -17,13 +17,16 @@ impl Identifier {
     /// # use std::error::Error;
     /// # fn main() -> Result<(), Box<dyn Error>> {
     /// use zeevonk::ident::Identifier;
-    /// let id = Identifier::new("client-01")?;
-    /// assert_eq!(id.as_str(), "client-01");
+    /// let id = Identifier::new("client-01/1")?;
+    /// assert_eq!(id.as_str(), "client-01/1");
     /// # Ok(()) }
     /// ```
     pub fn new(id: impl Into<String>) -> crate::Result<Self> {
         let id_str = id.into();
-        if id_str.chars().all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-') {
+        if id_str
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-' || c == '/')
+        {
             Ok(Self(id_str))
         } else {
             Err(crate::Error::InvalidIdentifier)
