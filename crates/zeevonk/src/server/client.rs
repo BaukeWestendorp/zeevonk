@@ -12,40 +12,41 @@ use tokio_tungstenite::{WebSocketStream, accept_async};
 
 use crate::attr::Attribute;
 use crate::ident::Identifier;
-use crate::packet::processor::{ClientboundPacket, ServerboundPacket};
+use crate::packet::{ClientboundPacket, ServerboundPacket};
 use crate::project::Project;
 use crate::project::stage::FixtureId;
 use crate::server::output::agent::OutputAgent;
+use crate::server::router::Router;
 use crate::trigger::Trigger;
 use crate::value::ClampedValue;
 
-pub struct ProcessorManager {
-    processors: Mutex<HashMap<Identifier, Arc<ProcessorConnection>>>,
+pub struct ClientAgent {
+    clients: Mutex<HashMap<Identifier, Arc<ClientHandler>>>,
 }
 
-impl ProcessorManager {
+impl ClientAgent {
     pub fn new() -> Self {
-        Self { processors: Mutex::new(HashMap::new()) }
+        Self { clients: Mutex::new(HashMap::new()) }
     }
 
-    pub async fn register(&self, client_id: Identifier, conn: Arc<ProcessorConnection>) {
-        let mut processors = self.processors.lock().await;
-        if processors.contains_key(&client_id) {
-            log::warn!("processor with id '{}' already exists", client_id);
+    pub async fn register(&self, client_id: Identifier, conn: Arc<ClientHandler>) {
+        let mut clients = self.clients.lock().await;
+        if clients.contains_key(&client_id) {
+            log::warn!("client with id '{}' already exists", client_id);
             return;
         }
 
-        processors.insert(client_id.clone(), conn);
-        log::info!("processor with id '{}' registered.", client_id);
+        clients.insert(client_id.clone(), conn);
+        log::info!("client with id '{}' registered.", client_id);
     }
 
     pub async fn unregister(&self, client_id: &Identifier) {
-        let mut processors = self.processors.lock().await;
-        if processors.remove(client_id).is_some() {
-            log::info!("processor with id '{}' unregistered.", client_id);
+        let mut clients = self.clients.lock().await;
+        if clients.remove(client_id).is_some() {
+            log::info!("client with id '{}' unregistered.", client_id);
             // Successfully removed
         } else {
-            log::warn!("processor with id '{}' does not exist, cannot unregister.", client_id);
+            log::warn!("client with id '{}' does not exist, cannot unregister.", client_id);
         }
     }
 
@@ -55,8 +56,8 @@ impl ProcessorManager {
         to_client_id: Identifier,
         trigger: Trigger,
     ) -> crate::server::Result<()> {
-        let processors = self.processors.lock().await;
-        if let Some(conn) = processors.get(&to_client_id) {
+        let clients = self.clients.lock().await;
+        if let Some(conn) = clients.get(&to_client_id) {
             conn.send_trigger(from_client_id, trigger).await
         } else {
             Err(crate::server::Error::ClientNotFound(to_client_id.clone()))
@@ -64,31 +65,34 @@ impl ProcessorManager {
     }
 }
 
-pub struct ProcessorListener;
+pub struct ClientListener;
 
-impl ProcessorListener {
+impl ClientListener {
     pub async fn start(
-        agent: Arc<ProcessorManager>,
+        client_agent: Arc<ClientAgent>,
         output_agent: Arc<OutputAgent>,
+        router: Arc<Router>,
         project: Arc<Project>,
         port: u16,
     ) -> crate::server::Result<()> {
         let addr = format!("127.0.0.1:{}", port);
         let listener = TcpListener::bind(&addr).await?;
-        log::info!("listening for processors on {}", addr);
+        log::info!("listening for clients on {}", addr);
 
         loop {
             let (stream, peer_addr) = listener.accept().await?;
-            let agent = agent.clone();
+            let client_agent = client_agent.clone();
             let output_agent = output_agent.clone();
+            let router = router.clone();
             let project = project.clone();
             tokio::spawn(async move {
                 match accept_async(stream).await {
                     Ok(ws_stream) => {
-                        let conn = Arc::new(ProcessorConnection::new(
+                        let conn = Arc::new(ClientHandler::new(
                             peer_addr,
                             output_agent.clone(),
-                            agent.clone(),
+                            client_agent.clone(),
+                            router.clone(),
                             project.clone(),
                         ));
                         conn.run(ws_stream).await;
@@ -100,26 +104,29 @@ impl ProcessorListener {
     }
 }
 
-pub struct ProcessorConnection {
+pub struct ClientHandler {
     peer_addr: SocketAddr,
     output_agent: Arc<OutputAgent>,
-    agent: Arc<ProcessorManager>,
+    client_agent: Arc<ClientAgent>,
+    router: Arc<Router>,
     project: Arc<Project>,
     client_id: RwLock<Option<Identifier>>,
     outbound_tx: RwLock<Option<mpsc::UnboundedSender<ClientboundPacket>>>,
 }
 
-impl ProcessorConnection {
+impl ClientHandler {
     pub fn new(
         peer_addr: SocketAddr,
         output_agent: Arc<OutputAgent>,
-        agent: Arc<ProcessorManager>,
+        client_agent: Arc<ClientAgent>,
+        router: Arc<Router>,
         project: Arc<Project>,
     ) -> Self {
         Self {
             peer_addr,
             output_agent,
-            agent,
+            client_agent,
+            router,
             project,
             client_id: RwLock::new(None),
             outbound_tx: RwLock::new(None),
@@ -138,11 +145,11 @@ impl ProcessorConnection {
                             log::error!("error handling packet: {err}");
                         }
                         Some(Err(err)) => {
-                            log::error!("WebSocket stream error for processor at {}: {}", self.peer_addr, err);
+                            log::error!("WebSocket stream error for client at {}: {}", self.peer_addr, err);
                             break;
                         },
                         None => {
-                            log::info!("WebSocket stream closed for processor at {}", self.peer_addr);
+                            log::info!("WebSocket stream closed for client at {}", self.peer_addr);
                             break;
                         }
                     }
@@ -154,7 +161,7 @@ impl ProcessorConnection {
                             let json = serde_json::to_string(&packet).unwrap().into();
                             let msg = Message::Text(json);
                             if let Err(e) = ws_stream.send(msg).await {
-                                log::error!("failed to send packet to processor: {}", e);
+                                log::error!("failed to send packet to client: {}", e);
                                 break;
                             }
                         }
@@ -165,10 +172,10 @@ impl ProcessorConnection {
         }
 
         if let Some(client_id) = self.client_id.write().await.take() {
-            self.agent.unregister(&client_id).await;
+            self.client_agent.unregister(&client_id).await;
         }
 
-        log::info!("processor connection with {} closed", self.peer_addr);
+        log::info!("client connection with {} closed", self.peer_addr);
     }
 
     async fn handle_ws_message(self: &Arc<Self>, message: Message) -> crate::server::Result<()> {
@@ -180,7 +187,7 @@ impl ProcessorConnection {
 
                 // Register if it has not already.
                 if let ServerboundPacket::Register { client_id } = packet {
-                    self.agent.register(client_id.clone(), Arc::clone(&self)).await;
+                    self.client_agent.register(client_id.clone(), Arc::clone(&self)).await;
                     *self.client_id.write().await = Some(client_id);
                     return Ok(());
                 }
@@ -193,8 +200,9 @@ impl ProcessorConnection {
                         unreachable!("we should have already checked registration");
                     }
                     ServerboundPacket::Unregister => {
-                        self.agent.unregister(&client_id).await;
+                        self.client_agent.unregister(&client_id).await;
                     }
+
                     ServerboundPacket::UpdateAttributes { values, include_children } => {
                         self.output_agent.update_values(values.clone());
 
@@ -235,9 +243,14 @@ impl ProcessorConnection {
                             }
                         }
                     }
+
                     ServerboundPacket::RequestProjectData => {
                         let project = (*self.project).clone();
                         self.send_packet(ClientboundPacket::ProjectData { project }).await?;
+                    }
+
+                    ServerboundPacket::Trigger { trigger } => {
+                        self.router.handle_trigger(&client_id, trigger).await;
                     }
                 }
             }

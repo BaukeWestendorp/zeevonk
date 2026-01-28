@@ -1,12 +1,11 @@
-//! Represents a trigger sent from a controller client to be processed and routed by the server.
+//! Represents a trigger sent from a client to be processed and routed by the server.
 //!
-//! A trigger can be sent from a controller client, and will be processed by the server.
-//! The server will route it to the correct processor client according to the project configuration.
+//! The server will route any incoming triggers to the correct client according to the project configuration.
 
 use crate::ident::Identifier;
 
-/// A trigger can be sent from a controller client, and will be processed by the server.
-/// The server will route it to the correct processor client according to the project configuration.
+/// A trigger can be sent from a client, and will be processed by the server.
+/// The server will route any incoming triggers to the correct client according to the project configuration.
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Trigger {

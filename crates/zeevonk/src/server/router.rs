@@ -3,23 +3,17 @@ use std::sync::Arc;
 use crate::ident::Identifier;
 use crate::project::Project;
 use crate::project::file::router::Route;
-use crate::server::client::controller::ControllerManager;
-use crate::server::client::processor::ProcessorManager;
+use crate::server::client::ClientAgent;
 use crate::trigger::Trigger;
 
 pub struct Router {
     project: Arc<Project>,
-    _controller_agent: Arc<ControllerManager>,
-    processor_agent: Arc<ProcessorManager>,
+    client_agent: Arc<ClientAgent>,
 }
 
 impl Router {
-    pub fn new(
-        project: Arc<Project>,
-        _controller_agent: Arc<ControllerManager>,
-        processor_agent: Arc<ProcessorManager>,
-    ) -> Self {
-        Self { project, _controller_agent, processor_agent }
+    pub fn new(project: Arc<Project>, client_agent: Arc<ClientAgent>) -> Self {
+        Self { project, client_agent }
     }
 
     pub async fn handle_trigger(&self, client_id: &Identifier, trigger: Trigger) {
@@ -30,11 +24,11 @@ impl Router {
 
         for to_client_id in &route.to_clients {
             if let Err(e) = self
-                .processor_agent
+                .client_agent
                 .send_trigger(route.from_client.clone(), to_client_id.clone(), trigger.clone())
                 .await
             {
-                log::debug!("route to unregistered processor client: '{to_client_id}': {e}");
+                log::debug!("route to unregistered client: '{to_client_id}': {e}");
             }
         }
     }

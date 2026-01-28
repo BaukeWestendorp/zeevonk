@@ -1,8 +1,7 @@
-//! The Zeevonk server manages clients and the data they send, and sends DMX output to various protocols.
+//! The Zeevonk server manages clients and outputs DMX.
 //!
 //! This server acts as the central hub for your lighting control system.
-//! It receives triggers from controller clients, processes attribute
-//! updates from processor clients, and outputs DMX data using various protocols.
+//! It receives triggers and attribute updates from processor clients and outputs DMX data using various protocols.
 //!
 //! ## Example
 //!
@@ -20,16 +19,13 @@
 //! server.start();
 //! ```
 //!
-//! The server will now listen for processor and controller clients, and handle DMX output automatically.
-//!
-//! For more advanced usage, see the documentation for [`Server`].
+//! The server will now listen for clients, and handle DMX output automatically.
 
 use std::sync::Arc;
 
 use crate::project::Project;
 use crate::project::file::ProjectFile;
-use crate::server::client::controller::{ControllerListener, ControllerManager};
-use crate::server::client::processor::{ProcessorListener, ProcessorManager};
+use crate::server::client::{ClientAgent, ClientListener};
 use crate::server::output::agent::OutputAgent;
 use crate::server::router::Router;
 
@@ -47,8 +43,7 @@ pub use error::{Error, Result};
 pub struct Server {
     project: Arc<Project>,
     output_agent: Arc<OutputAgent>,
-    controller_agent: Arc<ControllerManager>,
-    processor_agent: Arc<ProcessorManager>,
+    client_agent: Arc<ClientAgent>,
     router: Arc<Router>,
 }
 
@@ -58,48 +53,27 @@ impl Server {
         let project_handle = Arc::new(project_builder::from_file(project)?);
 
         let output_agent = Arc::new(OutputAgent::new(project_handle.clone()));
-        let controller_agent = Arc::new(ControllerManager::new());
-        let processor_agent = Arc::new(ProcessorManager::new());
+        let client_agent = Arc::new(ClientAgent::new());
 
-        let router = Arc::new(Router::new(
-            project_handle.clone(),
-            controller_agent.clone(),
-            processor_agent.clone(),
-        ));
+        let router = Arc::new(Router::new(project_handle.clone(), client_agent.clone()));
 
-        Ok(Self {
-            project: Arc::clone(&project_handle),
-            output_agent,
-            controller_agent,
-            processor_agent,
-            router,
-        })
+        Ok(Self { project: Arc::clone(&project_handle), output_agent, client_agent, router })
     }
 
     /// Starts the server instance and its listeners.
     pub async fn start(&self) -> crate::server::Result<()> {
         self.output_agent.start();
 
-        let project = &self.project;
-        let controller_port = project.file().config.controller_port;
-        let processor_port = project.file().config.processor_port;
+        let port = self.project.file().config.port;
 
-        let (controller_res, processor_res) = tokio::join!(
-            ControllerListener::start(
-                self.controller_agent.clone(),
-                self.router.clone(),
-                controller_port
-            ),
-            ProcessorListener::start(
-                self.processor_agent.clone(),
-                self.output_agent.clone(),
-                self.project.clone(),
-                processor_port
-            )
-        );
-
-        controller_res?;
-        processor_res?;
+        ClientListener::start(
+            self.client_agent.clone(),
+            self.output_agent.clone(),
+            self.router.clone(),
+            self.project.clone(),
+            port,
+        )
+        .await?;
 
         Ok(())
     }

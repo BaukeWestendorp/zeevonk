@@ -1,98 +1,66 @@
 //! Packet definitions for both clients and the server.
 
+use crate::ident::Identifier;
+use crate::project::Project;
+use crate::trigger::Trigger;
+use crate::value::AttributeValues;
+
 /// General packet that can be serialized and deserialized using [`serde`].
 pub trait Packet: serde::Serialize + for<'de> serde::Deserialize<'de> {}
 
-/// Packets used by the controller client.
-pub mod controller {
-    use crate::ident::Identifier;
-    use crate::packet::Packet;
-    use crate::trigger::Trigger;
+/// Packets sent from a client to the server.
+#[derive(Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize)]
+pub enum ServerboundPacket {
+    /// Register this client at the server to prepare for routing.
+    Register {
+        /// The identifier for the client to register.
+        client_id: Identifier,
+    },
+    /// Unregister this client at the server.
+    Unregister,
 
-    /// Packets sent from the controller client to the server.
-    #[derive(Debug, Clone)]
-    #[derive(serde::Serialize, serde::Deserialize)]
-    pub enum ServerboundPacket {
-        /// Register this client at the server to prepare for routing.
-        Register {
-            /// The identifier for the client to register.
-            client_id: Identifier,
-        },
-        /// Unregister this client at the server.
-        Unregister,
+    /// Request the server to provide project data.
+    RequestProjectData,
 
-        /// Request that the server process a trigger.
-        Trigger {
-            /// The trigger to be processed.
-            trigger: Trigger,
-        },
-    }
+    /// Update one or more attribute values.
+    UpdateAttributes {
+        /// The attribute values to update.
+        values: AttributeValues,
+        /// Whether updates propagate attribute values to child fixtures.
+        #[serde(default)]
+        include_children: bool,
+    },
 
-    impl Packet for ServerboundPacket {}
-
-    /// Packets sent from the server to a controller client.
-    #[derive(Debug, Clone)]
-    #[derive(serde::Serialize, serde::Deserialize)]
-    pub enum ClientboundPacket {
-        /// The server successfully registered this client.
-        RegisterSuccess,
-    }
-
-    impl Packet for ClientboundPacket {}
+    /// Request that the server process a trigger.
+    Trigger {
+        /// The trigger to be processed.
+        trigger: Trigger,
+    },
 }
 
-/// Packets used by the processor client.
-pub mod processor {
-    use crate::ident::Identifier;
-    use crate::packet::Packet;
-    use crate::project::Project;
-    use crate::trigger::Trigger;
-    use crate::value::AttributeValues;
+impl Packet for ServerboundPacket {}
 
-    /// Packets sent from the processor client to the server.
-    #[derive(Debug, Clone)]
-    #[derive(serde::Serialize, serde::Deserialize)]
-    pub enum ServerboundPacket {
-        /// Register this client at the server to prepare for routing.
-        Register {
-            /// The identifier for the client to register.
-            client_id: Identifier,
-        },
-        /// Unregister this client at the server.
-        Unregister,
+/// Packets sent from the server to a client.
+#[derive(Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize)]
+pub enum ClientboundPacket {
+    /// The server successfully registered this client.
+    RegisterSuccess,
 
-        /// Update one or more attribute values on the processor.
-        UpdateAttributes {
-            /// The attribute values to update.
-            values: AttributeValues,
-            /// Whether updates propagate attribute values to child fixtures.
-            #[serde(default)]
-            include_children: bool,
-        },
+    /// A trigger that has been sent from a client.
+    Trigger {
+        /// The id of the client that sent the trigger.
+        from_client_id: Identifier,
+        /// The trigger.
+        trigger: Trigger,
+    },
 
-        /// Request the server to provide project data.
-        RequestProjectData,
-    }
-
-    impl Packet for ServerboundPacket {}
-
-    /// Packets sent from the server to a processor client.
-    #[derive(Debug, Clone)]
-    #[derive(serde::Serialize, serde::Deserialize)]
-    pub enum ClientboundPacket {
-        /// A trigger that has been sent from a controller.
-        Trigger {
-            /// The client that sent the trigger.
-            from_client_id: Identifier,
-            /// The trigger.
-            trigger: Trigger,
-        },
-        /// Project data sent from the server.
-        ProjectData {
-            /// The project data.
-            project: Project,
-        },
-    }
-
-    impl Packet for ClientboundPacket {}
+    /// Project data sent from the server.
+    ProjectData {
+        /// The project data.
+        project: Project,
+    },
 }
+
+impl Packet for ClientboundPacket {}

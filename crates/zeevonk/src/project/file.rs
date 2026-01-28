@@ -18,7 +18,7 @@ pub struct ProjectFile {
     pub patch: patch::Patch,
     /// The DMX output configuration for the project.
     pub dmx_output: dmx_output::DmxOutputDefinition,
-    /// The router configuration, defining routes between controller and processor clients.
+    /// The router configuration, defining routes between clients.
     pub router: router::Router,
 }
 
@@ -93,24 +93,17 @@ impl ProjectFile {
 pub mod config {
     //! General configuration definitions for the project.
 
-    /// Represents a DMX output, holding a default multiverse.
+    /// General configuration for the server.
     #[derive(Debug, Clone, PartialEq)]
     #[derive(serde::Serialize, serde::Deserialize)]
     pub struct Config {
-        /// Port for the processor listener to bind to.
-        #[serde(default = "default_processor_port")]
-        pub processor_port: u16,
-        /// Port for the processor listener to bind to.
-        #[serde(default = "default_controller_port")]
-        pub controller_port: u16,
+        /// Port for the client listener to bind to.
+        #[serde(default = "default_port")]
+        pub port: u16,
     }
 
-    fn default_processor_port() -> u16 {
+    fn default_port() -> u16 {
         7334
-    }
-
-    fn default_controller_port() -> u16 {
-        7335
     }
 }
 
@@ -205,7 +198,7 @@ pub mod dmx_output {
 }
 
 pub mod router {
-    //! Contains types and definitions related to router configuration.
+    //! The router routes triggers from and to clients, with optional filters.
 
     use crate::ident::Identifier;
 
@@ -213,23 +206,20 @@ pub mod router {
     #[derive(Debug, Clone, PartialEq)]
     #[derive(serde::Serialize, serde::Deserialize)]
     pub struct Router {
-        /// All the different routes from controller clients
-        /// to processor clients for this project.
+        /// The list of trigger routes.
         pub routes: Vec<Route>,
     }
 
-    /// A route from a controller client
-    /// to processor clients for this project.
+    /// A route from one client to another.
     #[derive(Debug, Clone, PartialEq)]
     #[derive(serde::Serialize, serde::Deserialize)]
     pub struct Route {
-        /// The identifier of the controller client that sends the trigger.
+        /// The identifier of the client that sends the trigger.
         pub from_client: Identifier,
-        /// The identifier of the trigger that activates the route. If `None`,
-        /// all triggers from the controller client will be routed to the
-        /// processor clients.
+        /// The identifier of the trigger that should be routed. If `None`,
+        /// all triggers from the source client will be routed to the target clients.
         pub from_trigger: Option<Identifier>,
-        /// The identifiers of the processor clients that receive the route.
+        /// The identifiers of the clients that should receive the triggers.
         pub to_clients: Vec<Identifier>,
     }
 }
