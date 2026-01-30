@@ -2,9 +2,9 @@ name: Rust
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
   pull_request:
-    branches: [ "main" ]
+    branches: ["main"]
 
 env:
   CARGO_TERM_COLOR: always
@@ -26,7 +26,7 @@ jobs:
     needs: fmt
     steps:
       - uses: actions/checkout@v4
-      - name: Build
-        run: cargo build --workspace --verbose --all-features
+      - name: Install Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
       - name: Run tests
         run: cargo test --workspace --verbose --all-features
