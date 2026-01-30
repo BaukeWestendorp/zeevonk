@@ -21,8 +21,9 @@ Processor and controller clients could even be combined into a single client. Th
 
 This project is the result of a deep rabbithole I went into, when creating [Radiant](https://github.com/BaukeWestendorp/radiant). I realized I was writing the same DMX resolvers for GDTF files over and over again. Zeevonk is my way of consolidating all of my research into a hub for DMX lighting.
 
-## Some notable controllers:
+## Some notable clients:
 - [**zv-ctrl-bmdse**](https://github.com/BaukeWestendorp/zv-ctrl-bmdse): A Black Magic Design Speed Editor controller client based on [bmdse](https://crates.io/crates/bmdse).
+- [**zv-osc**](https://github.com/BaukeWestendorp/zv-osc): OSC (Open Sound Control) controller client.
 
 ## Run the Zeevonk server
 
