@@ -10,13 +10,13 @@ use crate::ident::Identifier;
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct Trigger {
     id: Identifier,
-    value: TriggerValue,
+    args: Vec<TriggerValue>,
 }
 
 impl Trigger {
     /// Create a new [`Trigger`].
-    pub fn new(id: Identifier, value: TriggerValue) -> Self {
-        Self { id, value }
+    pub fn new(id: Identifier, args: Vec<TriggerValue>) -> Self {
+        Self { id, args }
     }
 
     /// Return the [`Identifier`].
@@ -25,8 +25,8 @@ impl Trigger {
     }
 
     /// Return the [`TriggerValue`].
-    pub fn value(&self) -> &TriggerValue {
-        &self.value
+    pub fn value(&self) -> &Vec<TriggerValue> {
+        &self.args
     }
 }
 
