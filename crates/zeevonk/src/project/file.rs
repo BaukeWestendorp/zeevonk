@@ -9,7 +9,7 @@ const RELATIVE_DESCRIPTION_FILE_PATH: &str = "project.json";
 const RELATIVE_GDTF_FILES_PATH: &str = "gdtf_files";
 
 /// Represents the main project file, containing all configuration sections.
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct ProjectFile {
     /// The patch configuration, including fixtures and GDTF file references.
@@ -97,7 +97,7 @@ pub mod patch {
     use crate::project::stage::FixtureIdPart;
 
     /// Defines the stage configuration.
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, PartialEq, Default)]
     #[derive(serde::Serialize, serde::Deserialize)]
     pub struct Patch {
         /// The list of GDTF file paths used in this stage.
@@ -141,7 +141,7 @@ pub mod dmx_output {
     use theymx::UniverseId;
 
     /// Defines the DMX output configuration for a project.
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, PartialEq, Default)]
     #[derive(serde::Serialize, serde::Deserialize)]
     pub struct DmxOutputDefinition {
         /// The list of DMX output instances.
