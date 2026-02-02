@@ -36,8 +36,7 @@ enum InfoSubcommand {
     },
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     let is_debug_mode = cfg!(debug_assertions);
     let default_level =
         if is_debug_mode { log::LevelFilter::Debug } else { log::LevelFilter::Info };
@@ -50,7 +49,7 @@ async fn main() -> anyhow::Result<()> {
             init::init_project(project_path)?;
         }
         Commands::Run { project_path } => {
-            run::run_project(project_path).await?;
+            run::run_project(project_path)?;
         }
     }
 

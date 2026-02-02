@@ -12,14 +12,10 @@ const RELATIVE_GDTF_FILES_PATH: &str = "gdtf_files";
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct ProjectFile {
-    /// The general configuration for the project.
-    pub config: config::Config,
     /// The patch configuration, including fixtures and GDTF file references.
     pub patch: patch::Patch,
     /// The DMX output configuration for the project.
     pub dmx_output: dmx_output::DmxOutputDefinition,
-    /// The router configuration, defining routes between clients.
-    pub router: router::Router,
 }
 
 impl ProjectFile {
@@ -87,23 +83,6 @@ impl ProjectFile {
         }
 
         Ok(())
-    }
-}
-
-pub mod config {
-    //! General configuration definitions for the project.
-
-    /// General configuration for the server.
-    #[derive(Debug, Clone, PartialEq)]
-    #[derive(serde::Serialize, serde::Deserialize)]
-    pub struct Config {
-        /// Port for the client listener to bind to.
-        #[serde(default = "default_port")]
-        pub port: u16,
-    }
-
-    fn default_port() -> u16 {
-        7334
     }
 }
 
@@ -194,32 +173,5 @@ pub mod dmx_output {
             /// The address to send the sACN output to.
             target_address: SocketAddr,
         },
-    }
-}
-
-pub mod router {
-    //! The router routes triggers from and to clients, with optional filters.
-
-    use crate::ident::Identifier;
-
-    /// Defines the router configuration for a project.
-    #[derive(Debug, Clone, PartialEq)]
-    #[derive(serde::Serialize, serde::Deserialize)]
-    pub struct Router {
-        /// The list of trigger routes.
-        pub routes: Vec<Route>,
-    }
-
-    /// A route from one client to another.
-    #[derive(Debug, Clone, PartialEq)]
-    #[derive(serde::Serialize, serde::Deserialize)]
-    pub struct Route {
-        /// The identifier of the client that sends the trigger.
-        pub from_client: Identifier,
-        /// The identifier of the trigger that should be routed. If `None`,
-        /// all triggers from the source client will be routed to the target clients.
-        pub from_trigger: Option<Identifier>,
-        /// The identifiers of the clients that should receive the triggers.
-        pub to_clients: Vec<Identifier>,
     }
 }

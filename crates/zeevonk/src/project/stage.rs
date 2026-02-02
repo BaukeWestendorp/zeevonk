@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::Error;
 use crate::attr::Attribute;
 use crate::value::ClampedValue;
+
 /// Represents a stage containing all fixtures and their configuration.
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]

@@ -1,6 +1,6 @@
 use theymx::Multiverse;
 
-use crate::{project::file::dmx_output::DmxOutputInstanceDefinition, server::output};
+use crate::{output, project::file::dmx_output::DmxOutputInstanceDefinition};
 
 pub mod enttec_open_dmx;
 pub mod sacn;

@@ -8,18 +8,12 @@ use uuid::Uuid;
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// Errors produced by this crate.
-///
-/// Each variant represents a different class of failure that can occur while
-/// performing crate operations.
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     /// Wraps [`io::Error`].
     #[error("i/o error: {0}")]
     Io(#[from] io::Error),
 
-    /// An invalid identifier was encountered.
-    #[error("invalid identifier")]
-    InvalidIdentifier,
     /// An invalid fixture id was encountered (e.g. zero).
     #[error("invalid fixture id")]
     InvalidFixtureId,
@@ -55,10 +49,7 @@ pub enum Error {
         dmx_mode_name: String,
     },
 
-    /// Received an invalid packet.
-    #[error("received an invalid packet: {message}")]
-    InvalidPacket {
-        /// Information about the invalid packet.
-        message: String,
-    },
+    /// An error occurred while handling output.
+    #[error("output error: {0}")]
+    OutputError(#[from] crate::output::Error),
 }

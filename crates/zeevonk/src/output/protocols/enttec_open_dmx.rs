@@ -5,7 +5,7 @@ use std::time::Duration;
 use libftd2xx::{BitsPerWord, Ftdi, FtdiCommon, Parity, StopBits, TimeoutError};
 use theymx::{Multiverse, Universe, UniverseId};
 
-use crate::server::output;
+use crate::output;
 
 const BAUDRATE: u32 = 250000;
 const BITS_8: BitsPerWord = BitsPerWord::Bits8;
