@@ -1,5 +1,4 @@
-//! This module defines the core `Project` struct, which encapsulates
-//! project file and stage information.
+//! Project file and stage information.
 
 pub mod file;
 pub mod stage;
