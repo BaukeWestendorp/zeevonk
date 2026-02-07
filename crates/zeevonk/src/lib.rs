@@ -26,6 +26,9 @@ mod output;
 mod project_builder;
 mod resolver;
 
+/// Re-export of the [`theymx`](https://github.com/BaukeWestendorp/theymx) crate.
+pub use theymx;
+
 use std::sync::Arc;
 
 use crate::output::agent::OutputAgent;
