@@ -8,10 +8,10 @@ use theymx::{self, Address};
 use crate::attr::Attribute;
 use crate::project::stage::FixtureId;
 
-/// A clamped value.
+/// A clamped value between `0.0..=1.0`.
 ///
 /// Represents a floating-point value constrained to the range
-/// `[0.0, 1.0]`. All operations automatically clamp values to this valid range.
+/// `[0.0..=1.0]`. All operations automatically clamp values to this valid range.
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Default)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
@@ -26,7 +26,7 @@ impl ClampedValue {
 
     /// Creates a new [`ClampedValue`] with the specified value.
     ///
-    /// The value is automatically clamped to the range `[0.0, 1.0]`.
+    /// The value is automatically clamped to the range `[0.0..=1.0]`.
     #[inline]
     pub const fn new(value: f32) -> Self {
         Self(value.clamp(Self::MIN, Self::MAX))
@@ -34,7 +34,7 @@ impl ClampedValue {
 
     /// Sets the value of this [`ClampedValue`].
     ///
-    /// The value is automatically clamped to the range `[0.0, 1.0]`.
+    /// The value is automatically clamped to the range `[0.0..=1.0]`.
     #[inline]
     pub fn set(&mut self, value: f32) {
         self.0 = value.clamp(Self::MIN, Self::MAX);
@@ -42,7 +42,7 @@ impl ClampedValue {
 
     /// Returns the underlying `f32` value.
     ///
-    /// The returned value is guaranteed to be in the range `[0.0, 1.0]`.
+    /// The returned value is guaranteed to be in the range `[0.0..=1.0]`.
     #[inline]
     pub fn as_f32(self) -> f32 {
         self.0
@@ -140,10 +140,10 @@ impl str::FromStr for ClampedValue {
     }
 }
 
-/// Stores clamped attribute values for each fixture id.
+/// Stores [`ClampedValue`]s for each [`FixtureId`]'s [`Attribute`].
 ///
-/// [`AttributeValues`] maintains a mapping from [`FixtureId`] to a set of
-/// attribute-value pairs, where each value is a [`ClampedValue`] in the range `[0.0, 1.0]`.
+/// Maintains a mapping from [`FixtureId`] to a set of
+/// attribute-value pairs, where each value is a [`ClampedValue`] in the range `[0.0..=1.0]`.
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]

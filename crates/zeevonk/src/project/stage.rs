@@ -11,6 +11,7 @@ use uuid::Uuid;
 use crate::Error;
 use crate::attr::Attribute;
 use crate::value::ClampedValue;
+
 /// Represents a stage containing all fixtures and their configuration.
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -21,7 +22,6 @@ pub struct Stage {
     /// Map of all fixtures in this stage, keyed by their [`FixtureId`].
     pub(crate) fixtures: HashMap<FixtureId, Fixture>,
 }
-
 impl Stage {
     /// Returns a reference to the defaulted [`Multiverse`] used for address resolution.
     pub fn defaulted_multiverse(&self) -> &Multiverse {
@@ -32,7 +32,35 @@ impl Stage {
     pub fn fixtures(&self) -> &HashMap<FixtureId, Fixture> {
         &self.fixtures
     }
+
+    /// Returns an iterator over all root fixtures in this stage.
+    pub fn root_fixtures(&self) -> impl Iterator<Item = (&FixtureId, &Fixture)> {
+        self.fixtures.iter().filter(|(_, fixture)| fixture.id.is_root())
+    }
+
+    /// Returns a reference to the fixture with the given [`FixtureId`], if present.
+    pub fn fixture(&self, id: &FixtureId) -> Option<&Fixture> {
+        self.fixtures.get(id)
+    }
+
+    /// Returns an iterator over all subfixtures of the given fixture.
+    pub fn sub_fixtures(&self, id: &FixtureId) -> impl Iterator<Item = (&FixtureId, &Fixture)> {
+        self.fixtures.iter().filter(move |(fid, _)| {
+            fid.len() > id.len() && fid.as_slice()[..id.len()] == *id.as_slice()
+        })
+    }
+
+    /// Returns true if the stage contains a fixture with the given [`FixtureId`].
+    pub fn contains_fixture(&self, id: &FixtureId) -> bool {
+        self.fixtures.contains_key(id)
+    }
+
+    /// Returns the total number of fixtures in this stage.
+    pub fn fixture_count(&self) -> usize {
+        self.fixtures.len()
+    }
 }
+
 /// A configured fixture instance.
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Fixture {

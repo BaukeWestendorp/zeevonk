@@ -5,10 +5,10 @@ use std::time::{Duration, Instant};
 use theymx::Multiverse;
 
 use crate::attr::Attribute;
+use crate::output::protocols::OutputInstance;
 use crate::project::Project;
 use crate::project::stage::FixtureId;
-use crate::server::output::protocols::OutputInstance;
-use crate::server::resolver;
+use crate::resolver;
 use crate::value::{AttributeValues, ClampedValue};
 
 pub struct OutputAgent {
