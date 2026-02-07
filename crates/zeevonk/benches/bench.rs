@@ -7,7 +7,7 @@ use zeevonk::attr::Attribute;
 use zeevonk::project::Project;
 use zeevonk::project::file::ProjectFile;
 use zeevonk::project::file::patch::{FixtureDefinition, FixtureKindDefinition, Patch};
-use zeevonk::project::stage::FixtureIdPart;
+use zeevonk::project::stage::{FixtureIdPart, Stage};
 use zeevonk::theymx::Multiverse;
 use zeevonk::value::{AttributeValues, ClampedValue};
 
@@ -18,7 +18,10 @@ fn bench_resolver(c: &mut Criterion) {
     run_scenarios(
         c,
         "resolve_dimmers",
-        &[10, 100, 1000],
+        &[
+            50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850,
+            900, 950, 1000,
+        ],
         &[
             Scenario {
                 name: "8bit",
@@ -46,7 +49,10 @@ fn bench_resolver(c: &mut Criterion) {
     run_scenarios(
         c,
         "resolve_rgbw",
-        &[10, 100, 1000],
+        &[
+            50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850,
+            900, 950, 1000,
+        ],
         &[Scenario {
             name: "8bit",
             fixture: FixtureConfig::GenericDimmer {
@@ -57,7 +63,7 @@ fn bench_resolver(c: &mut Criterion) {
             },
             attributes: vec![
                 (Attribute::ColorAddR, ClampedValue::new(0.5)),
-                (Attribute::ColorAddR, ClampedValue::new(0.5)),
+                (Attribute::ColorAddG, ClampedValue::new(0.5)),
                 (Attribute::ColorAddB, ClampedValue::new(0.5)),
                 (Attribute::ColorAddW, ClampedValue::new(0.5)),
             ],
@@ -95,10 +101,7 @@ fn run_scenarios(
     group.finish();
 }
 
-fn build_values(
-    stage: &zeevonk::project::stage::Stage,
-    attrs: &[(Attribute, ClampedValue)],
-) -> AttributeValues {
+fn build_values(stage: &Stage, attrs: &[(Attribute, ClampedValue)]) -> AttributeValues {
     let mut values = AttributeValues::new();
     for (fid, _) in stage.fixtures() {
         for (sub_fid, _) in stage.sub_fixtures(fid) {
