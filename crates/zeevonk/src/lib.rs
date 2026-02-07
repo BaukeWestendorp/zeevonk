@@ -23,8 +23,10 @@ pub mod project;
 pub mod value;
 
 mod output;
-mod project_builder;
-mod resolver;
+#[doc(hidden)]
+pub mod project_builder;
+#[doc(hidden)]
+pub mod resolver;
 
 /// Re-export of the [`theymx`](https://github.com/BaukeWestendorp/theymx) crate.
 pub use theymx;
