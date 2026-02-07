@@ -22,6 +22,7 @@ pub struct Stage {
     /// Map of all fixtures in this stage, keyed by their [`FixtureId`].
     pub(crate) fixtures: HashMap<FixtureId, Fixture>,
 }
+
 impl Stage {
     /// Returns a reference to the defaulted [`Multiverse`] used for address resolution.
     pub fn defaulted_multiverse(&self) -> &Multiverse {

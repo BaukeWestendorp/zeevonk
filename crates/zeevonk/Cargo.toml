@@ -25,3 +25,10 @@ libftd2xx = "0.33.1"
 gdtf = "0.2.0"
 arrayvec = "0.7.6"
 socket2 = "0.6.1"
+
+[dev-dependencies]
+criterion = { version = "0.8", features = ["html_reports"] }
+
+[[bench]]
+name = "bench"
+harness = false
