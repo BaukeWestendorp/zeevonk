@@ -28,12 +28,10 @@ mod resolver;
 
 use std::sync::Arc;
 
-use crate::attr::Attribute;
 use crate::output::agent::OutputAgent;
 use crate::project::Project;
 use crate::project::file::ProjectFile;
-use crate::project::stage::FixtureId;
-use crate::value::{AttributeValues, ClampedValue};
+use crate::value::AttributeValues;
 
 pub use error::{Error, Result};
 
@@ -70,38 +68,8 @@ impl Zeevonk {
     ///
     /// This method updates the output agent with the provided values. If `include_children` is
     /// `true`, the values are also applied recursively to all child fixtures.
-    pub fn set_attribute_values(&self, values: AttributeValues, include_children: bool) {
-        log::debug!("setting attribute values | include_children={}", include_children);
+    pub fn set_attribute_values(&self, values: AttributeValues) {
+        log::debug!("setting attribute values");
         self.output_agent.update_values(values.clone());
-
-        if include_children {
-            /// Recursively sets attribute values for child fixtures.
-            fn set_values_recursively(
-                project: &Project,
-                output_agent: &OutputAgent,
-                fixture_id: &FixtureId,
-                attribute: Attribute,
-                value: ClampedValue,
-            ) {
-                let Some(fixture) = project.stage().fixtures().get(fixture_id) else {
-                    return;
-                };
-
-                for sub_id in fixture.sub_ids() {
-                    output_agent.update_value(*sub_id, attribute, value);
-                    set_values_recursively(project, output_agent, &sub_id, attribute, value);
-                }
-            }
-
-            for (fixture_id, attribute, value) in values.values() {
-                set_values_recursively(
-                    &self.project,
-                    &self.output_agent,
-                    fixture_id,
-                    *attribute,
-                    *value,
-                );
-            }
-        }
     }
 }
