@@ -3,3 +3,6 @@
 .DS_Store
 
 flamegraph.svg
+
+flamegraph.svg
+*profile.json.gz
