@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
+mod info;
 mod init;
 mod run;
 
@@ -24,6 +25,11 @@ enum Commands {
     Run {
         /// Path to the project.
         project_path: PathBuf,
+    },
+    /// Show diagnostic/project information.
+    Info {
+        #[command(subcommand)]
+        command: InfoSubcommand,
     },
 }
 
@@ -51,6 +57,11 @@ fn main() -> anyhow::Result<()> {
         Commands::Run { project_path } => {
             run::run_project(project_path)?;
         }
+        Commands::Info { command } => match command {
+            InfoSubcommand::Patch { project_path } => {
+                info::dump_patch(project_path)?;
+            }
+        },
     }
 
     Ok(())
