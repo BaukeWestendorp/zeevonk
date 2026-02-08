@@ -1,266 +1,178 @@
-use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use std::path::Path;
 
+use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 use theymx::Address;
+use theymx::Multiverse;
 use zeevonk::attr::Attribute;
 use zeevonk::project::Project;
 use zeevonk::project::file::ProjectFile;
-use zeevonk::project::file::patch::{FixtureDefinition, FixtureKindDefinition, Patch};
-use zeevonk::project::stage::{FixtureIdPart, Stage};
-use zeevonk::theymx::Multiverse;
-use zeevonk::value::{AttributeValues, ClampedValue};
+use zeevonk::project::file::patch::FixtureDefinition;
+use zeevonk::project::file::patch::FixtureKindDefinition;
+use zeevonk::project::file::patch::Patch;
+use zeevonk::project::stage::FixtureIdPart;
+use zeevonk::project::stage::Stage;
+use zeevonk::value::AttributeValues;
+use zeevonk::value::ClampedValue;
 
-criterion_main!(resolving);
-criterion_group!(resolving, bench_resolver);
+criterion_group!(benches, bench_fixture_count_scaling, bench_attribute_complexity);
+criterion_main!(benches);
 
-fn bench_resolver(c: &mut Criterion) {
-    run_scenarios(
-        c,
-        "resolve_dimmers",
-        &[
-            50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850,
-            900, 950, 1000,
-        ],
-        &[
-            Scenario {
-                name: "8bit",
-                fixture: FixtureConfig::GenericDimmer {
-                    gdtf_file_path: "benches/gdtf/Generic@Dimmer@8_and_16bit_Generic_Dimmer.gdtf",
-                    gdtf_fixture_type_id: "B4DAFF6B-3E52-451B-AFDB-E6C94C64F85D",
-                    gdtf_dmx_mode: "Default",
-                    name: "Dimmer",
-                },
-                attribute_combinations: vec![AttributeCombination {
-                    name: "dimmer",
-                    attributes: vec![(Attribute::Dimmer, ClampedValue::new(0.5))],
-                }],
-            },
-            Scenario {
-                name: "16bit",
-                fixture: FixtureConfig::GenericDimmer {
-                    gdtf_file_path: "benches/gdtf/Generic@Dimmer@8_and_16bit_Generic_Dimmer.gdtf",
-                    gdtf_fixture_type_id: "B4DAFF6B-3E52-451B-AFDB-E6C94C64F85D",
-                    gdtf_dmx_mode: "16 Bit",
-                    name: "Dimmer",
-                },
-                attribute_combinations: vec![AttributeCombination {
-                    name: "dimmer",
-                    attributes: vec![(Attribute::Dimmer, ClampedValue::new(0.5))],
-                }],
-            },
-        ],
-    );
+fn bench_fixture_count_scaling(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Scaling Fixture Count");
 
-    run_scenarios(
-        c,
-        "resolve_rgbw",
-        &[
-            50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850,
-            900, 950, 1000,
-        ],
-        &[Scenario {
-            name: "8bit",
-            fixture: FixtureConfig::GenericDimmer {
-                gdtf_file_path: "benches/gdtf/Generic@RGBW8@added_white_channel.gdtf",
-                gdtf_fixture_type_id: "E6E44F65-4F1D-4B62-B614-9AB1F6C0C2D1",
-                gdtf_dmx_mode: "Default",
-                name: "Dimmer",
-            },
-            attribute_combinations: vec![AttributeCombination {
-                name: "rgbw",
-                attributes: vec![
-                    (Attribute::ColorAddR, ClampedValue::new(0.5)),
-                    (Attribute::ColorAddG, ClampedValue::new(0.5)),
-                    (Attribute::ColorAddB, ClampedValue::new(0.5)),
-                    (Attribute::ColorAddW, ClampedValue::new(0.5)),
-                ],
-            }],
-        }],
-    );
+    group.sample_size(100);
 
-    run_scenarios(
-        c,
-        "resolve_n_attributes",
-        &[100],
-        &[Scenario {
-            name: "5 attibutes",
-            fixture: FixtureConfig::GenericDimmer {
-                gdtf_file_path: "benches/gdtf/Zeevonk@Benchmark@Added_30ch_Mode.gdtf",
-                gdtf_fixture_type_id: "9125433D-A327-434E-95C5-D116FCBFB7D9",
-                gdtf_dmx_mode: "30ch",
-                name: "Bench",
-            },
-            attribute_combinations: vec![
-                AttributeCombination {
-                    name: "5 channels",
-                    attributes: vec![
-                        (Attribute::Dimmer, ClampedValue::new(0.5)),
-                        (Attribute::Pan, ClampedValue::new(0.5)),
-                        (Attribute::Tilt, ClampedValue::new(0.5)),
-                        (Attribute::PanRotate, ClampedValue::new(0.5)),
-                        (Attribute::TiltRotate, ClampedValue::new(0.5)),
-                    ],
+    let counts = [50, 500, 1000];
+
+    for count in counts {
+        let path = "benches/gdtf/Generic@Dimmer@8_and_16bit_Generic_Dimmer.gdtf";
+        let project = generate_project(
+            count,
+            path,
+            "B4DAFF6B-3E52-451B-AFDB-E6C94C64F85D",
+            "Default",
+            "Dimmer",
+        )
+        .unwrap();
+        let values = build_values(project.stage(), &[(Attribute::Dimmer, ClampedValue::new(0.5))]);
+
+        group.bench_with_input(BenchmarkId::new("Dimmer 8 Bit", count), &count, |b, &_| {
+            b.iter_with_setup(
+                || Multiverse::new(),
+                |mut multiverse| {
+                    zeevonk::resolver::resolve(&values, project.stage(), &mut multiverse);
                 },
-                AttributeCombination {
-                    name: "10 channels",
-                    attributes: vec![
-                        (Attribute::Dimmer, ClampedValue::new(0.5)),
-                        (Attribute::Pan, ClampedValue::new(0.5)),
-                        (Attribute::Tilt, ClampedValue::new(0.5)),
-                        (Attribute::PanRotate, ClampedValue::new(0.5)),
-                        (Attribute::TiltRotate, ClampedValue::new(0.5)),
-                        (Attribute::PositionEffect, ClampedValue::new(0.5)),
-                        (Attribute::PositionEffectRate, ClampedValue::new(0.5)),
-                        (Attribute::PositionEffectFade, ClampedValue::new(0.5)),
-                        (Attribute::XyzX, ClampedValue::new(0.5)),
-                        (Attribute::XyzY, ClampedValue::new(0.5)),
-                    ],
+            )
+        });
+    }
+
+    for count in counts {
+        let path = "benches/gdtf/Generic@Dimmer@8_and_16bit_Generic_Dimmer.gdtf";
+        let project = generate_project(
+            count,
+            path,
+            "B4DAFF6B-3E52-451B-AFDB-E6C94C64F85D",
+            "Default",
+            "16 Bit",
+        )
+        .unwrap();
+        let values = build_values(project.stage(), &[(Attribute::Dimmer, ClampedValue::new(0.5))]);
+
+        group.bench_with_input(BenchmarkId::new("Dimmer 16 Bit", count), &count, |b, &_| {
+            b.iter_with_setup(
+                || Multiverse::new(),
+                |mut multiverse| {
+                    zeevonk::resolver::resolve(&values, project.stage(), &mut multiverse);
                 },
-                AttributeCombination {
-                    name: "15 channels",
-                    attributes: vec![
-                        (Attribute::Dimmer, ClampedValue::new(0.5)),
-                        (Attribute::Pan, ClampedValue::new(0.5)),
-                        (Attribute::Tilt, ClampedValue::new(0.5)),
-                        (Attribute::PanRotate, ClampedValue::new(0.5)),
-                        (Attribute::TiltRotate, ClampedValue::new(0.5)),
-                        (Attribute::PositionEffect, ClampedValue::new(0.5)),
-                        (Attribute::PositionEffectRate, ClampedValue::new(0.5)),
-                        (Attribute::PositionEffectFade, ClampedValue::new(0.5)),
-                        (Attribute::XyzX, ClampedValue::new(0.5)),
-                        (Attribute::XyzY, ClampedValue::new(0.5)),
-                        (Attribute::XyzZ, ClampedValue::new(0.5)),
-                        (Attribute::RotX, ClampedValue::new(0.5)),
-                        (Attribute::RotY, ClampedValue::new(0.5)),
-                        (Attribute::RotZ, ClampedValue::new(0.5)),
-                        (Attribute::ScaleX, ClampedValue::new(0.5)),
-                    ],
-                },
-                AttributeCombination {
-                    name: "20 channels",
-                    attributes: vec![
-                        (Attribute::Dimmer, ClampedValue::new(0.5)),
-                        (Attribute::Pan, ClampedValue::new(0.5)),
-                        (Attribute::Tilt, ClampedValue::new(0.5)),
-                        (Attribute::PanRotate, ClampedValue::new(0.5)),
-                        (Attribute::TiltRotate, ClampedValue::new(0.5)),
-                        (Attribute::PositionEffect, ClampedValue::new(0.5)),
-                        (Attribute::PositionEffectRate, ClampedValue::new(0.5)),
-                        (Attribute::PositionEffectFade, ClampedValue::new(0.5)),
-                        (Attribute::XyzX, ClampedValue::new(0.5)),
-                        (Attribute::XyzY, ClampedValue::new(0.5)),
-                        (Attribute::XyzZ, ClampedValue::new(0.5)),
-                        (Attribute::RotX, ClampedValue::new(0.5)),
-                        (Attribute::RotY, ClampedValue::new(0.5)),
-                        (Attribute::RotZ, ClampedValue::new(0.5)),
-                        (Attribute::ScaleX, ClampedValue::new(0.5)),
-                        (Attribute::ScaleY, ClampedValue::new(0.5)),
-                        (Attribute::ScaleZ, ClampedValue::new(0.5)),
-                        (Attribute::ScaleXYZ, ClampedValue::new(0.5)),
-                        (Attribute::PlayMode, ClampedValue::new(0.5)),
-                        (Attribute::PlayBegin, ClampedValue::new(0.5)),
-                    ],
-                },
-                AttributeCombination {
-                    name: "25 channels",
-                    attributes: vec![
-                        (Attribute::Dimmer, ClampedValue::new(0.5)),
-                        (Attribute::Pan, ClampedValue::new(0.5)),
-                        (Attribute::Tilt, ClampedValue::new(0.5)),
-                        (Attribute::PanRotate, ClampedValue::new(0.5)),
-                        (Attribute::TiltRotate, ClampedValue::new(0.5)),
-                        (Attribute::PositionEffect, ClampedValue::new(0.5)),
-                        (Attribute::PositionEffectRate, ClampedValue::new(0.5)),
-                        (Attribute::PositionEffectFade, ClampedValue::new(0.5)),
-                        (Attribute::XyzX, ClampedValue::new(0.5)),
-                        (Attribute::XyzY, ClampedValue::new(0.5)),
-                        (Attribute::XyzZ, ClampedValue::new(0.5)),
-                        (Attribute::RotX, ClampedValue::new(0.5)),
-                        (Attribute::RotY, ClampedValue::new(0.5)),
-                        (Attribute::RotZ, ClampedValue::new(0.5)),
-                        (Attribute::ScaleX, ClampedValue::new(0.5)),
-                        (Attribute::ScaleY, ClampedValue::new(0.5)),
-                        (Attribute::ScaleZ, ClampedValue::new(0.5)),
-                        (Attribute::ScaleXYZ, ClampedValue::new(0.5)),
-                        (Attribute::PlayMode, ClampedValue::new(0.5)),
-                        (Attribute::PlayBegin, ClampedValue::new(0.5)),
-                        (Attribute::PlayEnd, ClampedValue::new(0.5)),
-                        (Attribute::PlaySpeed, ClampedValue::new(0.5)),
-                        (Attribute::ColorAddR, ClampedValue::new(0.5)),
-                        (Attribute::ColorAddG, ClampedValue::new(0.5)),
-                        (Attribute::ColorAddB, ClampedValue::new(0.5)),
-                    ],
-                },
-                AttributeCombination {
-                    name: "30 channels",
-                    attributes: vec![
-                        (Attribute::Dimmer, ClampedValue::new(0.5)),
-                        (Attribute::Pan, ClampedValue::new(0.5)),
-                        (Attribute::Tilt, ClampedValue::new(0.5)),
-                        (Attribute::PanRotate, ClampedValue::new(0.5)),
-                        (Attribute::TiltRotate, ClampedValue::new(0.5)),
-                        (Attribute::PositionEffect, ClampedValue::new(0.5)),
-                        (Attribute::PositionEffectRate, ClampedValue::new(0.5)),
-                        (Attribute::PositionEffectFade, ClampedValue::new(0.5)),
-                        (Attribute::XyzX, ClampedValue::new(0.5)),
-                        (Attribute::XyzY, ClampedValue::new(0.5)),
-                        (Attribute::XyzZ, ClampedValue::new(0.5)),
-                        (Attribute::RotX, ClampedValue::new(0.5)),
-                        (Attribute::RotY, ClampedValue::new(0.5)),
-                        (Attribute::RotZ, ClampedValue::new(0.5)),
-                        (Attribute::ScaleX, ClampedValue::new(0.5)),
-                        (Attribute::ScaleY, ClampedValue::new(0.5)),
-                        (Attribute::ScaleZ, ClampedValue::new(0.5)),
-                        (Attribute::ScaleXYZ, ClampedValue::new(0.5)),
-                        (Attribute::PlayMode, ClampedValue::new(0.5)),
-                        (Attribute::PlayBegin, ClampedValue::new(0.5)),
-                        (Attribute::PlayEnd, ClampedValue::new(0.5)),
-                        (Attribute::PlaySpeed, ClampedValue::new(0.5)),
-                        (Attribute::ColorAddR, ClampedValue::new(0.5)),
-                        (Attribute::ColorAddG, ClampedValue::new(0.5)),
-                        (Attribute::ColorAddB, ClampedValue::new(0.5)),
-                        (Attribute::ColorAddRY, ClampedValue::new(0.5)),
-                        (Attribute::ColorAddW, ClampedValue::new(0.5)),
-                        (Attribute::ColorAddWW, ClampedValue::new(0.5)),
-                        (Attribute::ColorAddCW, ClampedValue::new(0.5)),
-                        (Attribute::ColorWheelReset, ClampedValue::new(0.5)),
-                    ],
-                },
+            )
+        });
+    }
+
+    for count in counts {
+        let path = "benches/gdtf/Generic@RGBW8@added_white_channel.gdtf";
+        let project = generate_project(
+            count,
+            path,
+            "E6E44F65-4F1D-4B62-B614-9AB1F6C0C2D1",
+            "Default",
+            "RGBW",
+        )
+        .unwrap();
+        let values = build_values(
+            project.stage(),
+            &[
+                (Attribute::ColorAddR, ClampedValue::new(0.5)),
+                (Attribute::ColorAddG, ClampedValue::new(0.5)),
+                (Attribute::ColorAddB, ClampedValue::new(0.5)),
+                (Attribute::ColorAddW, ClampedValue::new(0.5)),
             ],
-        }],
-    );
-}
+        );
 
-fn run_scenarios(
-    c: &mut Criterion,
-    group_name: &str,
-    fixture_counts: &[u32],
-    scenarios: &[Scenario],
-) {
-    let mut group = c.benchmark_group(group_name);
-
-    for scenario in scenarios {
-        for combo in &scenario.attribute_combinations {
-            for &n_fixtures in fixture_counts {
-                let project = generate_project(n_fixtures, &scenario.fixture).unwrap();
-                let values = build_values(project.stage(), &combo.attributes);
-
-                group.bench_with_input(
-                    BenchmarkId::new(format!("{}_{}", scenario.name, combo.name), n_fixtures),
-                    &n_fixtures,
-                    |b, &_n| {
-                        let mut multiverse = Multiverse::new();
-                        b.iter(|| {
-                            zeevonk::resolver::resolve(&values, project.stage(), &mut multiverse);
-                            std::hint::black_box(&mut multiverse);
-                        });
-                    },
-                );
-            }
-        }
+        group.bench_with_input(BenchmarkId::new("RGBW 8 Bit", count), &count, |b, &_| {
+            b.iter_with_setup(
+                || Multiverse::new(),
+                |mut multiverse| {
+                    zeevonk::resolver::resolve(&values, project.stage(), &mut multiverse);
+                },
+            )
+        });
     }
 
     group.finish();
+}
+
+fn bench_attribute_complexity(c: &mut Criterion) {
+    let mut group = c.benchmark_group("Scaling Complexity");
+
+    let fixture_count = 100;
+
+    #[rustfmt::skip]
+    let complexities = {
+        use zeevonk::attr::Attribute as A;
+        [
+            ("5 channels",  vec![A::Dimmer, A::Pan, A::Tilt, A::PanRotate, A::TiltRotate]),
+            ("10 channels", vec![A::Dimmer, A::Pan, A::Tilt, A::PanRotate, A::TiltRotate, A::PositionEffect, A::PositionEffectRate, A::PositionEffectFade, A::XyzX, A::XyzY,]),
+            ("15 channels", vec![A::Dimmer, A::Pan, A::Tilt, A::PanRotate, A::TiltRotate, A::PositionEffect, A::PositionEffectRate, A::PositionEffectFade, A::XyzX, A::XyzY, A::XyzZ, A::RotX, A::RotY, A::RotZ, A::ScaleX]),
+            ("20 channels", vec![A::Dimmer, A::Pan, A::Tilt, A::PanRotate, A::TiltRotate, A::PositionEffect, A::PositionEffectRate, A::PositionEffectFade, A::XyzX, A::XyzY, A::XyzZ, A::RotX, A::RotY, A::RotZ, A::ScaleX, A::ScaleY, A::ScaleZ, A::ScaleXYZ, A::PlayMode, A::PlayBegin]),
+            ("25 channels", vec![A::Dimmer, A::Pan, A::Tilt, A::PanRotate, A::TiltRotate, A::PositionEffect, A::PositionEffectRate, A::PositionEffectFade, A::XyzX, A::XyzY, A::XyzZ, A::RotX, A::RotY, A::RotZ, A::ScaleX, A::ScaleY, A::ScaleZ, A::ScaleXYZ, A::PlayMode, A::PlayBegin, A::PlayEnd, A::PlaySpeed, A::ColorAddR, A::ColorAddG, A::ColorAddB]),
+            ("30 channels", vec![A::Dimmer, A::Pan, A::Tilt, A::PanRotate, A::TiltRotate, A::PositionEffect, A::PositionEffectRate, A::PositionEffectFade, A::XyzX, A::XyzY, A::XyzZ, A::RotX, A::RotY, A::RotZ, A::ScaleX, A::ScaleY, A::ScaleZ, A::ScaleXYZ, A::PlayMode, A::PlayBegin, A::PlayEnd, A::PlaySpeed, A::ColorAddR, A::ColorAddG, A::ColorAddB, A::ColorAddRY, A::ColorAddW, A::ColorAddWW, A::ColorAddCW, A::ColorWheelReset])
+        ]
+    };
+
+    for (name, attrs) in complexities {
+        let path = "benches/gdtf/Zeevonk@Benchmark@Added_30ch_Mode.gdtf";
+        let project = generate_project(
+            fixture_count,
+            path,
+            "9125433D-A327-434E-95C5-D116FCBFB7D9",
+            "30ch",
+            "Bench",
+        )
+        .unwrap();
+
+        let attr_values: Vec<(Attribute, ClampedValue)> =
+            attrs.iter().map(|&a| (a, ClampedValue::new(0.5))).collect();
+
+        let values = build_values(project.stage(), &attr_values);
+
+        group.bench_function(BenchmarkId::new("Attributes", name), |b| {
+            b.iter_with_setup(
+                || Multiverse::new(),
+                |mut multiverse| {
+                    zeevonk::resolver::resolve(&values, project.stage(), &mut multiverse);
+                },
+            )
+        });
+    }
+
+    group.finish();
+}
+
+fn generate_project(
+    n_fixtures: u32,
+    path: &str,
+    gdtf_fixture_type_id: &str,
+    gdtf_dmx_mode: &str,
+    name: &str,
+) -> zeevonk::Result<Project> {
+    let fixtures = (0..n_fixtures)
+        .map(|n| FixtureDefinition {
+            name: (*name).to_string(),
+            root_id: FixtureIdPart::new(n + 1).unwrap(),
+            address: Address::from_absolute(n + 1).unwrap(),
+            kind: FixtureKindDefinition {
+                gdtf_fixture_type_id: gdtf_fixture_type_id.parse().unwrap(),
+                gdtf_dmx_mode: gdtf_dmx_mode.to_string(),
+            },
+        })
+        .collect();
+
+    let gdtf_file_paths = vec![Path::new(path).into()];
+
+    let project_file =
+        ProjectFile { patch: Patch { gdtf_file_paths, fixtures }, ..Default::default() };
+
+    zeevonk::project_builder::from_file(project_file)
 }
 
 fn build_values(stage: &Stage, attrs: &[(Attribute, ClampedValue)]) -> AttributeValues {
@@ -273,53 +185,4 @@ fn build_values(stage: &Stage, attrs: &[(Attribute, ClampedValue)]) -> Attribute
         }
     }
     values
-}
-
-fn generate_project(n_fixtures: u32, config: &FixtureConfig) -> zeevonk::Result<Project> {
-    let fixtures = (0..n_fixtures)
-        .map(|n| match config {
-            FixtureConfig::GenericDimmer { gdtf_fixture_type_id, gdtf_dmx_mode, name, .. } => {
-                FixtureDefinition {
-                    name: (*name).to_string(),
-                    root_id: FixtureIdPart::new(n + 1).unwrap(),
-                    address: Address::from_absolute(n + 1).unwrap(),
-                    kind: FixtureKindDefinition {
-                        gdtf_fixture_type_id: (*gdtf_fixture_type_id).parse().unwrap(),
-                        gdtf_dmx_mode: (*gdtf_dmx_mode).to_string(),
-                    },
-                }
-            }
-        })
-        .collect();
-
-    let gdtf_file_paths = match config {
-        FixtureConfig::GenericDimmer { gdtf_file_path, .. } => {
-            vec![Path::new(gdtf_file_path).into()]
-        }
-    };
-
-    let project_file =
-        ProjectFile { patch: Patch { gdtf_file_paths, fixtures }, ..Default::default() };
-
-    zeevonk::project_builder::from_file(project_file)
-}
-
-struct Scenario {
-    name: &'static str,
-    fixture: FixtureConfig,
-    attribute_combinations: Vec<AttributeCombination>,
-}
-
-struct AttributeCombination {
-    name: &'static str,
-    attributes: Vec<(Attribute, ClampedValue)>,
-}
-
-enum FixtureConfig {
-    GenericDimmer {
-        gdtf_file_path: &'static str,
-        gdtf_fixture_type_id: &'static str,
-        gdtf_dmx_mode: &'static str,
-        name: &'static str,
-    },
 }
