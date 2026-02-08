@@ -1,6 +1,5 @@
-use std::path::Path;
-
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
+use std::path::Path;
 
 use theymx::Address;
 use zeevonk::attr::Attribute;
@@ -31,7 +30,10 @@ fn bench_resolver(c: &mut Criterion) {
                     gdtf_dmx_mode: "Default",
                     name: "Dimmer",
                 },
-                attributes: vec![(Attribute::Dimmer, ClampedValue::new(0.5))],
+                attribute_combinations: vec![AttributeCombination {
+                    name: "dimmer",
+                    attributes: vec![(Attribute::Dimmer, ClampedValue::new(0.5))],
+                }],
             },
             Scenario {
                 name: "16bit",
@@ -41,7 +43,10 @@ fn bench_resolver(c: &mut Criterion) {
                     gdtf_dmx_mode: "16 Bit",
                     name: "Dimmer",
                 },
-                attributes: vec![(Attribute::Dimmer, ClampedValue::new(0.5))],
+                attribute_combinations: vec![AttributeCombination {
+                    name: "dimmer",
+                    attributes: vec![(Attribute::Dimmer, ClampedValue::new(0.5))],
+                }],
             },
         ],
     );
@@ -61,11 +66,166 @@ fn bench_resolver(c: &mut Criterion) {
                 gdtf_dmx_mode: "Default",
                 name: "Dimmer",
             },
-            attributes: vec![
-                (Attribute::ColorAddR, ClampedValue::new(0.5)),
-                (Attribute::ColorAddG, ClampedValue::new(0.5)),
-                (Attribute::ColorAddB, ClampedValue::new(0.5)),
-                (Attribute::ColorAddW, ClampedValue::new(0.5)),
+            attribute_combinations: vec![AttributeCombination {
+                name: "rgbw",
+                attributes: vec![
+                    (Attribute::ColorAddR, ClampedValue::new(0.5)),
+                    (Attribute::ColorAddG, ClampedValue::new(0.5)),
+                    (Attribute::ColorAddB, ClampedValue::new(0.5)),
+                    (Attribute::ColorAddW, ClampedValue::new(0.5)),
+                ],
+            }],
+        }],
+    );
+
+    run_scenarios(
+        c,
+        "resolve_n_attributes",
+        &[100],
+        &[Scenario {
+            name: "5 attibutes",
+            fixture: FixtureConfig::GenericDimmer {
+                gdtf_file_path: "benches/gdtf/Zeevonk@Benchmark@Added_30ch_Mode.gdtf",
+                gdtf_fixture_type_id: "9125433D-A327-434E-95C5-D116FCBFB7D9",
+                gdtf_dmx_mode: "30ch",
+                name: "Bench",
+            },
+            attribute_combinations: vec![
+                AttributeCombination {
+                    name: "5 channels",
+                    attributes: vec![
+                        (Attribute::Dimmer, ClampedValue::new(0.5)),
+                        (Attribute::Pan, ClampedValue::new(0.5)),
+                        (Attribute::Tilt, ClampedValue::new(0.5)),
+                        (Attribute::PanRotate, ClampedValue::new(0.5)),
+                        (Attribute::TiltRotate, ClampedValue::new(0.5)),
+                    ],
+                },
+                AttributeCombination {
+                    name: "10 channels",
+                    attributes: vec![
+                        (Attribute::Dimmer, ClampedValue::new(0.5)),
+                        (Attribute::Pan, ClampedValue::new(0.5)),
+                        (Attribute::Tilt, ClampedValue::new(0.5)),
+                        (Attribute::PanRotate, ClampedValue::new(0.5)),
+                        (Attribute::TiltRotate, ClampedValue::new(0.5)),
+                        (Attribute::PositionEffect, ClampedValue::new(0.5)),
+                        (Attribute::PositionEffectRate, ClampedValue::new(0.5)),
+                        (Attribute::PositionEffectFade, ClampedValue::new(0.5)),
+                        (Attribute::XyzX, ClampedValue::new(0.5)),
+                        (Attribute::XyzY, ClampedValue::new(0.5)),
+                    ],
+                },
+                AttributeCombination {
+                    name: "15 channels",
+                    attributes: vec![
+                        (Attribute::Dimmer, ClampedValue::new(0.5)),
+                        (Attribute::Pan, ClampedValue::new(0.5)),
+                        (Attribute::Tilt, ClampedValue::new(0.5)),
+                        (Attribute::PanRotate, ClampedValue::new(0.5)),
+                        (Attribute::TiltRotate, ClampedValue::new(0.5)),
+                        (Attribute::PositionEffect, ClampedValue::new(0.5)),
+                        (Attribute::PositionEffectRate, ClampedValue::new(0.5)),
+                        (Attribute::PositionEffectFade, ClampedValue::new(0.5)),
+                        (Attribute::XyzX, ClampedValue::new(0.5)),
+                        (Attribute::XyzY, ClampedValue::new(0.5)),
+                        (Attribute::XyzZ, ClampedValue::new(0.5)),
+                        (Attribute::RotX, ClampedValue::new(0.5)),
+                        (Attribute::RotY, ClampedValue::new(0.5)),
+                        (Attribute::RotZ, ClampedValue::new(0.5)),
+                        (Attribute::ScaleX, ClampedValue::new(0.5)),
+                    ],
+                },
+                AttributeCombination {
+                    name: "20 channels",
+                    attributes: vec![
+                        (Attribute::Dimmer, ClampedValue::new(0.5)),
+                        (Attribute::Pan, ClampedValue::new(0.5)),
+                        (Attribute::Tilt, ClampedValue::new(0.5)),
+                        (Attribute::PanRotate, ClampedValue::new(0.5)),
+                        (Attribute::TiltRotate, ClampedValue::new(0.5)),
+                        (Attribute::PositionEffect, ClampedValue::new(0.5)),
+                        (Attribute::PositionEffectRate, ClampedValue::new(0.5)),
+                        (Attribute::PositionEffectFade, ClampedValue::new(0.5)),
+                        (Attribute::XyzX, ClampedValue::new(0.5)),
+                        (Attribute::XyzY, ClampedValue::new(0.5)),
+                        (Attribute::XyzZ, ClampedValue::new(0.5)),
+                        (Attribute::RotX, ClampedValue::new(0.5)),
+                        (Attribute::RotY, ClampedValue::new(0.5)),
+                        (Attribute::RotZ, ClampedValue::new(0.5)),
+                        (Attribute::ScaleX, ClampedValue::new(0.5)),
+                        (Attribute::ScaleY, ClampedValue::new(0.5)),
+                        (Attribute::ScaleZ, ClampedValue::new(0.5)),
+                        (Attribute::ScaleXYZ, ClampedValue::new(0.5)),
+                        (Attribute::PlayMode, ClampedValue::new(0.5)),
+                        (Attribute::PlayBegin, ClampedValue::new(0.5)),
+                    ],
+                },
+                AttributeCombination {
+                    name: "25 channels",
+                    attributes: vec![
+                        (Attribute::Dimmer, ClampedValue::new(0.5)),
+                        (Attribute::Pan, ClampedValue::new(0.5)),
+                        (Attribute::Tilt, ClampedValue::new(0.5)),
+                        (Attribute::PanRotate, ClampedValue::new(0.5)),
+                        (Attribute::TiltRotate, ClampedValue::new(0.5)),
+                        (Attribute::PositionEffect, ClampedValue::new(0.5)),
+                        (Attribute::PositionEffectRate, ClampedValue::new(0.5)),
+                        (Attribute::PositionEffectFade, ClampedValue::new(0.5)),
+                        (Attribute::XyzX, ClampedValue::new(0.5)),
+                        (Attribute::XyzY, ClampedValue::new(0.5)),
+                        (Attribute::XyzZ, ClampedValue::new(0.5)),
+                        (Attribute::RotX, ClampedValue::new(0.5)),
+                        (Attribute::RotY, ClampedValue::new(0.5)),
+                        (Attribute::RotZ, ClampedValue::new(0.5)),
+                        (Attribute::ScaleX, ClampedValue::new(0.5)),
+                        (Attribute::ScaleY, ClampedValue::new(0.5)),
+                        (Attribute::ScaleZ, ClampedValue::new(0.5)),
+                        (Attribute::ScaleXYZ, ClampedValue::new(0.5)),
+                        (Attribute::PlayMode, ClampedValue::new(0.5)),
+                        (Attribute::PlayBegin, ClampedValue::new(0.5)),
+                        (Attribute::PlayEnd, ClampedValue::new(0.5)),
+                        (Attribute::PlaySpeed, ClampedValue::new(0.5)),
+                        (Attribute::ColorAddR, ClampedValue::new(0.5)),
+                        (Attribute::ColorAddG, ClampedValue::new(0.5)),
+                        (Attribute::ColorAddB, ClampedValue::new(0.5)),
+                    ],
+                },
+                AttributeCombination {
+                    name: "30 channels",
+                    attributes: vec![
+                        (Attribute::Dimmer, ClampedValue::new(0.5)),
+                        (Attribute::Pan, ClampedValue::new(0.5)),
+                        (Attribute::Tilt, ClampedValue::new(0.5)),
+                        (Attribute::PanRotate, ClampedValue::new(0.5)),
+                        (Attribute::TiltRotate, ClampedValue::new(0.5)),
+                        (Attribute::PositionEffect, ClampedValue::new(0.5)),
+                        (Attribute::PositionEffectRate, ClampedValue::new(0.5)),
+                        (Attribute::PositionEffectFade, ClampedValue::new(0.5)),
+                        (Attribute::XyzX, ClampedValue::new(0.5)),
+                        (Attribute::XyzY, ClampedValue::new(0.5)),
+                        (Attribute::XyzZ, ClampedValue::new(0.5)),
+                        (Attribute::RotX, ClampedValue::new(0.5)),
+                        (Attribute::RotY, ClampedValue::new(0.5)),
+                        (Attribute::RotZ, ClampedValue::new(0.5)),
+                        (Attribute::ScaleX, ClampedValue::new(0.5)),
+                        (Attribute::ScaleY, ClampedValue::new(0.5)),
+                        (Attribute::ScaleZ, ClampedValue::new(0.5)),
+                        (Attribute::ScaleXYZ, ClampedValue::new(0.5)),
+                        (Attribute::PlayMode, ClampedValue::new(0.5)),
+                        (Attribute::PlayBegin, ClampedValue::new(0.5)),
+                        (Attribute::PlayEnd, ClampedValue::new(0.5)),
+                        (Attribute::PlaySpeed, ClampedValue::new(0.5)),
+                        (Attribute::ColorAddR, ClampedValue::new(0.5)),
+                        (Attribute::ColorAddG, ClampedValue::new(0.5)),
+                        (Attribute::ColorAddB, ClampedValue::new(0.5)),
+                        (Attribute::ColorAddRY, ClampedValue::new(0.5)),
+                        (Attribute::ColorAddW, ClampedValue::new(0.5)),
+                        (Attribute::ColorAddWW, ClampedValue::new(0.5)),
+                        (Attribute::ColorAddCW, ClampedValue::new(0.5)),
+                        (Attribute::ColorWheelReset, ClampedValue::new(0.5)),
+                    ],
+                },
             ],
         }],
     );
@@ -80,21 +240,23 @@ fn run_scenarios(
     let mut group = c.benchmark_group(group_name);
 
     for scenario in scenarios {
-        for &n_fixtures in fixture_counts {
-            let project = generate_project(n_fixtures, &scenario.fixture).unwrap();
-            let values = build_values(project.stage(), &scenario.attributes);
+        for combo in &scenario.attribute_combinations {
+            for &n_fixtures in fixture_counts {
+                let project = generate_project(n_fixtures, &scenario.fixture).unwrap();
+                let values = build_values(project.stage(), &combo.attributes);
 
-            group.bench_with_input(
-                BenchmarkId::new(scenario.name, n_fixtures),
-                &n_fixtures,
-                |b, &_n| {
-                    let mut multiverse = Multiverse::new();
-                    b.iter(|| {
-                        zeevonk::resolver::resolve(&values, project.stage(), &mut multiverse);
-                        std::hint::black_box(&mut multiverse);
-                    });
-                },
-            );
+                group.bench_with_input(
+                    BenchmarkId::new(format!("{}_{}", scenario.name, combo.name), n_fixtures),
+                    &n_fixtures,
+                    |b, &_n| {
+                        let mut multiverse = Multiverse::new();
+                        b.iter(|| {
+                            zeevonk::resolver::resolve(&values, project.stage(), &mut multiverse);
+                            std::hint::black_box(&mut multiverse);
+                        });
+                    },
+                );
+            }
         }
     }
 
@@ -145,6 +307,11 @@ fn generate_project(n_fixtures: u32, config: &FixtureConfig) -> zeevonk::Result<
 struct Scenario {
     name: &'static str,
     fixture: FixtureConfig,
+    attribute_combinations: Vec<AttributeCombination>,
+}
+
+struct AttributeCombination {
+    name: &'static str,
     attributes: Vec<(Attribute, ClampedValue)>,
 }
 
