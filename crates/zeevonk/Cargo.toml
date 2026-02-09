@@ -31,5 +31,13 @@ thread-priority = "3.0.0"
 criterion = { version = "0.8", features = ["html_reports"] }
 
 [[bench]]
-name = "bench"
+name = "fixture_count_scaling"
+harness = false
+
+[[bench]]
+name = "attr_complexity"
+harness = false
+
+[[bench]]
+name = "realistic"
 harness = false
