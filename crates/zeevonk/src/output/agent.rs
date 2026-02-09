@@ -3,6 +3,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use theymx::Multiverse;
+use thread_priority::ThreadBuilderExt;
 
 use crate::output::protocols::OutputInstance;
 use crate::project::Project;
@@ -26,25 +27,26 @@ impl OutputAgent {
 
         let instance_definitions = project.file().dmx_output.instances.clone();
 
-        for instance_definition in instance_definitions {
+        for (ix, instance_definition) in instance_definitions.into_iter().enumerate() {
             let output_rx = crossbeam_channel::Receiver::clone(&output_rx);
 
-            thread::spawn(move || {
-                thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max)
-                    .expect("should set thread priority");
+            thread::Builder::new()
+                .name(format!("instance_{}", ix))
+                .spawn_with_priority(thread_priority::ThreadPriority::Max, move |prio_result| {
+                    assert!(prio_result.is_ok());
 
-                let maybe_instance = OutputInstance::try_from(instance_definition);
-                match maybe_instance {
-                    Ok(mut instance) => {
-                        if let Err(err) = instance.run(output_rx) {
-                            log::error!("output instance errored: {}", err);
+                    match OutputInstance::try_from(instance_definition) {
+                        Ok(mut instance) => {
+                            if let Err(err) = instance.run(output_rx) {
+                                log::error!("output instance errored: {}", err);
+                            }
+                        }
+                        Err(err) => {
+                            log::error!("failed to create output instance: {}", err);
                         }
                     }
-                    Err(err) => {
-                        log::error!("failed to create output instance: {}", err);
-                    }
-                }
-            });
+                })
+                .expect("should spawn output instance thread");
         }
 
         Self {
@@ -76,66 +78,70 @@ impl OutputAgent {
         let updater = Arc::clone(&self.updater);
 
         let defaulted_multiverse = self.project.stage().defaulted_multiverse().clone();
-        thread::spawn(move || {
-            thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max)
-                .expect("should set thread priority");
+        thread::Builder::new()
+            .name("output_agent".to_string())
+            .spawn_with_priority(thread_priority::ThreadPriority::Max, move |prio_result| {
+                assert!(prio_result.is_ok());
 
-            let mut multiverse = defaulted_multiverse.clone();
+                let mut multiverse = defaulted_multiverse.clone();
 
-            let tick_interval = updater.tick_interval;
-            let mut deadline = Instant::now() + tick_interval;
+                let tick_interval = updater.tick_interval;
+                let mut deadline = Instant::now() + tick_interval;
 
-            loop {
-                let tick_start = Instant::now();
-
-                // Drain all pending updates that arrived since last tick.
-                let mut updates = Vec::<AttributeValues>::new();
                 loop {
-                    match rx.try_recv() {
-                        Ok(update) => updates.push(update),
-                        Err(mpsc::TryRecvError::Empty) => break,
-                        Err(mpsc::TryRecvError::Disconnected) => {
-                            log::warn!("update channel disconnected; continuing with local state");
-                            break;
+                    let tick_start = Instant::now();
+
+                    // Drain all pending updates that arrived since last tick.
+                    let mut updates = Vec::<AttributeValues>::new();
+                    loop {
+                        match rx.try_recv() {
+                            Ok(update) => updates.push(update),
+                            Err(mpsc::TryRecvError::Empty) => break,
+                            Err(mpsc::TryRecvError::Disconnected) => {
+                                log::warn!(
+                                    "update channel disconnected; continuing with local state"
+                                );
+                                break;
+                            }
                         }
                     }
+
+                    // Apply updates to the multiverse.
+                    if !updates.is_empty() {
+                        updater.resolve_updates_into_multiverse(&mut multiverse, &updates);
+                    }
+
+                    updater.transmit_resolved_multiverse(multiverse.clone());
+
+                    let tick_end = Instant::now();
+                    let actual_tick_duration = tick_end.duration_since(tick_start);
+                    let exec_overrun =
+                        actual_tick_duration.checked_sub(tick_interval).unwrap_or(Duration::ZERO);
+
+                    // Scheduling.
+                    let now = Instant::now();
+                    if now < deadline {
+                        spin_sleep::sleep(deadline - now);
+                        deadline += tick_interval;
+
+                        log::trace!(
+                            "tick ok: dur={:>8.3?} over={:>7.3?}",
+                            actual_tick_duration,
+                            exec_overrun
+                        );
+                    } else {
+                        let deadline_lateness = now.duration_since(deadline);
+                        log::warn!(
+                            "tick late: dur={:08.3?} over={:08.3?} late={:08.3?}",
+                            actual_tick_duration,
+                            exec_overrun,
+                            deadline_lateness
+                        );
+                        deadline = now + tick_interval;
+                    }
                 }
-
-                // Apply updates to the multiverse.
-                if !updates.is_empty() {
-                    updater.resolve_updates_into_multiverse(&mut multiverse, &updates);
-                }
-
-                updater.transmit_resolved_multiverse(multiverse.clone());
-
-                let tick_end = Instant::now();
-                let actual_tick_duration = tick_end.duration_since(tick_start);
-                let exec_overrun =
-                    actual_tick_duration.checked_sub(tick_interval).unwrap_or(Duration::ZERO);
-
-                // Scheduling.
-                let now = Instant::now();
-                if now < deadline {
-                    spin_sleep::sleep(deadline - now);
-                    deadline += tick_interval;
-
-                    log::trace!(
-                        "tick ok: dur={:>8.3?} over={:>7.3?}",
-                        actual_tick_duration,
-                        exec_overrun
-                    );
-                } else {
-                    let deadline_lateness = now.duration_since(deadline);
-                    log::warn!(
-                        "tick late: dur={:08.3?} over={:08.3?} late={:08.3?}",
-                        actual_tick_duration,
-                        exec_overrun,
-                        deadline_lateness
-                    );
-                    deadline = now + tick_interval;
-                }
-            }
-        });
+            })
+            .expect("should spawn output agent thread");
     }
 }
 

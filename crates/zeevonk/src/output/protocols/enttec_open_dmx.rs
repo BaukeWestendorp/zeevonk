@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use libftd2xx::{BitsPerWord, Ftdi, FtdiCommon, Parity, StopBits, TimeoutError};
 use theymx::{Multiverse, Universe, UniverseId};
+use thread_priority::ThreadBuilderExt;
 
 use crate::output;
 
@@ -41,12 +42,13 @@ impl super::OutputInstanceImplementation for EnttecOpenDmxOutput {
     fn setup(&mut self) -> Result<(), output::Error> {
         let ftdi = Ftdi::with_serial_number(&self.serial_number)?;
         let most_recent_universe = Arc::clone(&self.most_recent_universe);
-        let worker_handle = thread::spawn(move || {
-            thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max)
-                .expect("should set thread priority");
-
-            worker(ftdi, most_recent_universe)
-        });
+        let worker_handle = thread::Builder::new()
+            .name("output_agent".to_string())
+            .spawn_with_priority(thread_priority::ThreadPriority::Max, move |prio_result| {
+                assert!(prio_result.is_ok());
+                worker(ftdi, most_recent_universe)
+            })
+            .expect("should spawn worker thread");
 
         self.worker_handle = Some(worker_handle);
 
