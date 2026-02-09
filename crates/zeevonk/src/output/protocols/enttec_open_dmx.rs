@@ -41,7 +41,12 @@ impl super::OutputInstanceImplementation for EnttecOpenDmxOutput {
     fn setup(&mut self) -> Result<(), output::Error> {
         let ftdi = Ftdi::with_serial_number(&self.serial_number)?;
         let most_recent_universe = Arc::clone(&self.most_recent_universe);
-        let worker_handle = thread::spawn(move || worker(ftdi, most_recent_universe));
+        let worker_handle = thread::spawn(move || {
+            thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max)
+                .expect("should set thread priority");
+
+            worker(ftdi, most_recent_universe)
+        });
 
         self.worker_handle = Some(worker_handle);
 

@@ -30,6 +30,9 @@ impl OutputAgent {
             let output_rx = crossbeam_channel::Receiver::clone(&output_rx);
 
             thread::spawn(move || {
+                thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max)
+                    .expect("should set thread priority");
+
                 let maybe_instance = OutputInstance::try_from(instance_definition);
                 match maybe_instance {
                     Ok(mut instance) => {
@@ -74,6 +77,9 @@ impl OutputAgent {
 
         let defaulted_multiverse = self.project.stage().defaulted_multiverse().clone();
         thread::spawn(move || {
+            thread_priority::set_current_thread_priority(thread_priority::ThreadPriority::Max)
+                .expect("should set thread priority");
+
             let mut multiverse = defaulted_multiverse.clone();
 
             let tick_interval = updater.tick_interval;
