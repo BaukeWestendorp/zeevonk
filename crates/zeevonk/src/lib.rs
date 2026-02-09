@@ -70,9 +70,6 @@ impl Zeevonk {
     }
 
     /// Sets attribute values for fixtures in the project.
-    ///
-    /// This method updates the output agent with the provided values. If `include_children` is
-    /// `true`, the values are also applied recursively to all child fixtures.
     pub fn set_attribute_values(&self, values: AttributeValues) {
         log::debug!("setting attribute values");
         self.output_agent.update_values(values.clone());
