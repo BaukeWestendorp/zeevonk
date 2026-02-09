@@ -220,18 +220,8 @@ pub enum RelationKind {
 ///
 /// [`FixtureIdPart`] guarantees the inner identifier is never zero. Use
 /// [`FixtureIdPart::new`] to construct a validated part.
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord,
-    Hash,
-    serde::Serialize,
-    serde::Deserialize
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(serde::Serialize, serde::Deserialize)]
 pub struct FixtureIdPart(NonZeroU32);
 
 impl FixtureIdPart {
@@ -278,11 +268,11 @@ impl str::FromStr for FixtureIdPart {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 /// A composed fixture identifier made up of multiple [`FixtureIdPart`]s.
 ///
 /// The first element is considered the "root" fixture and additional
 /// elements are sub-fixtures. The maximum number of elements is [`FixtureId::MAX_LEN`].
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FixtureId {
     ids: [FixtureIdPart; Self::MAX_LEN],
     len: u8,
