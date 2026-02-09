@@ -33,10 +33,10 @@ pub use theymx;
 
 use std::sync::Arc;
 
-use crate::output::agent::OutputAgent;
 use crate::project::Project;
 use crate::project::file::ProjectFile;
 use crate::value::AttributeValues;
+use crate::{output::agent::OutputAgent, project::stage::FixtureId};
 
 pub use error::{Error, Result};
 
@@ -73,5 +73,23 @@ impl Zeevonk {
     pub fn set_attribute_values(&self, values: AttributeValues) {
         log::debug!("setting attribute values");
         self.output_agent.update_values(values.clone());
+    }
+
+    /// Sets all GDTF-defined attributes for highlighting a fixture.
+    /// This can be useful to locate or validate fixtures on a stage.
+    pub fn highlight_fixtures(&mut self, fixture_ids: &[FixtureId]) {
+        log::debug!("highlighting fixtures");
+        todo!();
+    }
+
+    /// Clears the list of highlighted fixtures.
+    pub fn clear_highlighted_fixtures(&mut self) {
+        log::debug!("clearing highlighted fixtures");
+        todo!();
+    }
+
+    /// The fixtures that have been highlighted.
+    pub fn highlighted_fixtures(&self) -> &[FixtureId] {
+        todo!();
     }
 }
