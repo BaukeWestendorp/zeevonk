@@ -30,6 +30,9 @@ thread-priority = "3.0.0"
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
 
+[lib]
+bench = false
+
 [[bench]]
 name = "fixture_count_scaling"
 harness = false
