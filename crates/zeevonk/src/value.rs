@@ -1,6 +1,6 @@
 //! Value types for clamped and mapped attribute values.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::{fmt, num, str};
 
 use crate::theymx::Address;
@@ -148,7 +148,7 @@ impl str::FromStr for ClampedValue {
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 pub struct AttributeValues {
-    values: HashMap<FixtureId, HashMap<Attribute, ClampedValue>>,
+    values: BTreeMap<FixtureId, BTreeMap<Attribute, ClampedValue>>,
 }
 
 impl Default for AttributeValues {
@@ -160,7 +160,7 @@ impl Default for AttributeValues {
 impl AttributeValues {
     /// Creates a new, empty [`AttributeValues`] collection.
     pub fn new() -> Self {
-        Self { values: HashMap::new() }
+        Self { values: BTreeMap::new() }
     }
 
     /// Sets the value for a given attribute at a specific fixture path.
@@ -181,7 +181,7 @@ impl AttributeValues {
         // Annotate the closure parameter types so the compiler can infer everything
         // inside the nested iterator correctly.
         self.values.iter().flat_map(
-            |(fixture_id, attrs): (&FixtureId, &HashMap<Attribute, ClampedValue>)| {
+            |(fixture_id, attrs): (&FixtureId, &BTreeMap<Attribute, ClampedValue>)| {
                 attrs
                     .iter()
                     .map(move |(attr, val): (&Attribute, &ClampedValue)| (fixture_id, attr, val))
@@ -193,7 +193,7 @@ impl AttributeValues {
     pub fn get(&self, id: &FixtureId, attribute: &Attribute) -> Option<ClampedValue> {
         self.values
             .get(id)
-            .and_then(|attrs: &HashMap<Attribute, ClampedValue>| attrs.get(attribute))
+            .and_then(|attrs: &BTreeMap<Attribute, ClampedValue>| attrs.get(attribute))
             .copied()
     }
 }

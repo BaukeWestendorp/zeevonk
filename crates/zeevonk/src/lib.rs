@@ -77,7 +77,7 @@ impl Zeevonk {
 
     /// Sets all GDTF-defined attributes for highlighting a fixture.
     /// This can be useful to locate or validate fixtures on a stage.
-    pub fn highlight_fixtures(&mut self, fixture_ids: &[FixtureId]) {
+    pub fn highlight_fixtures(&mut self, _fixture_ids: &[FixtureId]) {
         log::debug!("highlighting fixtures");
         todo!();
     }

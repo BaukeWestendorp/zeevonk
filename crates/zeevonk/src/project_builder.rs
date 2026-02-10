@@ -8,7 +8,7 @@ pub fn from_file(file: ProjectFile) -> crate::Result<Project> {
 }
 
 mod stage {
-    use std::collections::{HashMap, HashSet};
+    use std::collections::{BTreeMap, HashSet};
     use std::fs;
     use std::str::FromStr;
 
@@ -27,10 +27,11 @@ mod stage {
     use crate::value::ClampedValue;
 
     pub fn from_file(file: &ProjectFile) -> crate::Result<Stage> {
-        let mut stage = Stage { fixtures: HashMap::new(), defaulted_multiverse: Multiverse::new() };
+        let mut stage =
+            Stage { fixtures: BTreeMap::new(), defaulted_multiverse: Multiverse::new() };
 
         // Get all fixture types used in the project stage.
-        let mut fixture_types = HashMap::new();
+        let mut fixture_types = BTreeMap::new();
         for gdtf_file_path in &file.patch.gdtf_file_paths {
             let file = fs::File::open(gdtf_file_path).map_err(|err| {
                 std::io::Error::other(format!(
@@ -108,7 +109,7 @@ mod stage {
 
         // Map a channel function (identified by geometry + indices + fixture id) to the
         // fixture id where it lives for quick lookup when resolving relations.
-        channel_function_map: HashMap<ChannelFunctionId, FixtureId>,
+        channel_function_map: BTreeMap<ChannelFunctionId, FixtureId>,
 
         // Virtual channel functions are registered on the first pass, but their relations
         // depend on being able to find followers across the whole fixture set, so we store
@@ -136,7 +137,7 @@ mod stage {
 
                 fixtures: Vec::new(),
                 sibling_count_stack: Vec::new(),
-                channel_function_map: HashMap::new(),
+                channel_function_map: BTreeMap::new(),
                 unresolved_virtual_channels: Vec::new(),
                 defaults: HashSet::new(),
             }
@@ -366,7 +367,7 @@ mod stage {
             geometry: &Name,
             referenced_geometry: &Name,
             geometry_address_offset: i32,
-        ) -> HashMap<Attribute, FixtureChannelFunction> {
+        ) -> BTreeMap<Attribute, FixtureChannelFunction> {
             // Find DMX channels that belong to the referenced geometry.
             let dmx_channels_with_geometry = self
                 .gdtf_dmx_mode
@@ -375,7 +376,7 @@ mod stage {
                 .enumerate()
                 .filter(|(_, dmx_channel)| dmx_channel.geometry == *referenced_geometry);
 
-            let mut channel_functions = HashMap::new();
+            let mut channel_functions = BTreeMap::new();
 
             for (c_ix, dmx_channel) in dmx_channels_with_geometry {
                 for (lc_ix, logical_channel) in dmx_channel.logical_channels.iter().enumerate() {
@@ -408,7 +409,7 @@ mod stage {
 
                         let cf_id = ChannelFunctionId {
                             fixture_id: id,
-                            geometry: geometry.clone(),
+                            geometry: geometry.to_string(),
                             channel_ix: c_ix,
                             logical_channel_ix: lc_ix,
                             channel_function_ix: *cf_ix,
@@ -521,7 +522,7 @@ mod stage {
         /// Build relation structures for the provided DMX channel by inspecting DMX mode relations.
         fn get_relations_for_dmx_channel(
             &self,
-            geometry: &Name,
+            geometry: &str,
             dmx_channel: &DmxChannel,
         ) -> Vec<Relation> {
             let mut channel_relations = Vec::new();
@@ -572,7 +573,7 @@ mod stage {
         /// (from the DMX mode) are referenced in relations.
         fn fixture_id_for_channel_function(
             &self,
-            geometry: &Name,
+            geometry: &str,
             target_channel_function: &ChannelFunction,
         ) -> Option<FixtureId> {
             for (c_ix, dmx_channel) in self.gdtf_dmx_mode.dmx_channels.iter().enumerate() {
@@ -587,7 +588,7 @@ mod stage {
                         // Look up the recorded fixture id for the matching channel function id.
                         if let Some((_, fixture_id)) =
                             self.channel_function_map.iter().find(|(id, _)| {
-                                &id.geometry == geometry
+                                &id.geometry == &*geometry
                                     && id.channel_ix == c_ix
                                     && id.logical_channel_ix == lc_ix
                                     && id.channel_function_ix == cf_ix
@@ -603,10 +604,10 @@ mod stage {
         }
     }
 
-    #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+    #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
     struct ChannelFunctionId {
         fixture_id: FixtureId,
-        geometry: Name,
+        geometry: String,
         channel_ix: usize,
         logical_channel_ix: usize,
         channel_function_ix: usize,

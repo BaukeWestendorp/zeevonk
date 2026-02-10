@@ -1,7 +1,7 @@
 //! Baked information about each fixture and their children,
 //! including attributes and their channels.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::{cmp, fmt, str};
 
@@ -20,7 +20,7 @@ pub struct Stage {
     pub(crate) defaulted_multiverse: Multiverse,
 
     /// Map of all fixtures in this stage, keyed by their [`FixtureId`].
-    pub(crate) fixtures: HashMap<FixtureId, Fixture>,
+    pub(crate) fixtures: BTreeMap<FixtureId, Fixture>,
 }
 
 impl Stage {
@@ -30,7 +30,7 @@ impl Stage {
     }
 
     /// Returns the map of fixtures contained in this stage.
-    pub fn fixtures(&self) -> &HashMap<FixtureId, Fixture> {
+    pub fn fixtures(&self) -> &BTreeMap<FixtureId, Fixture> {
         &self.fixtures
     }
 
@@ -82,7 +82,7 @@ pub struct Fixture {
 
     pub(crate) gdtf_fixture_type_id: Uuid,
     pub(crate) gdtf_dmx_mode: String,
-    pub(crate) channel_functions: HashMap<Attribute, FixtureChannelFunction>,
+    pub(crate) channel_functions: BTreeMap<Attribute, FixtureChannelFunction>,
 
     pub(crate) child_ids: Vec<FixtureId>,
 }
