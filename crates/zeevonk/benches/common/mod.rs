@@ -42,9 +42,9 @@ pub fn generate_project(
 pub fn build_values(stage: &Stage, attrs: &[(Attribute, ClampedValue)]) -> AttributeValues {
     let mut values = AttributeValues::new();
     for (fid, _) in stage.fixtures() {
-        for (sub_fid, _) in stage.sub_fixtures(fid) {
+        for (child_fid, _) in stage.child_fixtures(fid) {
             for &(attr, v) in attrs {
-                values.set(*sub_fid, attr, v);
+                values.set(*child_fid, attr, v);
             }
         }
     }

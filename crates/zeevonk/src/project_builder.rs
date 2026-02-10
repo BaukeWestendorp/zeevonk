@@ -174,16 +174,16 @@ mod stage {
 
         fn fixtures_from_geometry(
             &mut self,
-            sub_fixture_id: FixtureId,
+            child_fixture_id: FixtureId,
             geometry: &Geometry,
         ) -> Vec<Fixture> {
             self.sibling_count_stack.push(0);
 
             let fixtures = match geometry {
                 Geometry::Reference(reference) => {
-                    self.fixture_from_reference_geometry(sub_fixture_id, reference)
+                    self.fixture_from_reference_geometry(child_fixture_id, reference)
                 }
-                geom => self.fixture_from_geometry(sub_fixture_id, geom),
+                geom => self.fixture_from_geometry(child_fixture_id, geom),
             };
 
             self.sibling_count_stack.pop();
@@ -193,11 +193,11 @@ mod stage {
 
         fn fixture_from_geometry(
             &mut self,
-            sub_fixture_id: FixtureId,
+            child_fixture_id: FixtureId,
             geometry: &Geometry,
         ) -> Vec<Fixture> {
             // Root fixture uses the provided fixture name, children use the geometry name.
-            let name = if sub_fixture_id.len() == 1 {
+            let name = if child_fixture_id.len() == 1 {
                 self.name.clone()
             } else {
                 geometry.name().map(|n| n.to_string()).unwrap_or_else(|| "<no name>".to_string())
@@ -208,12 +208,12 @@ mod stage {
                 None => return vec![], // Could also log or error, but for now skip
             };
 
-            self.create_sub_fixture(sub_fixture_id, name, geometry_name, geometry_name, 0)
+            self.create_child_fixture(child_fixture_id, name, geometry_name, geometry_name, 0)
         }
 
         fn fixture_from_reference_geometry(
             &mut self,
-            sub_fixture_id: FixtureId,
+            child_fixture_id: FixtureId,
             reference_geometry: &ReferenceGeometry,
         ) -> Vec<Fixture> {
             // Reference geometries may introduce DMX address offsets via breaks.
@@ -235,8 +235,8 @@ mod stage {
                 None => return vec![], // Could also log or error, but for now skip
             };
 
-            self.create_sub_fixture(
-                sub_fixture_id,
+            self.create_child_fixture(
+                child_fixture_id,
                 geometry_name.to_string(),
                 geometry_name,
                 referenced_geometry_name,
@@ -244,7 +244,7 @@ mod stage {
             )
         }
 
-        fn create_sub_fixture(
+        fn create_child_fixture(
             &mut self,
             id: FixtureId,
             name: String,
@@ -265,9 +265,9 @@ mod stage {
             };
 
             // Build child fixtures first (they will push/pop their own sibling counters).
-            let sub_fixtures = self.collect_child_fixtures(&id, referenced_geometry);
+            let child_fixtures = self.collect_child_fixtures(&id, referenced_geometry);
             // Collect only the immediate children ids for this fixture's metadata.
-            let sub_ids = self.collect_direct_sub_ids(&id, &sub_fixtures);
+            let child_ids = self.collect_direct_child_ids(&id, &child_fixtures);
 
             // Build channel functions for this referenced geometry (physical or virtual).
             let channel_functions = self.create_channel_functions(
@@ -291,15 +291,15 @@ mod stage {
                 gdtf_fixture_type_id: self.gdtf_fixture_type.fixture_type_id,
                 gdtf_dmx_mode: gdtf_dmx_mode_name,
                 channel_functions,
-                sub_ids,
+                child_ids,
             }];
 
-            fixtures.extend(sub_fixtures);
+            fixtures.extend(child_fixtures);
             fixtures
         }
 
         fn collect_child_fixtures(&mut self, id: &FixtureId, geometry: &Geometry) -> Vec<Fixture> {
-            let mut sub_fixtures = Vec::new();
+            let mut child_fixtures = Vec::new();
 
             for child_geometry in geometry.children() {
                 // Peek the current sibling count for this depth; it will be incremented only when
@@ -322,10 +322,11 @@ mod stage {
                     continue;
                 }
 
-                // Only include this sub-fixture (and its descendants) if the top-level
+                // Only include this child fixture (and its descendants) if the top-level
                 // fixture for this geometry has children or channel functions.
                 let parent_fixture = &fixtures_for_child[0];
-                if parent_fixture.channel_functions.is_empty() && parent_fixture.sub_ids.is_empty()
+                if parent_fixture.channel_functions.is_empty()
+                    && parent_fixture.child_ids.is_empty()
                 {
                     continue;
                 }
@@ -334,21 +335,21 @@ mod stage {
                 let last = self.sibling_count_stack.last_mut().unwrap();
                 *last += 1;
 
-                sub_fixtures.extend(fixtures_for_child);
+                child_fixtures.extend(fixtures_for_child);
             }
 
-            sub_fixtures
+            child_fixtures
         }
 
-        fn collect_direct_sub_ids(
+        fn collect_direct_child_ids(
             &self,
             id: &FixtureId,
-            sub_fixtures: &[Fixture],
+            child_fixtures: &[Fixture],
         ) -> Vec<FixtureId> {
-            sub_fixtures
+            child_fixtures
                 .iter()
                 .map(|f| f.id())
-                .filter(|sub_id| sub_id.len() == id.len() + 1)
+                .filter(|child_id| child_id.len() == id.len() + 1)
                 .collect()
         }
 

@@ -1,4 +1,4 @@
-//! Baked information about each fixture and their subfixtures,
+//! Baked information about each fixture and their children,
 //! including attributes and their channels.
 
 use std::collections::HashMap;
@@ -44,11 +44,22 @@ impl Stage {
         self.fixtures.get(id)
     }
 
-    /// Returns an iterator over all subfixtures of the given fixture.
-    pub fn sub_fixtures(&self, id: &FixtureId) -> impl Iterator<Item = (&FixtureId, &Fixture)> {
+    /// Returns an iterator over all direct children of the given fixture.
+    pub fn child_fixtures(&self, id: &FixtureId) -> impl Iterator<Item = (&FixtureId, &Fixture)> {
         self.fixtures.iter().filter(move |(fid, _)| {
             fid.len() > id.len() && fid.as_slice()[..id.len()] == *id.as_slice()
         })
+    }
+
+    /// Returns an iterator over all descendant fixtures of the fixture with the given [`FixtureId`].
+    ///
+    /// A *descendant* is any fixture whose identifier has `id` as a prefix, excluding `id` itself.
+    /// This includes both direct children and deeper nested sub-fixtures.
+    pub fn descendant_fixtures(
+        &self,
+        id: &FixtureId,
+    ) -> impl Iterator<Item = (&FixtureId, &Fixture)> {
+        self.fixtures.iter().filter(move |(fid, _)| id.contains(fid) && *fid != id)
     }
 
     /// Returns true if the stage contains a fixture with the given [`FixtureId`].
@@ -73,7 +84,7 @@ pub struct Fixture {
     pub(crate) gdtf_dmx_mode: String,
     pub(crate) channel_functions: HashMap<Attribute, FixtureChannelFunction>,
 
-    pub(crate) sub_ids: Vec<FixtureId>,
+    pub(crate) child_ids: Vec<FixtureId>,
 }
 
 impl Fixture {
@@ -85,7 +96,7 @@ impl Fixture {
     /// Returns the root DMX base address assigned to this fixture.
     ///
     /// This is the first address occupied by the fixture in the DMX
-    /// universe (addresses occupied by sub-fixtures are derived from this).
+    /// universe (addresses occupied by descendant fixtures are derived from this).
     pub fn base_address(&self) -> Address {
         self.root_base_address
     }
@@ -95,9 +106,9 @@ impl Fixture {
         &self.name
     }
 
-    /// Returns the identifiers of any sub-fixtures contained by this fixture.
-    pub fn sub_ids(&self) -> &[FixtureId] {
-        &self.sub_ids
+    /// Returns the identifiers of any children contained by this fixture.
+    pub fn child_ids(&self) -> &[FixtureId] {
+        &self.child_ids
     }
 
     /// Returns the GDTF fixture type this instance is based on.
