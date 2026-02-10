@@ -4,12 +4,12 @@
 
 use std::path::Path;
 
-use theymx::Address;
 use zeevonk::attr::Attribute;
 use zeevonk::project::Project;
 use zeevonk::project::file::ProjectFile;
 use zeevonk::project::file::patch::{FixtureDefinition, FixtureKindDefinition, Patch};
 use zeevonk::project::stage::{FixtureIdPart, Stage};
+use zeevonk::theymx::Address;
 use zeevonk::value::{AttributeValues, ClampedValue};
 
 pub fn generate_project(

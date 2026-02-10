@@ -1,4 +1,4 @@
-use theymx::Multiverse;
+use crate::theymx::Multiverse;
 
 use crate::attr::Attribute;
 use crate::project::stage::{
@@ -14,7 +14,7 @@ pub fn resolve(values: &AttributeValues, stage: &Stage, multiverse: &mut Multive
 ///
 /// The resolver walks the fixtures, computes the effective value for
 /// each fixture channel function, and writes the corresponding bytes into a
-/// [`theymx::Multiverse`]. Virtual channel functions (those driven by relations)
+/// [`crate::theymx::Multiverse`]. Virtual channel functions (those driven by relations)
 /// are resolved by deferring relation writes until all fixtures have been
 /// examined. This allows follower relations (multiply or override) to be
 /// resolved against the master's computed values.

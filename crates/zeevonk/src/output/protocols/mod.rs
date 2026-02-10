@@ -1,4 +1,4 @@
-use theymx::Multiverse;
+use crate::theymx::Multiverse;
 
 use crate::{output, project::file::dmx_output::DmxOutputInstanceDefinition};
 

@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::{fmt, num, str};
 
-use theymx::{self, Address};
+use crate::theymx::Address;
 
 use crate::attr::Attribute;
 use crate::project::stage::FixtureId;
@@ -83,7 +83,7 @@ impl ClampedValue {
     }
 
     /// Converts the value to values directly mappable at addresses.
-    pub fn to_address_values(&self, addresses: &[Address]) -> Vec<(Address, theymx::Value)> {
+    pub fn to_address_values(&self, addresses: &[Address]) -> Vec<(Address, crate::theymx::Value)> {
         let bytes: Vec<u8> = match addresses.len() {
             1 => vec![self.to_u8()],
             2 => self.to_u16_bytes().to_vec(),
@@ -98,7 +98,7 @@ impl ClampedValue {
             }
         };
 
-        addresses.iter().copied().zip(bytes.into_iter().map(theymx::Value::from)).collect()
+        addresses.iter().copied().zip(bytes.into_iter().map(crate::theymx::Value::from)).collect()
     }
 }
 

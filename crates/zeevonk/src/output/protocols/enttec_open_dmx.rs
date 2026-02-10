@@ -2,8 +2,8 @@ use std::sync::{Arc, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+use crate::theymx::{Multiverse, Universe, UniverseId};
 use libftd2xx::{BitsPerWord, Ftdi, FtdiCommon, Parity, StopBits, TimeoutError};
-use theymx::{Multiverse, Universe, UniverseId};
 use thread_priority::ThreadBuilderExt;
 
 use crate::output;

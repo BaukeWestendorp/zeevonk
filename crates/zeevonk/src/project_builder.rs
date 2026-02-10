@@ -12,11 +12,11 @@ mod stage {
     use std::fs;
     use std::str::FromStr;
 
+    use crate::theymx::{Address, Multiverse};
     use gdtf::dmx_mode::{ChannelFunction, DmxChannel, DmxMode, RelationType};
     use gdtf::fixture_type::FixtureType;
     use gdtf::geometry::{AnyGeometry, Geometry, ReferenceGeometry};
     use gdtf::values::Name;
-    use theymx::{Address, Multiverse};
 
     use crate::attr::Attribute;
     use crate::project::file::ProjectFile;

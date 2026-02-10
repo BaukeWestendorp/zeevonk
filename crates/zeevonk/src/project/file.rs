@@ -91,7 +91,7 @@ pub mod patch {
 
     use std::path::PathBuf;
 
-    use theymx::Address;
+    use crate::theymx::Address;
     use uuid::Uuid;
 
     use crate::project::stage::FixtureIdPart;
@@ -138,7 +138,7 @@ pub mod dmx_output {
 
     use std::net::SocketAddr;
 
-    use theymx::UniverseId;
+    use crate::theymx::UniverseId;
 
     /// Defines the DMX output configuration for a project.
     #[derive(Debug, Clone, PartialEq, Default)]

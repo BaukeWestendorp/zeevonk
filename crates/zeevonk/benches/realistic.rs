@@ -2,7 +2,7 @@ use std::path::Path;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 
-use theymx::Multiverse;
+use zeevonk::theymx::Multiverse;
 
 use zeevonk::attr::Attribute;
 use zeevonk::project::file::ProjectFile;

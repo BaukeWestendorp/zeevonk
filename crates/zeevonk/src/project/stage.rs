@@ -5,7 +5,7 @@ use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::{cmp, fmt, str};
 
-use theymx::{Address, Multiverse};
+use crate::theymx::{Address, Multiverse};
 use uuid::Uuid;
 
 use crate::Error;

@@ -1,7 +1,7 @@
 use criterion::BatchSize;
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
-use theymx::Multiverse;
+use zeevonk::theymx::Multiverse;
 
 use zeevonk::attr::Attribute;
 use zeevonk::value::ClampedValue;
