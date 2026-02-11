@@ -18,7 +18,7 @@ criterion_group! {
 }
 
 pub fn bench_realistic_single_universe(c: &mut Criterion) {
-    let project = zeevonk::project_builder::from_file(
+    let project = zeevonk::project::builder::from_file(
         ProjectFile::load_from_folder(
             &Path::new(env!("CARGO_MANIFEST_DIR"))
                 .join("benches/data/projects/realistic_single_universe"),

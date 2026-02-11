@@ -8,7 +8,7 @@ pub fn from_file(file: ProjectFile) -> crate::Result<Project> {
 }
 
 mod stage {
-    use std::collections::{BTreeMap, HashSet};
+    use std::collections::{BTreeMap, BTreeSet, HashSet};
     use std::fs;
     use std::str::FromStr;
 
@@ -27,8 +27,7 @@ mod stage {
     use crate::value::ClampedValue;
 
     pub fn from_file(file: &ProjectFile) -> crate::Result<Stage> {
-        let mut stage =
-            Stage { fixtures: BTreeMap::new(), defaulted_multiverse: Multiverse::new() };
+        let mut stage = Stage { fixtures: BTreeMap::new(), default_multiverse: Multiverse::new() };
 
         // Get all fixture types used in the project stage.
         let mut fixture_types = BTreeMap::new();
@@ -61,12 +60,9 @@ mod stage {
                     crate::Error::FixtureTypeNotFound { id: fixture.kind.gdtf_fixture_type_id }
                 })?;
 
-            let dmx_mode = fixture_type.dmx_mode(&fixture.kind.gdtf_dmx_mode).ok_or_else(|| {
-                crate::Error::DmxModeNotFound {
-                    mode: fixture.kind.gdtf_dmx_mode.to_string(),
-                    fixture_type_id: fixture.kind.gdtf_fixture_type_id,
-                }
-            })?;
+            let dmx_mode = fixture_type
+                .dmx_mode(&fixture.kind.gdtf_dmx_mode)
+                .ok_or(crate::Error::DmxModeNotFound)?;
 
             let builder = FixtureBuilder::new(
                 fixture.root_id,
@@ -81,7 +77,224 @@ mod stage {
                 stage.fixtures.insert(built_fixture.id(), built_fixture);
             }
             for (address, value) in defaults {
-                stage.defaulted_multiverse.set_value(&address, value);
+                stage.default_multiverse.set_value(&address, value);
+            }
+        }
+
+        // Remove fixtures without channel functions
+        {
+            let fixture_ids: Vec<FixtureId> = stage.fixtures.keys().cloned().collect();
+            let mut keep: BTreeSet<FixtureId> = BTreeSet::new();
+
+            for id in &fixture_ids {
+                if id.is_root() {
+                    continue;
+                };
+
+                let has_channel_functions =
+                    stage.fixtures.get(id).is_some_and(|f| !f.channel_functions.is_empty());
+
+                if !has_channel_functions {
+                    continue;
+                }
+
+                // Keep this fixture and all its ancestors.
+                let mut current = Some(id.clone());
+                while let Some(cur) = current {
+                    if !keep.insert(cur.clone()) {
+                        // Already visited this ancestor chain.
+                        break;
+                    }
+                    current = stage.parent_id(&cur);
+                }
+            }
+
+            // Remove everything not marked to keep.
+            stage.fixtures.retain(|id, _| keep.contains(id));
+
+            // Clean up child lists to avoid dangling ids.
+            let existing: BTreeSet<FixtureId> = stage.fixtures.keys().cloned().collect();
+            for fixture in stage.fixtures.values_mut() {
+                fixture.child_ids.retain(|cid| existing.contains(cid));
+            }
+        }
+
+        // Collapse away fixtures that only exist to carry channel functions,
+        // moving those channel functions up to their parent.
+        //
+        // We collapse when it is unambiguous:
+        // - Child has channel functions
+        // - Parent has channel functions (as well) OR no channel functions
+        {
+            loop {
+                // We need an iteration because collapsing can create new opportunities up the tree.
+                let fixture_ids: Vec<FixtureId> = stage.fixtures.keys().cloned().collect();
+
+                let mut changed = false;
+
+                for parent_id in fixture_ids {
+                    let Some(parent) = stage.fixtures.get(&parent_id) else {
+                        continue;
+                    };
+
+                    // Nothing to do if the parent has no children.
+                    if parent.child_ids.is_empty() {
+                        continue;
+                    }
+
+                    // Find direct children that carry channel functions.
+                    let child_ids_with_channel_functions: Vec<FixtureId> = parent
+                        .child_ids
+                        .iter()
+                        .filter_map(|cid| {
+                            stage
+                                .fixtures
+                                .get(cid)
+                                .is_some_and(|c| !c.channel_functions.is_empty())
+                                .then(|| cid.clone())
+                        })
+                        .collect();
+
+                    // Only collapse when there is exactly one such child (unambiguous).
+                    if child_ids_with_channel_functions.len() != 1 {
+                        continue;
+                    }
+
+                    let child_id = child_ids_with_channel_functions[0].clone();
+
+                    let Some(child) = stage.fixtures.get(&child_id) else {
+                        continue;
+                    };
+
+                    // We need the child's direct children ids before we mutate/remove it.
+                    let child_direct_children = child.child_ids.clone();
+
+                    // Take child's channel functions.
+                    let child_channel_functions = stage
+                        .fixtures
+                        .get_mut(&child_id)
+                        .map(|c| std::mem::take(&mut c.channel_functions))
+                        .unwrap_or_default();
+
+                    if child_channel_functions.is_empty() {
+                        continue;
+                    }
+
+                    if let Some(parent_mut) = stage.fixtures.get_mut(&parent_id) {
+                        // Move the child's channel functions onto the parent.
+                        parent_mut.channel_functions.extend(child_channel_functions);
+
+                        // Remove the collapsed child from the parent's child list and lift the
+                        // child's direct children to become the parent's children.
+                        parent_mut.child_ids.retain(|cid| cid != &child_id);
+
+                        for grandchild_id in child_direct_children {
+                            if !parent_mut.child_ids.contains(&grandchild_id) {
+                                parent_mut.child_ids.push(grandchild_id);
+                            }
+                        }
+                    }
+
+                    // Remove the child fixture entirely.
+                    stage.fixtures.remove(&child_id);
+
+                    changed = true;
+                }
+
+                if !changed {
+                    break;
+                }
+            }
+        }
+
+        // Update fixture ids after additional normalization passes.
+        // After removing/collapsing fixtures, sibling indices may have gaps.
+        // Re-number ids to keep the tree stable and consistent across passes.
+        {
+            loop {
+                let root_ids: Vec<FixtureId> =
+                    stage.fixtures.keys().filter(|id| id.len() == 1).cloned().collect();
+
+                let mut id_map: BTreeMap<FixtureId, FixtureId> = BTreeMap::new();
+                let mut stack: Vec<FixtureId> = Vec::new();
+
+                for root_id in root_ids {
+                    id_map.insert(root_id, root_id);
+                    stack.push(root_id);
+                }
+
+                while let Some(old_parent_id) = stack.pop() {
+                    let Some(parent) = stage.fixtures.get(&old_parent_id) else {
+                        continue;
+                    };
+
+                    // Only consider children that still exist.
+                    let mut children: Vec<FixtureId> = parent
+                        .child_ids
+                        .iter()
+                        .filter(|cid| stage.fixtures.contains_key(*cid))
+                        .cloned()
+                        .collect();
+
+                    children.sort();
+
+                    for (ix, old_child_id) in children.into_iter().enumerate() {
+                        let Ok(new_part) = FixtureIdPart::new((ix as u32) + 1) else {
+                            continue;
+                        };
+
+                        let old_mapped_parent =
+                            id_map.get(&old_parent_id).cloned().unwrap_or(old_parent_id.clone());
+                        let new_child_id = old_mapped_parent.extended_with(new_part);
+
+                        if new_child_id != old_child_id {
+                            id_map.insert(old_child_id.clone(), new_child_id.clone());
+                        } else {
+                            // Ensure present for descendants even when unchanged.
+                            id_map.insert(old_child_id.clone(), old_child_id.clone());
+                        }
+
+                        stack.push(old_child_id);
+                    }
+                }
+
+                let changed = id_map.iter().any(|(old, new)| old != new);
+                if !changed {
+                    break;
+                }
+
+                // Apply mapping to fixtures, rebuilding the BTreeMap with new keys and updating
+                // internal references (fixture.id + child_ids + relation fixture ids).
+                let old_fixtures = std::mem::take(&mut stage.fixtures);
+                let mut new_fixtures: BTreeMap<FixtureId, Fixture> = BTreeMap::new();
+
+                for (old_id, mut fixture) in old_fixtures {
+                    let new_id = id_map.get(&old_id).cloned().unwrap_or(old_id);
+
+                    fixture.id = new_id;
+
+                    // Update child ids.
+                    for cid in fixture.child_ids.iter_mut() {
+                        if let Some(mapped) = id_map.get(cid) {
+                            *cid = mapped.clone();
+                        }
+                    }
+
+                    // Update relation fixture ids.
+                    for cf in fixture.channel_functions.values_mut() {
+                        if let FixtureChannelFunctionKind::Virtual { relations } = &mut cf.kind {
+                            for rel in relations.iter_mut() {
+                                if let Some(mapped) = id_map.get(&rel.fixture_id) {
+                                    rel.fixture_id = *mapped;
+                                }
+                            }
+                        }
+                    }
+
+                    new_fixtures.insert(fixture.id(), fixture);
+                }
+
+                stage.fixtures = new_fixtures;
             }
         }
 
@@ -159,15 +372,7 @@ mod stage {
 
         fn get_root_geometry(&self) -> crate::Result<&Geometry> {
             let Some(root_geometry) = self.gdtf_dmx_mode.geometry(self.gdtf_fixture_type) else {
-                return Err(crate::Error::RootGeometryNotFound {
-                    fixture_type_id: self.gdtf_fixture_type.fixture_type_id,
-                    dmx_mode_name: self
-                        .gdtf_dmx_mode
-                        .name
-                        .as_ref()
-                        .map(|n| n.to_string())
-                        .unwrap_or_else(|| "<no name>".to_string()),
-                });
+                return Err(crate::Error::RootGeometryNotFound);
             };
 
             Ok(root_geometry)
@@ -611,15 +816,5 @@ mod stage {
         channel_ix: usize,
         logical_channel_ix: usize,
         channel_function_ix: usize,
-    }
-
-    impl From<gdtf::values::DmxValue> for ClampedValue {
-        fn from(value: gdtf::values::DmxValue) -> Self {
-            let len: u8 = value.bytes().into();
-            let raw = value.to(len);
-            let max_value = 2_u64.saturating_pow(len as u32 * 8) - 1;
-            let floating_value = raw as f32 / max_value as f32;
-            ClampedValue::new(floating_value)
-        }
     }
 }

@@ -77,13 +77,13 @@ impl OutputAgent {
 
         let updater = Arc::clone(&self.updater);
 
-        let defaulted_multiverse = self.project.stage().defaulted_multiverse().clone();
+        let default_multiverse = self.project.stage().default_multiverse().clone();
         thread::Builder::new()
             .name("output_agent".to_string())
             .spawn_with_priority(thread_priority::ThreadPriority::Max, move |prio_result| {
                 assert!(prio_result.is_ok());
 
-                let mut multiverse = defaulted_multiverse.clone();
+                let mut multiverse = default_multiverse.clone();
 
                 let tick_interval = updater.tick_interval;
                 let mut deadline = Instant::now() + tick_interval;

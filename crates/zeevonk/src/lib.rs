@@ -23,8 +23,7 @@ pub mod project;
 pub mod value;
 
 mod output;
-#[doc(hidden)]
-pub mod project_builder;
+
 #[doc(hidden)]
 pub mod resolver;
 
@@ -53,7 +52,7 @@ impl Zeevonk {
     ///
     /// Returns an error if the project file cannot be loaded or parsed.
     pub fn new(project_file: ProjectFile) -> crate::Result<Self> {
-        let project_handle = Arc::new(project_builder::from_file(project_file)?);
+        let project_handle = Arc::new(project::builder::from_file(project_file)?);
         let output_agent = Arc::new(OutputAgent::new(project_handle.clone()));
         Ok(Self { project: Arc::clone(&project_handle), output_agent })
     }

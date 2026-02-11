@@ -5,6 +5,9 @@ pub mod stage;
 
 use crate::project::{file::ProjectFile, stage::Stage};
 
+#[doc(hidden)]
+pub mod builder;
+
 /// Represents a project, containing its file and stage information.
 #[derive(Debug, Clone)]
 #[derive(serde::Serialize, serde::Deserialize)]

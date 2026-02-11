@@ -36,13 +36,13 @@ pub fn generate_project(
     let project_file =
         ProjectFile { patch: Patch { gdtf_file_paths, fixtures }, ..Default::default() };
 
-    zeevonk::project_builder::from_file(project_file)
+    zeevonk::project::builder::from_file(project_file)
 }
 
 pub fn build_values(stage: &Stage, attrs: &[(Attribute, ClampedValue)]) -> AttributeValues {
     let mut values = AttributeValues::new();
     for (fid, _) in stage.fixtures() {
-        for (child_fid, _) in stage.child_fixtures(fid) {
+        for (child_fid, _) in stage.children(fid) {
             for &(attr, v) in attrs {
                 values.set(*child_fid, attr, v);
             }

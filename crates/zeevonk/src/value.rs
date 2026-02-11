@@ -140,6 +140,16 @@ impl str::FromStr for ClampedValue {
     }
 }
 
+impl From<gdtf::values::DmxValue> for ClampedValue {
+    fn from(value: gdtf::values::DmxValue) -> Self {
+        let len: u8 = value.bytes().into();
+        let raw = value.to(len);
+        let max_value = 2_u64.saturating_pow(len as u32 * 8) - 1;
+        let floating_value = raw as f32 / max_value as f32;
+        ClampedValue::new(floating_value)
+    }
+}
+
 /// Stores [`ClampedValue`]s for each [`FixtureId`]'s [`Attribute`].
 ///
 /// Maintains a mapping from [`FixtureId`] to a set of

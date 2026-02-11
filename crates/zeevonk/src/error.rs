@@ -31,23 +31,11 @@ pub enum Error {
         id: Uuid,
     },
     /// The requested DMX mode was not found for the given fixture type.
-    #[error("dmx mode not found: {mode} (fixture type id: {fixture_type_id})")]
-    DmxModeNotFound {
-        /// The name of the DMX mode that was not found.
-        mode: String,
-        /// The UUID of the fixture type for which the DMX mode was not found.
-        fixture_type_id: Uuid,
-    },
+    #[error("dmx mode not found")]
+    DmxModeNotFound,
     /// The root geometry was not found for the given fixture type and DMX mode.
-    #[error(
-        "root geometry not found (fixture type id: {fixture_type_id}, dmx mode: {dmx_mode_name})"
-    )]
-    RootGeometryNotFound {
-        /// The UUID of the fixture type for which the root geometry was not found.
-        fixture_type_id: Uuid,
-        /// The name of the DMX mode for which the root geometry was not found.
-        dmx_mode_name: String,
-    },
+    #[error("root geometry not found")]
+    RootGeometryNotFound,
 
     /// An error occurred while handling output.
     #[error("output error: {0}")]
