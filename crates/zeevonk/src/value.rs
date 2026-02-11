@@ -206,4 +206,11 @@ impl AttributeValues {
             .and_then(|attrs: &BTreeMap<Attribute, ClampedValue>| attrs.get(attribute))
             .copied()
     }
+
+    /// Extends this collection with values from another [`AttributeValues`].
+    pub fn extend(&mut self, other: AttributeValues) {
+        for (fixture_id, attrs) in other.values {
+            self.values.entry(fixture_id).or_default().extend(attrs);
+        }
+    }
 }

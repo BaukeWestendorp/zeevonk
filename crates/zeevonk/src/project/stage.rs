@@ -112,6 +112,7 @@ pub struct Fixture {
     pub(crate) gdtf_fixture_type_id: Uuid,
     pub(crate) gdtf_dmx_mode: String,
     pub(crate) channel_functions: BTreeMap<Attribute, FixtureChannelFunction>,
+    pub(crate) highlight_values: BTreeMap<Address, crate::theymx::Value>,
 
     pub(crate) child_ids: Vec<FixtureId>,
 }
@@ -160,6 +161,11 @@ impl Fixture {
     /// Get all channel functions for this fixture.
     pub fn channel_functions(&self) -> impl Iterator<Item = (&Attribute, &FixtureChannelFunction)> {
         self.channel_functions.iter()
+    }
+
+    /// Returns the "highlight" DMX values for this fixture.
+    pub fn highlight_values(&self) -> &BTreeMap<Address, crate::theymx::Value> {
+        &self.highlight_values
     }
 }
 

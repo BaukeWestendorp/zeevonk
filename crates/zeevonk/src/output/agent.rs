@@ -1,8 +1,9 @@
-use std::sync::{Arc, Mutex, mpsc};
+use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex, RwLock, mpsc};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use theymx::Multiverse;
+use theymx::{Address, Multiverse};
 use thread_priority::ThreadBuilderExt;
 
 use crate::output::protocols::OutputInstance;
@@ -11,16 +12,14 @@ use crate::resolver;
 use crate::value::AttributeValues;
 
 pub struct OutputAgent {
-    project: Arc<Project>,
-
     updater: Arc<Updater>,
-    update_tx: mpsc::Sender<AttributeValues>,
-    update_rx: Mutex<Option<mpsc::Receiver<AttributeValues>>>,
+    update_tx: mpsc::Sender<OutputAgentUpdate>,
+    update_rx: Mutex<Option<mpsc::Receiver<OutputAgentUpdate>>>,
 }
 
 impl OutputAgent {
     pub fn new(project: Arc<Project>) -> Self {
-        let (update_tx, update_rx) = mpsc::channel::<AttributeValues>();
+        let (update_tx, update_rx) = mpsc::channel::<OutputAgentUpdate>();
         // We make this a single frame buffer, because we
         // do not need to show late frames. Just the most recent one.
         let (output_tx, output_rx) = crossbeam_channel::bounded::<Multiverse>(1);
@@ -50,16 +49,21 @@ impl OutputAgent {
         }
 
         Self {
-            project: project.clone(),
-
             updater: Arc::new(Updater::new(output_tx, project)),
             update_tx,
             update_rx: Mutex::new(Some(update_rx)),
         }
     }
 
-    pub fn update_values(&self, values: AttributeValues) {
-        self.update_tx.send(values).unwrap();
+    pub fn set_attribute_values(&self, values: AttributeValues) {
+        self.update_tx.send(OutputAgentUpdate::SetAttributeValues(values)).unwrap();
+    }
+
+    pub fn set_highlighted_values(
+        &self,
+        highlighted_values: BTreeMap<Address, crate::theymx::Value>,
+    ) {
+        self.update_tx.send(OutputAgentUpdate::SetHighlightedValues(highlighted_values)).unwrap();
     }
 
     pub fn start(&self) {
@@ -77,13 +81,10 @@ impl OutputAgent {
 
         let updater = Arc::clone(&self.updater);
 
-        let default_multiverse = self.project.stage().default_multiverse().clone();
         thread::Builder::new()
             .name("output_agent".to_string())
             .spawn_with_priority(thread_priority::ThreadPriority::Max, move |prio_result| {
                 assert!(prio_result.is_ok());
-
-                let mut multiverse = default_multiverse.clone();
 
                 let tick_interval = updater.tick_interval;
                 let mut deadline = Instant::now() + tick_interval;
@@ -92,7 +93,7 @@ impl OutputAgent {
                     let tick_start = Instant::now();
 
                     // Drain all pending updates that arrived since last tick.
-                    let mut updates = Vec::<AttributeValues>::new();
+                    let mut updates = Vec::<OutputAgentUpdate>::new();
                     loop {
                         match rx.try_recv() {
                             Ok(update) => updates.push(update),
@@ -106,12 +107,9 @@ impl OutputAgent {
                         }
                     }
 
-                    // Apply updates to the multiverse.
-                    if !updates.is_empty() {
-                        updater.resolve_updates_into_multiverse(&mut multiverse, &updates);
-                    }
-
-                    updater.transmit_resolved_multiverse(multiverse.clone());
+                    // Composite and transmit.
+                    let output = updater.composite_pipeline(updates).clone();
+                    updater.transmit_resolved_multiverse(output);
 
                     let tick_end = Instant::now();
                     let actual_tick_duration = tick_end.duration_since(tick_start);
@@ -145,26 +143,72 @@ impl OutputAgent {
     }
 }
 
+pub enum OutputAgentUpdate {
+    SetAttributeValues(AttributeValues),
+    SetHighlightedValues(BTreeMap<Address, crate::theymx::Value>),
+}
+
+struct Pipeline {
+    base: Multiverse,
+    updates: AttributeValues,
+    highlights: BTreeMap<Address, crate::theymx::Value>,
+
+    output: Multiverse,
+}
+
+impl Pipeline {
+    pub fn new(default_multiverse: Multiverse) -> Self {
+        Self {
+            base: default_multiverse.clone(),
+            updates: AttributeValues::new(),
+            highlights: BTreeMap::new(),
+            output: default_multiverse.clone(),
+        }
+    }
+
+    pub fn composite(&mut self, project: &Project, updates: Vec<OutputAgentUpdate>) {
+        for update in updates {
+            match update {
+                OutputAgentUpdate::SetAttributeValues(attribute_values) => {
+                    self.updates.extend(attribute_values)
+                }
+                OutputAgentUpdate::SetHighlightedValues(highlighted_values) => {
+                    self.highlights = highlighted_values.clone();
+                }
+            }
+        }
+
+        self.output = self.base.clone();
+
+        resolver::resolve(&self.updates, &project.stage(), &mut self.output);
+
+        for (address, value) in &self.highlights {
+            self.output.set_value(address, *value);
+        }
+    }
+}
+
 struct Updater {
     project: Arc<Project>,
 
     tick_interval: Duration,
     output_tx: crossbeam_channel::Sender<Multiverse>,
+
+    pipeline: RwLock<Pipeline>,
 }
 
 impl Updater {
     pub fn new(output_tx: crossbeam_channel::Sender<Multiverse>, project: Arc<Project>) -> Self {
-        Self { project, tick_interval: Duration::from_secs_f64(1.0 / 44.0), output_tx }
+        let default_multiverse = project.stage().default_multiverse().clone();
+        let pipeline = RwLock::new(Pipeline::new(default_multiverse));
+
+        Self { project, tick_interval: Duration::from_secs_f64(1.0 / 44.0), output_tx, pipeline }
     }
 
-    fn resolve_updates_into_multiverse(
-        &self,
-        multiverse: &mut Multiverse,
-        updates: &[AttributeValues],
-    ) {
-        for update in updates {
-            resolver::resolve(update, self.project.stage(), multiverse);
-        }
+    fn composite_pipeline(&self, updates: Vec<OutputAgentUpdate>) -> Multiverse {
+        let mut pipeline = self.pipeline.write().unwrap();
+        pipeline.composite(&self.project, updates);
+        pipeline.output.clone()
     }
 
     fn transmit_resolved_multiverse(&self, multiverse: Multiverse) {

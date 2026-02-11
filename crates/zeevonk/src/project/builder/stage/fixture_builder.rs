@@ -160,7 +160,14 @@ impl<'a> FixtureBuilder<'a> {
         // Keep unwrap to preserve prior behavior.
         let referenced_name = referenced_geometry.name().unwrap();
 
-        let channel_functions = self.channel_ctx.create_channel_functions(
+        let gdtf_dmx_mode_name = self
+            .gdtf_dmx_mode
+            .name
+            .as_ref()
+            .map(|n| n.to_string())
+            .unwrap_or_else(|| "<no mode name>".to_string());
+
+        let (channel_functions, highlight_values) = self.channel_ctx.create_channel_functions(
             id,
             geometry,
             referenced_name,
@@ -170,13 +177,6 @@ impl<'a> FixtureBuilder<'a> {
             &mut self.virtuals,
         );
 
-        let gdtf_dmx_mode_name = self
-            .gdtf_dmx_mode
-            .name
-            .as_ref()
-            .map(|n| n.to_string())
-            .unwrap_or_else(|| "<no mode name>".to_string());
-
         let mut fixtures = vec![Fixture {
             id,
             root_base_address: self.address,
@@ -184,6 +184,7 @@ impl<'a> FixtureBuilder<'a> {
             gdtf_fixture_type_id: self.gdtf_fixture_type.fixture_type_id,
             gdtf_dmx_mode: gdtf_dmx_mode_name,
             channel_functions,
+            highlight_values,
             child_ids,
         }];
 
@@ -272,7 +273,8 @@ mod channel_functions {
             base_address: Address,
             defaults: &mut HashSet<(Address, theymx::Value)>,
             virtuals: &mut VirtualChannelResolver,
-        ) -> BTreeMap<Attribute, FixtureChannelFunction> {
+        ) -> (BTreeMap<Attribute, FixtureChannelFunction>, BTreeMap<Address, crate::theymx::Value>)
+        {
             let dmx_channels_with_geometry = self
                 .gdtf_dmx_mode
                 .dmx_channels
@@ -281,6 +283,8 @@ mod channel_functions {
                 .filter(|(_, dmx_channel)| dmx_channel.geometry == *referenced_geometry);
 
             let mut channel_functions = BTreeMap::new();
+
+            let mut highlight_values = BTreeMap::new();
 
             for (c_ix, dmx_channel) in dmx_channels_with_geometry {
                 for (lc_ix, logical_channel) in dmx_channel.logical_channels.iter().enumerate() {
@@ -332,6 +336,14 @@ mod channel_functions {
                             if let FixtureChannelFunctionKind::Physical { addresses } = &kind {
                                 let default_values = default.to_address_values(addresses);
                                 defaults.extend(default_values);
+
+                                if let Some(highlight) = dmx_channel.highlight {
+                                    let values =
+                                        ClampedValue::from(highlight).to_address_values(addresses);
+                                    for (address, value) in values {
+                                        highlight_values.insert(address, value);
+                                    }
+                                }
                             }
                         }
 
@@ -345,7 +357,7 @@ mod channel_functions {
                 }
             }
 
-            channel_functions
+            (channel_functions, highlight_values)
         }
 
         fn make_channel_function_kind(

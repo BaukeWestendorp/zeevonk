@@ -30,6 +30,7 @@ pub mod resolver;
 /// Re-export of the [`theymx`](https://github.com/BaukeWestendorp/theymx) crate.
 pub use theymx;
 
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use crate::project::Project;
@@ -71,24 +72,26 @@ impl Zeevonk {
     /// Sets attribute values for fixtures in the project.
     pub fn set_attribute_values(&self, values: AttributeValues) {
         log::debug!("setting attribute values");
-        self.output_agent.update_values(values.clone());
+        self.output_agent.set_attribute_values(values);
     }
 
-    /// Sets all GDTF-defined attributes for highlighting a fixture.
-    /// This can be useful to locate or validate fixtures on a stage.
-    pub fn highlight_fixtures(&mut self, _fixture_ids: &[FixtureId]) {
-        log::debug!("highlighting fixtures");
-        todo!();
+    /// Sets the highlighted fixtures.
+    pub fn set_highlighted_fixtures(&self, fixture_ids: &[FixtureId]) {
+        log::debug!("setting highlighted fixtures");
+        let mut highlighted_values = BTreeMap::new();
+        for fixture_id in fixture_ids {
+            let Some(fixture) = self.project().stage().fixture(fixture_id) else {
+                continue;
+            };
+            highlighted_values.extend(fixture.highlight_values());
+        }
+
+        self.output_agent.set_highlighted_values(highlighted_values);
     }
 
     /// Clears the list of highlighted fixtures.
     pub fn clear_highlighted_fixtures(&mut self) {
         log::debug!("clearing highlighted fixtures");
-        todo!();
-    }
-
-    /// The fixtures that have been highlighted.
-    pub fn highlighted_fixtures(&self) -> &[FixtureId] {
-        todo!();
+        self.set_highlighted_fixtures(&[]);
     }
 }

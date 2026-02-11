@@ -180,12 +180,19 @@ fn collapse(stage: &mut Stage) {
                 .map(|c| std::mem::take(&mut c.channel_functions))
                 .unwrap_or_default();
 
-            if child_channel_functions.is_empty() {
+            let child_highlight_values = stage
+                .fixtures
+                .get_mut(&child_id)
+                .map(|c| std::mem::take(&mut c.highlight_values))
+                .unwrap_or_default();
+
+            if child_channel_functions.is_empty() && child_highlight_values.is_empty() {
                 continue;
             }
 
             if let Some(parent_mut) = stage.fixtures.get_mut(&parent_id) {
                 parent_mut.channel_functions.extend(child_channel_functions);
+                parent_mut.highlight_values.extend(child_highlight_values);
 
                 parent_mut.child_ids.retain(|cid| cid != &child_id);
 
