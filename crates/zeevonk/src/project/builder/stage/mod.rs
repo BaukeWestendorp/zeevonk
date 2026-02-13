@@ -29,7 +29,7 @@ pub fn from_file(file: &ProjectFile) -> crate::Result<Stage> {
 fn build_patch_fixture(
     stage: &mut Stage,
     fixture_types: &BTreeMap<Uuid, FixtureType>,
-    fixture_def: &crate::project::file::patch::FixtureDefinition,
+    fixture_def: &crate::project::FixtureDefinition,
 ) -> crate::Result<()> {
     let (fixture_type, dmx_mode) = fixture_type_and_mode(fixture_types, fixture_def)?;
 
@@ -54,7 +54,7 @@ fn build_patch_fixture(
 
 fn fixture_type_and_mode<'a>(
     fixture_types: &'a BTreeMap<Uuid, FixtureType>,
-    fixture_def: &crate::project::file::patch::FixtureDefinition,
+    fixture_def: &crate::project::FixtureDefinition,
 ) -> crate::Result<(&'a FixtureType, &'a DmxMode)> {
     let fixture_type =
         fixture_types.get(&fixture_def.kind.gdtf_fixture_type_id).ok_or_else(|| {

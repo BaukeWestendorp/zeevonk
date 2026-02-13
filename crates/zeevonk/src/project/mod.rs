@@ -1,12 +1,13 @@
 //! Project file and stage information.
 
-pub mod file;
-pub mod stage;
-
-use crate::project::{file::ProjectFile, stage::Stage};
+mod file;
+mod stage;
 
 #[doc(hidden)]
 pub mod builder;
+
+pub use file::*;
+pub use stage::*;
 
 /// Represents a project, containing its file and stage information.
 #[derive(Debug, Clone)]

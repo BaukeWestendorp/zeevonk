@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use zeevonk::{
     Zeevonk,
-    project::{file::ProjectFile, stage::Fixture},
+    project::{Fixture, ProjectFile},
 };
 
 pub fn dump_patch(project_path: PathBuf) -> anyhow::Result<()> {
@@ -21,7 +21,7 @@ pub fn dump_patch(project_path: PathBuf) -> anyhow::Result<()> {
 }
 
 mod dump {
-    use zeevonk::project::stage::{Fixture, FixtureChannelFunctionKind};
+    use zeevonk::project::{Fixture, FixtureChannelFunctionKind};
 
     const RESET: &str = "\x1b[0m";
     const BOLD: &str = "\x1b[1m";

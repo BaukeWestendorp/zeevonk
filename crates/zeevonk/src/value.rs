@@ -6,7 +6,7 @@ use std::{fmt, num, str};
 use crate::theymx::Address;
 
 use crate::attr::Attribute;
-use crate::project::stage::FixtureId;
+use crate::project::FixtureId;
 
 /// A clamped value between `0.0..=1.0`.
 ///

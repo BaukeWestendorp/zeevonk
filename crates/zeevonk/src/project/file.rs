@@ -3,6 +3,9 @@
 use std::path::Path;
 use std::{fs, io};
 
+pub use dmx_output::*;
+pub use patch::*;
+
 /// The relative path to the project description file within a project folder.
 const RELATIVE_DESCRIPTION_FILE_PATH: &str = "project.json";
 /// The relative path to the directory containing GDTF files within a project folder.
@@ -86,7 +89,7 @@ impl ProjectFile {
     }
 }
 
-pub mod patch {
+mod patch {
     //! Contains types and files related to patching fixtures.
 
     use std::path::PathBuf;
@@ -133,7 +136,7 @@ pub mod patch {
     }
 }
 
-pub mod dmx_output {
+mod dmx_output {
     //! Contains types and definitions related to DMX output configuration.
 
     use std::net::SocketAddr;

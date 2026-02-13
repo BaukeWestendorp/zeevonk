@@ -17,6 +17,13 @@
 //!
 //! For more details, see the documentation for each module in the crate.
 
+use std::collections::BTreeMap;
+use std::sync::Arc;
+
+use crate::output::agent::OutputAgent;
+use crate::project::{FixtureId, Project, ProjectFile};
+use crate::value::AttributeValues;
+
 pub mod attr;
 pub mod error;
 pub mod project;
@@ -29,14 +36,6 @@ pub mod resolver;
 
 /// Re-export of the [`theymx`](https://github.com/BaukeWestendorp/theymx) crate.
 pub use theymx;
-
-use std::collections::BTreeMap;
-use std::sync::Arc;
-
-use crate::project::Project;
-use crate::project::file::ProjectFile;
-use crate::value::AttributeValues;
-use crate::{output::agent::OutputAgent, project::stage::FixtureId};
 
 pub use error::{Error, Result};
 

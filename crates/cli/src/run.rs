@@ -1,6 +1,6 @@
 use std::path::PathBuf;
 
-use zeevonk::{Zeevonk, project::file::ProjectFile};
+use zeevonk::{Zeevonk, project::ProjectFile};
 
 /// Runs the project at the given path.
 pub fn run_project(project_path: PathBuf) -> anyhow::Result<()> {

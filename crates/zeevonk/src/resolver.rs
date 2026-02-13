@@ -1,7 +1,7 @@
 use crate::theymx::Multiverse;
 
 use crate::attr::Attribute;
-use crate::project::stage::{
+use crate::project::{
     FixtureChannelFunction, FixtureChannelFunctionKind, FixtureId, Relation, RelationKind, Stage,
 };
 use crate::value::{AttributeValues, ClampedValue};
