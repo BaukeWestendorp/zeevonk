@@ -89,7 +89,7 @@ impl Zeevonk {
     }
 
     /// Clears the list of highlighted fixtures.
-    pub fn clear_highlighted_fixtures(&mut self) {
+    pub fn clear_highlighted_fixtures(&self) {
         log::debug!("clearing highlighted fixtures");
         self.set_highlighted_fixtures(&[]);
     }
