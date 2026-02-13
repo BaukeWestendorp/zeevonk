@@ -43,9 +43,14 @@ impl super::OutputInstanceImplementation for EnttecOpenDmxOutput {
         let ftdi = Ftdi::with_serial_number(&self.serial_number)?;
         let most_recent_universe = Arc::clone(&self.most_recent_universe);
         let worker_handle = thread::Builder::new()
-            .name("output_agent".to_string())
+            .name("enttec_open_dmx_worker".to_string())
             .spawn_with_priority(thread_priority::ThreadPriority::Max, move |prio_result| {
-                assert!(prio_result.is_ok());
+                if prio_result.is_err() {
+                    log::warn!(
+                        "could not set {} thread priority to max",
+                        thread::current().name().unwrap_or("<unnamed>")
+                    );
+                }
                 worker(ftdi, most_recent_universe)
             })
             .expect("should spawn worker thread");

@@ -32,7 +32,12 @@ impl OutputAgent {
             thread::Builder::new()
                 .name(format!("output_instance_{}", ix))
                 .spawn_with_priority(thread_priority::ThreadPriority::Max, move |prio_result| {
-                    assert!(prio_result.is_ok());
+                    if prio_result.is_err() {
+                        log::warn!(
+                            "could not set {} thread priority to max",
+                            thread::current().name().unwrap_or("<unnamed>")
+                        );
+                    }
 
                     match OutputInstance::try_from(instance_definition) {
                         Ok(mut instance) => {
@@ -84,7 +89,12 @@ impl OutputAgent {
         thread::Builder::new()
             .name("output_agent".to_string())
             .spawn_with_priority(thread_priority::ThreadPriority::Max, move |prio_result| {
-                assert!(prio_result.is_ok());
+                if prio_result.is_err() {
+                    log::warn!(
+                        "could not set {} thread priority to max",
+                        thread::current().name().unwrap_or("<unnamed>")
+                    );
+                }
 
                 let tick_interval = updater.tick_interval;
                 let mut deadline = Instant::now() + tick_interval;
