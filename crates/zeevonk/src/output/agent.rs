@@ -30,7 +30,7 @@ impl OutputAgent {
             let output_rx = crossbeam_channel::Receiver::clone(&output_rx);
 
             thread::Builder::new()
-                .name(format!("instance_{}", ix))
+                .name(format!("output_instance_{}", ix))
                 .spawn_with_priority(thread_priority::ThreadPriority::Max, move |prio_result| {
                     assert!(prio_result.is_ok());
 
