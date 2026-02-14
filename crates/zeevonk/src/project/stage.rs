@@ -637,6 +637,40 @@ impl IntoFixtureId for String {
     }
 }
 
+impl IntoFixtureId for u8 {
+    fn into_fixture_id(self) -> Option<FixtureId> {
+        FixtureIdPart::new(self as u32).ok().map(FixtureId::from)
+    }
+}
+
+impl IntoFixtureId for u16 {
+    fn into_fixture_id(self) -> Option<FixtureId> {
+        FixtureIdPart::new(self as u32).ok().map(FixtureId::from)
+    }
+}
+
+impl IntoFixtureId for u32 {
+    fn into_fixture_id(self) -> Option<FixtureId> {
+        FixtureIdPart::new(self).ok().map(FixtureId::from)
+    }
+}
+
+impl IntoFixtureId for u64 {
+    fn into_fixture_id(self) -> Option<FixtureId> {
+        FixtureIdPart::new(self as u32).ok().map(FixtureId::from)
+    }
+}
+
+impl IntoFixtureId for usize {
+    fn into_fixture_id(self) -> Option<FixtureId> {
+        if self > 0 && self <= u32::MAX as usize {
+            FixtureIdPart::new(self as u32).ok().map(FixtureId::from)
+        } else {
+            None
+        }
+    }
+}
+
 /// Helper trait to convert various types into [`FixtureId`] sequences more ergonomically.
 pub trait IntoFixtureIds {
     /// Returns an iterator of successfully converted [`FixtureId`]s.
