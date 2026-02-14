@@ -606,3 +606,161 @@ impl<'de> serde::Deserialize<'de> for FixtureId {
         deserializer.deserialize_str(FixtureIdVisitor)
     }
 }
+
+/// Helper trait to convert various types into a [`FixtureId`] more ergonomically.
+pub trait IntoFixtureId {
+    /// Returns `None` if the conversion fails.
+    fn into_fixture_id(self) -> Option<FixtureId>;
+}
+
+impl IntoFixtureId for FixtureId {
+    fn into_fixture_id(self) -> Option<FixtureId> {
+        Some(self)
+    }
+}
+
+impl IntoFixtureId for &FixtureId {
+    fn into_fixture_id(self) -> Option<FixtureId> {
+        Some(self.clone())
+    }
+}
+
+impl IntoFixtureId for &str {
+    fn into_fixture_id(self) -> Option<FixtureId> {
+        self.parse().ok()
+    }
+}
+
+impl IntoFixtureId for String {
+    fn into_fixture_id(self) -> Option<FixtureId> {
+        self.parse().ok()
+    }
+}
+
+/// Helper trait to convert various types into [`FixtureId`] sequences more ergonomically.
+pub trait IntoFixtureIds {
+    /// Returns an iterator of successfully converted [`FixtureId`]s.
+    fn into_fixture_ids(self) -> Box<dyn Iterator<Item = FixtureId>>;
+}
+
+/// Blanket implementation for any collection/iterator of convertible items.
+impl<I, T> IntoFixtureIds for I
+where
+    I: IntoIterator<Item = T>,
+    T: IntoFixtureId,
+    <I as IntoIterator>::IntoIter: 'static,
+{
+    fn into_fixture_ids(self) -> Box<dyn Iterator<Item = FixtureId>> {
+        Box::new(self.into_iter().filter_map(|item| item.into_fixture_id()))
+    }
+}
+
+/// Specialized implementation for single FixtureId to support "one or many" APIs.
+impl IntoFixtureIds for FixtureId {
+    fn into_fixture_ids(self) -> Box<dyn Iterator<Item = FixtureId>> {
+        Box::new(std::iter::once(self))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn part(n: u32) -> FixtureIdPart {
+        FixtureIdPart::new(n).unwrap()
+    }
+
+    #[test]
+    fn test_into_fixture_id_from_fixture_id() {
+        let id = FixtureId::from(part(42));
+        let result = id.clone().into_fixture_id();
+        assert_eq!(result, Some(id));
+    }
+
+    #[test]
+    fn test_into_fixture_id_from_ref_fixture_id() {
+        let id = FixtureId::from(part(7));
+        let result = (&id).into_fixture_id();
+        assert_eq!(result, Some(id));
+    }
+
+    #[test]
+    fn test_into_fixture_id_from_str_valid() {
+        let s = "1.2.3";
+        let id = FixtureId::from(&[part(1), part(2), part(3)][..]);
+        let result = s.into_fixture_id();
+        assert_eq!(result, Some(id));
+    }
+
+    #[test]
+    fn test_into_fixture_id_from_str_invalid() {
+        let s = "";
+        let result = s.into_fixture_id();
+        assert_eq!(result, None);
+
+        let s = "0.2";
+        let result = s.into_fixture_id();
+        assert_eq!(result, None);
+
+        let s = "1.2.3.4.5.6.7.8.9"; // Too long
+        let result = s.into_fixture_id();
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn test_into_fixture_id_from_string() {
+        let s = String::from("5.6");
+        let id = FixtureId::from(&[part(5), part(6)][..]);
+        let result = s.into_fixture_id();
+        assert_eq!(result, Some(id));
+    }
+
+    #[test]
+    fn test_into_fixture_ids_from_vec_of_str() {
+        let v = vec!["1.2", "3", "bad", "4.5.6"];
+        let ids: Vec<_> = v.into_fixture_ids().collect();
+        let expected = vec![
+            FixtureId::from(&[part(1), part(2)][..]),
+            FixtureId::from(part(3)),
+            FixtureId::from(&[part(4), part(5), part(6)][..]),
+        ];
+        assert_eq!(ids, expected);
+    }
+
+    #[test]
+    fn test_into_fixture_ids_from_vec_of_fixture_id() {
+        let ids_in = vec![FixtureId::from(part(1)), FixtureId::from(&[part(2), part(3)][..])];
+        let ids: Vec<_> = ids_in.clone().into_fixture_ids().collect();
+        assert_eq!(ids, ids_in);
+    }
+
+    #[test]
+    fn test_into_fixture_ids_from_vec_of_string() {
+        let v = vec!["1.2".to_string(), "3".to_string()];
+        let ids: Vec<_> = v.into_fixture_ids().collect();
+        let expected = vec![FixtureId::from(&[part(1), part(2)][..]), FixtureId::from(part(3))];
+        assert_eq!(ids, expected);
+    }
+
+    #[test]
+    fn test_into_fixture_ids_from_fixture_id() {
+        let id = FixtureId::from(&[part(9), part(8)][..]);
+        let ids: Vec<_> = id.into_fixture_ids().collect();
+        assert_eq!(ids, vec![FixtureId::from(&[part(9), part(8)][..])]);
+    }
+
+    #[test]
+    fn test_into_fixture_ids_from_slice_of_str() {
+        let arr = ["1", "2.3", "bad"];
+        let ids: Vec<_> = arr.into_fixture_ids().collect();
+        let expected = vec![FixtureId::from(part(1)), FixtureId::from(&[part(2), part(3)][..])];
+        assert_eq!(ids, expected);
+    }
+
+    #[test]
+    fn test_into_fixture_ids_from_slice_of_fixture_id() {
+        let arr = [FixtureId::from(part(1)), FixtureId::from(&[part(2), part(3)][..])];
+        let ids: Vec<_> = arr.into_fixture_ids().collect();
+        assert_eq!(ids, arr);
+    }
+}

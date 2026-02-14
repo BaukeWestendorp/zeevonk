@@ -21,7 +21,7 @@ use std::collections::BTreeMap;
 use std::sync::Arc;
 
 use crate::output::agent::OutputAgent;
-use crate::project::{FixtureId, Project, ProjectFile};
+use crate::project::{FixtureId, IntoFixtureIds, Project, ProjectFile};
 use crate::value::AttributeValues;
 
 pub mod attr;
@@ -81,11 +81,13 @@ impl Zeevonk {
     }
 
     /// Sets the highlighted fixtures.
-    pub fn set_highlighted_fixtures(&self, fixture_ids: &[FixtureId]) {
+    pub fn set_highlighted_fixtures(&self, fixture_ids: impl IntoFixtureIds) {
+        let fixture_ids = fixture_ids.into_fixture_ids();
+
         log::debug!("setting highlighted fixtures");
         let mut highlighted_values = BTreeMap::new();
         for fixture_id in fixture_ids {
-            let Some(fixture) = self.project().stage().fixture(fixture_id) else {
+            let Some(fixture) = self.project().stage().fixture(&fixture_id) else {
                 continue;
             };
             highlighted_values.extend(fixture.highlight_values());
@@ -97,6 +99,6 @@ impl Zeevonk {
     /// Clears the list of highlighted fixtures.
     pub fn clear_highlighted_fixtures(&self) {
         log::debug!("clearing highlighted fixtures");
-        self.set_highlighted_fixtures(&[]);
+        self.set_highlighted_fixtures(&[] as &[FixtureId]);
     }
 }
