@@ -213,4 +213,9 @@ impl AttributeValues {
             self.values.entry(fixture_id).or_default().extend(attrs);
         }
     }
+
+    /// Clears all stored attribute values.
+    pub fn clear(&mut self) {
+        self.values.clear();
+    }
 }

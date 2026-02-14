@@ -5,7 +5,7 @@ use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 use zeevonk::theymx::Multiverse;
 
 use zeevonk::attr::Attribute;
-use zeevonk::project::file::ProjectFile;
+use zeevonk::project::ProjectFile;
 use zeevonk::value::{AttributeValues, ClampedValue};
 
 mod common;

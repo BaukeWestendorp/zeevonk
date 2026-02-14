@@ -71,6 +71,10 @@ impl OutputAgent {
         self.update_tx.send(OutputAgentUpdate::SetHighlightedValues(highlighted_values)).unwrap();
     }
 
+    pub fn clear_attribute_values(&self) {
+        self.update_tx.send(OutputAgentUpdate::ClearAttributeValues).unwrap();
+    }
+
     pub fn start(&self) {
         // Try to take the receiver from the slot. This moves the receiver into
         // the worker thread, avoiding the need to lock the receiver on each tick.
@@ -155,6 +159,7 @@ impl OutputAgent {
 
 pub enum OutputAgentUpdate {
     SetAttributeValues(AttributeValues),
+    ClearAttributeValues,
     SetHighlightedValues(BTreeMap<Address, crate::theymx::Value>),
 }
 
@@ -181,6 +186,9 @@ impl Pipeline {
             match update {
                 OutputAgentUpdate::SetAttributeValues(attribute_values) => {
                     self.updates.extend(attribute_values)
+                }
+                OutputAgentUpdate::ClearAttributeValues => {
+                    self.updates.clear();
                 }
                 OutputAgentUpdate::SetHighlightedValues(highlighted_values) => {
                     self.highlights = highlighted_values.clone();

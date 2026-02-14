@@ -74,6 +74,12 @@ impl Zeevonk {
         self.output_agent.set_attribute_values(values);
     }
 
+    /// Clears all attribute values for all fixtures in the project.
+    pub fn clear_attribute_values(&self) {
+        log::debug!("clearing attribute values");
+        self.output_agent.clear_attribute_values();
+    }
+
     /// Sets the highlighted fixtures.
     pub fn set_highlighted_fixtures(&self, fixture_ids: &[FixtureId]) {
         log::debug!("setting highlighted fixtures");
