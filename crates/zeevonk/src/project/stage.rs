@@ -643,9 +643,21 @@ impl IntoFixtureId for u8 {
     }
 }
 
+impl IntoFixtureId for i8 {
+    fn into_fixture_id(self) -> Option<FixtureId> {
+        if self > 0 { FixtureIdPart::new(self as u32).ok().map(FixtureId::from) } else { None }
+    }
+}
+
 impl IntoFixtureId for u16 {
     fn into_fixture_id(self) -> Option<FixtureId> {
         FixtureIdPart::new(self as u32).ok().map(FixtureId::from)
+    }
+}
+
+impl IntoFixtureId for i16 {
+    fn into_fixture_id(self) -> Option<FixtureId> {
+        if self > 0 { FixtureIdPart::new(self as u32).ok().map(FixtureId::from) } else { None }
     }
 }
 
@@ -655,9 +667,25 @@ impl IntoFixtureId for u32 {
     }
 }
 
+impl IntoFixtureId for i32 {
+    fn into_fixture_id(self) -> Option<FixtureId> {
+        if self > 0 { FixtureIdPart::new(self as u32).ok().map(FixtureId::from) } else { None }
+    }
+}
+
 impl IntoFixtureId for u64 {
     fn into_fixture_id(self) -> Option<FixtureId> {
         FixtureIdPart::new(self as u32).ok().map(FixtureId::from)
+    }
+}
+
+impl IntoFixtureId for i64 {
+    fn into_fixture_id(self) -> Option<FixtureId> {
+        if self > 0 && self <= u32::MAX as i64 {
+            FixtureIdPart::new(self as u32).ok().map(FixtureId::from)
+        } else {
+            None
+        }
     }
 }
 
