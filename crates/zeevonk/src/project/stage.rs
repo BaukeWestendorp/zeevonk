@@ -643,8 +643,7 @@ pub trait IntoFixtureIds {
     fn into_fixture_ids(self) -> Box<dyn Iterator<Item = FixtureId>>;
 }
 
-/// Blanket implementation for any collection/iterator of convertible items.
-impl<I, T> IntoFixtureIds for I
+impl<'a, I, T> IntoFixtureIds for I
 where
     I: IntoIterator<Item = T>,
     T: IntoFixtureId,
