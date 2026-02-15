@@ -1,7 +1,7 @@
-use theymx::Multiverse;
+use crate::theymx::Multiverse;
 
 use crate::attr::Attribute;
-use crate::project::stage::{
+use crate::project::{
     FixtureChannelFunction, FixtureChannelFunctionKind, FixtureId, Relation, RelationKind, Stage,
 };
 use crate::value::{AttributeValues, ClampedValue};
@@ -14,7 +14,7 @@ pub fn resolve(values: &AttributeValues, stage: &Stage, multiverse: &mut Multive
 ///
 /// The resolver walks the fixtures, computes the effective value for
 /// each fixture channel function, and writes the corresponding bytes into a
-/// [`theymx::Multiverse`]. Virtual channel functions (those driven by relations)
+/// [`crate::theymx::Multiverse`]. Virtual channel functions (those driven by relations)
 /// are resolved by deferring relation writes until all fixtures have been
 /// examined. This allows follower relations (multiply or override) to be
 /// resolved against the master's computed values.
@@ -72,19 +72,14 @@ impl<'a> Resolver<'a> {
 
     /// Resolve all channel functions of a single fixture.
     fn resolve_fixture(&mut self, fixture_id: FixtureId) {
-        // Snapshot the fixture's channel functions.
-        let channel_functions: Vec<(Attribute, FixtureChannelFunction)> = {
-            if let Some(fixture) = self.stage.fixtures().get(&fixture_id) {
-                fixture.channel_functions().map(|(a, cf)| (*a, cf.clone())).collect()
-            } else {
-                Vec::new()
-            }
+        let Some(fixture) = self.stage.fixtures().get(&fixture_id) else {
+            return;
         };
 
         // For each channel function, get its explicit value (if any) and apply it.
-        for (attribute, channel_function) in channel_functions {
+        for (attribute, channel_function) in fixture.channel_functions() {
             if let Some(value) = self.get_channel_function_value(&fixture_id, &attribute) {
-                self.set_channel_function_value(&channel_function, value);
+                self.set_channel_function_value(channel_function, value);
             }
         }
     }

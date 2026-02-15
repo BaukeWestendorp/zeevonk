@@ -2,10 +2,11 @@ use std::sync::{Arc, RwLock};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
+use crate::theymx::{Multiverse, Universe, UniverseId};
 use libftd2xx::{BitsPerWord, Ftdi, FtdiCommon, Parity, StopBits, TimeoutError};
-use theymx::{Multiverse, Universe, UniverseId};
+use thread_priority::ThreadBuilderExt;
 
-use crate::server::output;
+use crate::output;
 
 const BAUDRATE: u32 = 250000;
 const BITS_8: BitsPerWord = BitsPerWord::Bits8;
@@ -41,7 +42,18 @@ impl super::OutputInstanceImplementation for EnttecOpenDmxOutput {
     fn setup(&mut self) -> Result<(), output::Error> {
         let ftdi = Ftdi::with_serial_number(&self.serial_number)?;
         let most_recent_universe = Arc::clone(&self.most_recent_universe);
-        let worker_handle = thread::spawn(move || worker(ftdi, most_recent_universe));
+        let worker_handle = thread::Builder::new()
+            .name("enttec_open_dmx_worker".to_string())
+            .spawn_with_priority(thread_priority::ThreadPriority::Max, move |prio_result| {
+                if prio_result.is_err() {
+                    log::warn!(
+                        "could not set {} thread priority to max",
+                        thread::current().name().unwrap_or("<unnamed>")
+                    );
+                }
+                worker(ftdi, most_recent_universe)
+            })
+            .expect("should spawn worker thread");
 
         self.worker_handle = Some(worker_handle);
 

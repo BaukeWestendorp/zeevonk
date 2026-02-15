@@ -1,36 +1,104 @@
 #![warn(missing_docs)]
 
-//! Zeevonk is a modular lighting control system.
-//! The Zeevonk server is a hub for multiple clients that can update attribute values,
-//! which the server then will output to the configured DMX protocols.
+//! # Zeevonk
 //!
-//! <div class="warning">
+//! A modular lighting control system for modern DMX-based lighting setups.
 //!
-//! **Warning**
+//! > ⚠️ **Warning**
+//! >
+//! > Zeevonk is currently in early development. APIs, features, and behavior may change frequently and without notice.
+//! > It is **not yet recommended for production use**.
 //!
-//! Zeevonk is currently in early development. APIs, features, and behavior may change frequently and without notice.
-//! It is not yet recommended for production use.
+//! ## What is Zeevonk?
 //!
-//! </div>
+//! Zeevonk is a modular system for controlling lighting fixtures.
 //!
-//! # Components
+//! This project is the result of a deep rabbithole I went into, when creating [Radiant](https://github.com/BaukeWestendorp/radiant). I realized I was writing the same DMX resolvers for GDTF files over and over again. Zeevonk is my way of consolidating all of my research into a hub for DMX lighting.
 //!
-//! - [Server](crate::server): Manages clients, resolves attributes, and sends DMX.
-//! - [Client](crate::client): Can generate and send attribute values to the server, or talk to other clients using [`Trigger`][trigger::Trigger]s.
-//!
-//! See the respective module documentation for details.
+//! For more details, see the documentation for each module in the crate.
+
+use std::collections::BTreeMap;
+use std::sync::Arc;
+
+use crate::output::agent::OutputAgent;
+use crate::project::{FixtureId, IntoFixtureIds, Project, ProjectFile};
+use crate::value::AttributeValues;
 
 pub mod attr;
 pub mod error;
-pub mod ident;
-pub mod packet;
 pub mod project;
-pub mod trigger;
 pub mod value;
 
-#[cfg(any(feature = "client"))]
-pub mod client;
-#[cfg(feature = "server")]
-pub mod server;
+mod output;
+
+#[doc(hidden)]
+pub mod resolver;
+
+/// Re-export of the [`theymx`](https://github.com/BaukeWestendorp/theymx) crate.
+pub use theymx;
 
 pub use error::{Error, Result};
+
+/// The main entry point for interacting with a Zeevonk instance.
+pub struct Zeevonk {
+    project: Arc<Project>,
+    output_agent: Arc<OutputAgent>,
+}
+
+impl Zeevonk {
+    /// Creates a new [`Zeevonk`] instance from a [`ProjectFile`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the project file cannot be loaded or parsed.
+    pub fn new(project_file: ProjectFile) -> crate::Result<Self> {
+        let project_handle = Arc::new(project::builder::from_file(project_file)?);
+        let output_agent = Arc::new(OutputAgent::new(project_handle.clone()));
+        Ok(Self { project: Arc::clone(&project_handle), output_agent })
+    }
+
+    /// Starts Zeevonk.
+    pub fn start(&self) {
+        self.output_agent.start();
+        log::info!("Zeevonk started");
+    }
+
+    /// Returns a reference to the loaded [`Project`].
+    pub fn project(&self) -> &Project {
+        &self.project
+    }
+
+    /// Sets attribute values for fixtures in the project.
+    pub fn set_attribute_values(&self, values: AttributeValues) {
+        log::debug!("setting attribute values");
+        self.output_agent.set_attribute_values(values);
+    }
+
+    /// Clears all attribute values for all fixtures in the project.
+    pub fn clear_attribute_values(&self) {
+        log::debug!("clearing attribute values");
+        self.output_agent.clear_attribute_values();
+    }
+
+    /// Sets the highlighted fixtures.
+    pub fn set_highlighted_fixtures(&self, fixture_ids: impl IntoFixtureIds) {
+        let fixture_ids = fixture_ids.into_fixture_ids();
+
+        log::debug!("setting highlighted fixtures");
+        let mut highlighted_values = BTreeMap::new();
+        for fixture_id in fixture_ids {
+            let Some(fixture) = self.project().stage().fixture(&fixture_id) else {
+                continue;
+            };
+            highlighted_values.extend(fixture.highlight_values());
+        }
+
+        self.output_agent.set_highlighted_values(highlighted_values);
+    }
+
+    /// Clears the list of highlighted fixtures.
+    pub fn clear_highlighted_fixtures(&self) {
+        log::debug!("clearing highlighted fixtures");
+        self.set_highlighted_fixtures(&[] as &[FixtureId]);
+    }
+}

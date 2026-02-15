@@ -1,17 +1,17 @@
 //! Value types for clamped and mapped attribute values.
 
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 use std::{fmt, num, str};
 
-use theymx::{self, Address};
+use crate::theymx::Address;
 
 use crate::attr::Attribute;
-use crate::project::stage::FixtureId;
+use crate::project::FixtureId;
 
-/// A clamped value.
+/// A clamped value between `0.0..=1.0`.
 ///
 /// Represents a floating-point value constrained to the range
-/// `[0.0, 1.0]`. All operations automatically clamp values to this valid range.
+/// `0.0..=1.0`. All operations automatically clamp values to this valid range.
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Default)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
@@ -26,7 +26,7 @@ impl ClampedValue {
 
     /// Creates a new [`ClampedValue`] with the specified value.
     ///
-    /// The value is automatically clamped to the range `[0.0, 1.0]`.
+    /// The value is automatically clamped to the range `0.0..=1.0`.
     #[inline]
     pub const fn new(value: f32) -> Self {
         Self(value.clamp(Self::MIN, Self::MAX))
@@ -34,7 +34,7 @@ impl ClampedValue {
 
     /// Sets the value of this [`ClampedValue`].
     ///
-    /// The value is automatically clamped to the range `[0.0, 1.0]`.
+    /// The value is automatically clamped to the range `0.0..=1.0`.
     #[inline]
     pub fn set(&mut self, value: f32) {
         self.0 = value.clamp(Self::MIN, Self::MAX);
@@ -42,7 +42,7 @@ impl ClampedValue {
 
     /// Returns the underlying `f32` value.
     ///
-    /// The returned value is guaranteed to be in the range `[0.0, 1.0]`.
+    /// The returned value is guaranteed to be in the range `0.0..=1.0`.
     #[inline]
     pub fn as_f32(self) -> f32 {
         self.0
@@ -83,7 +83,7 @@ impl ClampedValue {
     }
 
     /// Converts the value to values directly mappable at addresses.
-    pub fn to_address_values(&self, addresses: &[Address]) -> Vec<(Address, theymx::Value)> {
+    pub fn to_address_values(&self, addresses: &[Address]) -> Vec<(Address, crate::theymx::Value)> {
         let bytes: Vec<u8> = match addresses.len() {
             1 => vec![self.to_u8()],
             2 => self.to_u16_bytes().to_vec(),
@@ -98,7 +98,7 @@ impl ClampedValue {
             }
         };
 
-        addresses.iter().copied().zip(bytes.into_iter().map(theymx::Value::from)).collect()
+        addresses.iter().copied().zip(bytes.into_iter().map(crate::theymx::Value::from)).collect()
     }
 }
 
@@ -140,15 +140,25 @@ impl str::FromStr for ClampedValue {
     }
 }
 
-/// Stores clamped attribute values for each fixture id.
+impl From<gdtf::values::DmxValue> for ClampedValue {
+    fn from(value: gdtf::values::DmxValue) -> Self {
+        let len: u8 = value.bytes().into();
+        let raw = value.to(len);
+        let max_value = 2_u64.saturating_pow(len as u32 * 8) - 1;
+        let floating_value = raw as f32 / max_value as f32;
+        ClampedValue::new(floating_value)
+    }
+}
+
+/// Stores [`ClampedValue`]s for each [`FixtureId`]'s [`Attribute`].
 ///
-/// [`AttributeValues`] maintains a mapping from [`FixtureId`] to a set of
-/// attribute-value pairs, where each value is a [`ClampedValue`] in the range `[0.0, 1.0]`.
+/// Maintains a mapping from [`FixtureId`] to a set of
+/// attribute-value pairs, where each value is a [`ClampedValue`] in the range `0.0..=1.0`.
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 pub struct AttributeValues {
-    values: HashMap<FixtureId, HashMap<Attribute, ClampedValue>>,
+    values: BTreeMap<FixtureId, BTreeMap<Attribute, ClampedValue>>,
 }
 
 impl Default for AttributeValues {
@@ -160,7 +170,7 @@ impl Default for AttributeValues {
 impl AttributeValues {
     /// Creates a new, empty [`AttributeValues`] collection.
     pub fn new() -> Self {
-        Self { values: HashMap::new() }
+        Self { values: BTreeMap::new() }
     }
 
     /// Sets the value for a given attribute at a specific fixture path.
@@ -181,7 +191,7 @@ impl AttributeValues {
         // Annotate the closure parameter types so the compiler can infer everything
         // inside the nested iterator correctly.
         self.values.iter().flat_map(
-            |(fixture_id, attrs): (&FixtureId, &HashMap<Attribute, ClampedValue>)| {
+            |(fixture_id, attrs): (&FixtureId, &BTreeMap<Attribute, ClampedValue>)| {
                 attrs
                     .iter()
                     .map(move |(attr, val): (&Attribute, &ClampedValue)| (fixture_id, attr, val))
@@ -193,7 +203,19 @@ impl AttributeValues {
     pub fn get(&self, id: &FixtureId, attribute: &Attribute) -> Option<ClampedValue> {
         self.values
             .get(id)
-            .and_then(|attrs: &HashMap<Attribute, ClampedValue>| attrs.get(attribute))
+            .and_then(|attrs: &BTreeMap<Attribute, ClampedValue>| attrs.get(attribute))
             .copied()
+    }
+
+    /// Extends this collection with values from another [`AttributeValues`].
+    pub fn extend(&mut self, other: AttributeValues) {
+        for (fixture_id, attrs) in other.values {
+            self.values.entry(fixture_id).or_default().extend(attrs);
+        }
+    }
+
+    /// Clears all stored attribute values.
+    pub fn clear(&mut self) {
+        self.values.clear();
     }
 }

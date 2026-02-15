@@ -1,4 +1,4 @@
-use crate::server::output::protocols::sacn;
+use crate::output::protocols::sacn;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {

@@ -1,6 +1,4 @@
-//! Contains the attribute type.
-//!
-//! This module contains the [`Attribute`] enum.
+//! Attribute types.
 
 use std::fmt;
 use std::str::FromStr;

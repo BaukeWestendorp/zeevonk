@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 
+mod info;
 mod init;
 mod run;
 
@@ -25,6 +26,11 @@ enum Commands {
         /// Path to the project.
         project_path: PathBuf,
     },
+    /// Show diagnostic/project information.
+    Info {
+        #[command(subcommand)]
+        command: InfoSubcommand,
+    },
 }
 
 #[derive(Subcommand)]
@@ -36,8 +42,7 @@ enum InfoSubcommand {
     },
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
+fn main() -> anyhow::Result<()> {
     let is_debug_mode = cfg!(debug_assertions);
     let default_level =
         if is_debug_mode { log::LevelFilter::Debug } else { log::LevelFilter::Info };
@@ -50,8 +55,13 @@ async fn main() -> anyhow::Result<()> {
             init::init_project(project_path)?;
         }
         Commands::Run { project_path } => {
-            run::run_project(project_path).await?;
+            run::run_project(project_path)?;
         }
+        Commands::Info { command } => match command {
+            InfoSubcommand::Patch { project_path } => {
+                info::dump_patch(project_path)?;
+            }
+        },
     }
 
     Ok(())
