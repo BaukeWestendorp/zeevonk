@@ -3,9 +3,10 @@
 use std::collections::BTreeMap;
 use std::{fmt, num, str};
 
+use rigger::gdtf::attr::AttributeName;
+
 use crate::theymx::Address;
 
-use crate::attr::Attribute;
 use crate::project::FixtureId;
 
 /// A clamped value between `0.0..=1.0`.
@@ -158,7 +159,7 @@ impl From<gdtf::values::DmxValue> for ClampedValue {
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 pub struct AttributeValues {
-    values: BTreeMap<FixtureId, BTreeMap<Attribute, ClampedValue>>,
+    values: BTreeMap<FixtureId, BTreeMap<AttributeName, ClampedValue>>,
 }
 
 impl Default for AttributeValues {
@@ -180,30 +181,30 @@ impl AttributeValues {
     pub fn set(
         &mut self,
         fixture_id: FixtureId,
-        attribute: Attribute,
+        attribute: AttributeName,
         value: impl Into<ClampedValue>,
     ) {
         self.values.entry(fixture_id).or_default().insert(attribute, value.into());
     }
 
     /// Returns an iterator over all stored attribute values.
-    pub fn values(&self) -> impl Iterator<Item = (&FixtureId, &Attribute, &ClampedValue)> {
+    pub fn values(&self) -> impl Iterator<Item = (&FixtureId, &AttributeName, &ClampedValue)> {
         // Annotate the closure parameter types so the compiler can infer everything
         // inside the nested iterator correctly.
         self.values.iter().flat_map(
-            |(fixture_id, attrs): (&FixtureId, &BTreeMap<Attribute, ClampedValue>)| {
-                attrs
-                    .iter()
-                    .map(move |(attr, val): (&Attribute, &ClampedValue)| (fixture_id, attr, val))
+            |(fixture_id, attrs): (&FixtureId, &BTreeMap<AttributeName, ClampedValue>)| {
+                attrs.iter().map(move |(attr, val): (&AttributeName, &ClampedValue)| {
+                    (fixture_id, attr, val)
+                })
             },
         )
     }
 
     /// Retrieves the value for a given attribute at a specific fixture path, if present.
-    pub fn get(&self, id: &FixtureId, attribute: &Attribute) -> Option<ClampedValue> {
+    pub fn get(&self, id: &FixtureId, attribute: &AttributeName) -> Option<ClampedValue> {
         self.values
             .get(id)
-            .and_then(|attrs: &BTreeMap<Attribute, ClampedValue>| attrs.get(attribute))
+            .and_then(|attrs: &BTreeMap<AttributeName, ClampedValue>| attrs.get(attribute))
             .copied()
     }
 

@@ -24,7 +24,6 @@ use crate::output::agent::OutputAgent;
 use crate::project::{FixtureId, IntoFixtureIds, Project, ProjectFile};
 use crate::value::AttributeValues;
 
-pub mod attr;
 pub mod error;
 pub mod project;
 pub mod value;

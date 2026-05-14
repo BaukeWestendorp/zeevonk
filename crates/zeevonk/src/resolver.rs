@@ -1,6 +1,7 @@
+use rigger::gdtf::attr::AttributeName;
+
 use crate::theymx::Multiverse;
 
-use crate::attr::Attribute;
 use crate::project::{
     FixtureChannelFunction, FixtureChannelFunctionKind, FixtureId, Relation, RelationKind, Stage,
 };
@@ -88,7 +89,7 @@ impl<'a> Resolver<'a> {
     fn get_channel_function_value(
         &self,
         fixture_id: &FixtureId,
-        attribute: &Attribute,
+        attribute: &AttributeName,
     ) -> Option<ClampedValue> {
         self.attribute_values.get(fixture_id, attribute)
     }

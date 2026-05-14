@@ -1,9 +1,8 @@
 use criterion::BatchSize;
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
+use rigger::gdtf::attr::AttributeName;
 use zeevonk::theymx::Multiverse;
-
-use zeevonk::attr::Attribute;
 use zeevonk::value::ClampedValue;
 
 use crate::common::{build_values, generate_project};
@@ -32,7 +31,8 @@ pub fn bench_fixture_count_scaling(c: &mut Criterion) {
             "Dimmer",
         )
         .unwrap();
-        let values = build_values(project.stage(), &[(Attribute::Dimmer, ClampedValue::new(0.5))]);
+        let values =
+            build_values(project.stage(), &[(AttributeName::Dimmer, ClampedValue::new(0.5))]);
 
         group.bench_with_input(BenchmarkId::new("Dimmer 8 Bit", count), &count, |b, &_| {
             b.iter_with_setup(
@@ -54,7 +54,8 @@ pub fn bench_fixture_count_scaling(c: &mut Criterion) {
             "16 Bit",
         )
         .unwrap();
-        let values = build_values(project.stage(), &[(Attribute::Dimmer, ClampedValue::new(0.5))]);
+        let values =
+            build_values(project.stage(), &[(AttributeName::Dimmer, ClampedValue::new(0.5))]);
 
         group.bench_with_input(BenchmarkId::new("Dimmer 16 Bit", count), &count, |b, &_| {
             b.iter_batched(
@@ -80,10 +81,10 @@ pub fn bench_fixture_count_scaling(c: &mut Criterion) {
         let values = build_values(
             project.stage(),
             &[
-                (Attribute::ColorAddR, ClampedValue::new(0.5)),
-                (Attribute::ColorAddG, ClampedValue::new(0.5)),
-                (Attribute::ColorAddB, ClampedValue::new(0.5)),
-                (Attribute::ColorAddW, ClampedValue::new(0.5)),
+                (AttributeName::ColorAddR, ClampedValue::new(0.5)),
+                (AttributeName::ColorAddG, ClampedValue::new(0.5)),
+                (AttributeName::ColorAddB, ClampedValue::new(0.5)),
+                (AttributeName::ColorAddW, ClampedValue::new(0.5)),
             ],
         );
 

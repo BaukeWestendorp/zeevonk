@@ -243,8 +243,8 @@ mod channel_functions {
     use gdtf::dmx_mode::{ChannelFunction, DmxChannel, DmxMode};
     use gdtf::fixture_type::FixtureType;
     use gdtf::values::Name;
+    use rigger::gdtf::attr::AttributeName;
 
-    use crate::attr::Attribute;
     use crate::project::stage::{FixtureChannelFunction, FixtureChannelFunctionKind, FixtureId};
     use crate::theymx::Address;
     use crate::value::ClampedValue;
@@ -273,8 +273,10 @@ mod channel_functions {
             base_address: Address,
             defaults: &mut HashSet<(Address, theymx::Value)>,
             virtuals: &mut VirtualChannelResolver,
-        ) -> (BTreeMap<Attribute, FixtureChannelFunction>, BTreeMap<Address, crate::theymx::Value>)
-        {
+        ) -> (
+            BTreeMap<AttributeName, FixtureChannelFunction>,
+            BTreeMap<Address, crate::theymx::Value>,
+        ) {
             let dmx_channels_with_geometry = self
                 .gdtf_dmx_mode
                 .dmx_channels
@@ -320,7 +322,7 @@ mod channel_functions {
 
                         let kind = self.make_channel_function_kind(
                             dmx_channel,
-                            &attribute,
+                            attribute.clone(),
                             cf_id.clone(),
                             geometry_address_offset,
                             base_address,
@@ -363,7 +365,7 @@ mod channel_functions {
         fn make_channel_function_kind(
             &self,
             dmx_channel: &DmxChannel,
-            attribute: &Attribute,
+            attribute: AttributeName,
             cf_id: ChannelFunctionId,
             geometry_address_offset: i32,
             base_address: Address,
@@ -388,16 +390,16 @@ mod channel_functions {
                     FixtureChannelFunctionKind::Physical { addresses }
                 }
                 None => {
-                    virtuals.register_virtual_channel(cf_id, *attribute);
+                    virtuals.register_virtual_channel(cf_id, attribute);
                     FixtureChannelFunctionKind::Virtual { relations: vec![] }
                 }
             }
         }
 
-        fn attribute_from_cf(&self, cf: &ChannelFunction) -> Option<Attribute> {
+        fn attribute_from_cf(&self, cf: &ChannelFunction) -> Option<AttributeName> {
             cf.attribute(self.gdtf_fixture_type)
                 .and_then(|attribute| attribute.name.as_ref())
-                .map(|attribute| Attribute::from_str(attribute).unwrap())
+                .map(|attribute| AttributeName::from_str(attribute).unwrap())
         }
     }
 
@@ -416,8 +418,8 @@ mod virtual_channels {
 
     use gdtf::dmx_mode::{ChannelFunction, DmxChannel, DmxMode, RelationType};
     use gdtf::fixture_type::FixtureType;
+    use rigger::gdtf::attr::AttributeName;
 
-    use crate::attr::Attribute;
     use crate::project::stage::{
         Fixture, FixtureChannelFunctionKind, FixtureId, Relation, RelationKind,
     };
@@ -433,7 +435,7 @@ mod virtual_channels {
     /// - resolve all virtuals after the fixture list is fully built (`resolve_all`)
     pub(crate) struct VirtualChannelResolver {
         channel_function_map: BTreeMap<ChannelFunctionId, FixtureId>,
-        unresolved_virtual_channels: Vec<(ChannelFunctionId, Attribute)>,
+        unresolved_virtual_channels: Vec<(ChannelFunctionId, AttributeName)>,
     }
 
     impl VirtualChannelResolver {
@@ -452,7 +454,7 @@ mod virtual_channels {
         pub(crate) fn register_virtual_channel(
             &mut self,
             cf_id: ChannelFunctionId,
-            attribute: Attribute,
+            attribute: AttributeName,
         ) {
             self.unresolved_virtual_channels.push((cf_id, attribute));
         }
@@ -584,11 +586,11 @@ mod virtual_channels {
     fn attribute_from_cf(
         gdtf_fixture_type: &FixtureType,
         cf: &ChannelFunction,
-    ) -> Option<Attribute> {
+    ) -> Option<AttributeName> {
         use std::str::FromStr;
 
         cf.attribute(gdtf_fixture_type)
             .and_then(|attribute| attribute.name.as_ref())
-            .map(|attribute| Attribute::from_str(attribute).unwrap())
+            .map(|attribute| AttributeName::from_str(attribute).unwrap())
     }
 }

@@ -1,9 +1,8 @@
 use criterion::BatchSize;
 use criterion::{BenchmarkId, Criterion, criterion_group, criterion_main};
 
+use rigger::gdtf::attr::AttributeName;
 use zeevonk::theymx::Multiverse;
-
-use zeevonk::attr::Attribute;
 use zeevonk::value::ClampedValue;
 
 use crate::common::{build_values, generate_project};
@@ -24,7 +23,7 @@ pub fn bench_attribute_complexity(c: &mut Criterion) {
 
     #[rustfmt::skip]
     let complexities = {
-        use zeevonk::attr::Attribute as A;
+        use rigger::gdtf::attr::AttributeName as A;
         [
             ("5 channels",  vec![A::Dimmer, A::Pan, A::Tilt, A::PanRotate, A::TiltRotate]),
             ("10 channels", vec![A::Dimmer, A::Pan, A::Tilt, A::PanRotate, A::TiltRotate, A::PositionEffect, A::PositionEffectRate, A::PositionEffectFade, A::XyzX, A::XyzY,]),
@@ -46,8 +45,8 @@ pub fn bench_attribute_complexity(c: &mut Criterion) {
         )
         .unwrap();
 
-        let attr_values: Vec<(Attribute, ClampedValue)> =
-            attrs.iter().map(|&a| (a, ClampedValue::new(0.5))).collect();
+        let attr_values: Vec<(AttributeName, ClampedValue)> =
+            attrs.iter().map(|a| (a.clone(), ClampedValue::new(0.5))).collect();
 
         let values = build_values(project.stage(), &attr_values);
 

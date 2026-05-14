@@ -5,10 +5,10 @@ use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::{cmp, fmt, str};
 
+use rigger::gdtf::attr::AttributeName;
 use uuid::Uuid;
 
 use crate::Error;
-use crate::attr::Attribute;
 use crate::theymx::{Address, Multiverse};
 use crate::value::ClampedValue;
 
@@ -111,7 +111,7 @@ pub struct Fixture {
 
     pub(crate) gdtf_fixture_type_id: Uuid,
     pub(crate) gdtf_dmx_mode: String,
-    pub(crate) channel_functions: BTreeMap<Attribute, FixtureChannelFunction>,
+    pub(crate) channel_functions: BTreeMap<AttributeName, FixtureChannelFunction>,
     pub(crate) highlight_values: BTreeMap<Address, crate::theymx::Value>,
 
     pub(crate) child_ids: Vec<FixtureId>,
@@ -154,12 +154,14 @@ impl Fixture {
     /// Get the channel function associated with the given attribute.
     ///
     /// Returns `None` if the attribute is not present on this fixture.
-    pub fn channel_function(&self, attribute: &Attribute) -> Option<&FixtureChannelFunction> {
+    pub fn channel_function(&self, attribute: &AttributeName) -> Option<&FixtureChannelFunction> {
         self.channel_functions.get(attribute)
     }
 
     /// Get all channel functions for this fixture.
-    pub fn channel_functions(&self) -> impl Iterator<Item = (&Attribute, &FixtureChannelFunction)> {
+    pub fn channel_functions(
+        &self,
+    ) -> impl Iterator<Item = (&AttributeName, &FixtureChannelFunction)> {
         self.channel_functions.iter()
     }
 
@@ -228,12 +230,12 @@ pub enum FixtureChannelFunctionKind {
 pub struct Relation {
     pub(crate) kind: RelationKind,
     pub(crate) fixture_id: FixtureId,
-    pub(crate) attribute: Attribute,
+    pub(crate) attribute: AttributeName,
 }
 
 impl Relation {
     /// Creates a new [`Relation`].
-    pub fn new(kind: RelationKind, fixture_id: FixtureId, attribute: Attribute) -> Self {
+    pub fn new(kind: RelationKind, fixture_id: FixtureId, attribute: AttributeName) -> Self {
         Self { kind, fixture_id, attribute }
     }
 
@@ -248,8 +250,8 @@ impl Relation {
     }
 
     /// Returns the attribute on the referenced fixture used by this relation.
-    pub fn attribute(&self) -> Attribute {
-        self.attribute
+    pub fn attribute(&self) -> &AttributeName {
+        &self.attribute
     }
 }
 
