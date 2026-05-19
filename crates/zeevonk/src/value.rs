@@ -10,10 +10,13 @@ use crate::theymx::Address;
 
 use crate::project::{FixtureChannelFunction, FixtureId};
 
+/// Represents a value for a fixture attribute, either as a clamped normalized value or as a physical value.
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub enum AttributeValue {
+    /// A value clamped to the range `0.0..=1.0`.
     Clamped(ClampedValue),
+    /// A physical value (e.g., in real-world units such as degrees or meters).
     Physical(f32),
 }
 
@@ -27,6 +30,9 @@ impl AttributeValue {
         self.to_clamped_value(channel_function).to_address_values(addresses)
     }
 
+    /// Converts this to a [`ClampedValue`].
+    ///
+    /// If the value is physical, it is normalized to the channel function's range and clamped to `0.0..=1.0`.
     pub fn to_clamped_value(&self, channel_function: &FixtureChannelFunction) -> ClampedValue {
         match self {
             AttributeValue::Clamped(v) => *v,
