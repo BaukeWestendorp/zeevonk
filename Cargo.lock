@@ -719,6 +719,7 @@ checksum = "7a2d987857b319362043e95f5353c0535c1f58eec5336fdfcf626430af7def58"
 [[package]]
 name = "rigger"
 version = "0.1.0"
+source = "git+https://github.com/BaukeWestendorp/rigger.git#f23e66e29d55e6c6009f0f5644002810cc55fca7"
 dependencies = [
  "glam",
  "quick-xml",
