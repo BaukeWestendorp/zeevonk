@@ -5,8 +5,8 @@ use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::{cmp, fmt, str};
 
+use rigger::gdtf::FixtureTypeId;
 use rigger::gdtf::attr::AttributeName;
-use uuid::Uuid;
 
 use crate::Error;
 use crate::theymx::Address;
@@ -109,7 +109,7 @@ pub struct Fixture {
     pub(crate) root_base_address: Address,
     pub(crate) name: String,
 
-    pub(crate) gdtf_fixture_type_id: Uuid,
+    pub(crate) gdtf_fixture_type_id: FixtureTypeId,
     pub(crate) gdtf_dmx_mode: String,
     pub(crate) channel_functions: BTreeMap<AttributeName, FixtureChannelFunction>,
     pub(crate) highlight_values: BTreeMap<Address, crate::theymx::Value>,
@@ -142,7 +142,7 @@ impl Fixture {
     }
 
     /// Returns the GDTF fixture type this instance is based on.
-    pub fn gdtf_fixture_type_id(&self) -> Uuid {
+    pub fn gdtf_fixture_type_id(&self) -> FixtureTypeId {
         self.gdtf_fixture_type_id
     }
 
@@ -165,7 +165,7 @@ impl Fixture {
         self.channel_functions.iter()
     }
 
-    /// Returns the "highlight" DMX values for this fixture.
+    /// Returns the highlight DMX values for this fixture.
     pub fn highlight_values(&self) -> &BTreeMap<Address, crate::theymx::Value> {
         &self.highlight_values
     }

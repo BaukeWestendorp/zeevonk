@@ -1,11 +1,9 @@
 mod fixture_builder;
 
 use std::collections::{BTreeMap, BTreeSet};
-use std::fs;
 
-use gdtf::dmx_mode::DmxMode;
-use gdtf::fixture_type::FixtureType;
-use uuid::Uuid;
+use rigger::gdtf::dmx::DmxMode;
+use rigger::gdtf::{FixtureTypeId, Gdtf, Name};
 
 use crate::project::builder::stage::fixture_builder::FixtureBuilder;
 use crate::project::file::ProjectFile;
@@ -16,10 +14,10 @@ pub fn from_file(file: &ProjectFile) -> crate::Result<Stage> {
     let mut stage =
         Stage { fixtures: BTreeMap::new(), default_attribute_values: AttributeValues::new() };
 
-    let fixture_types = load_fixture_types(file)?;
+    let gdtfs = load_gdtfs(file)?;
 
     for fixture_def in &file.patch.fixtures {
-        build_patch_fixture(&mut stage, &fixture_types, fixture_def)?;
+        build_patch_fixture(&mut stage, &gdtfs, fixture_def)?;
     }
 
     normalize(&mut stage);
@@ -29,10 +27,10 @@ pub fn from_file(file: &ProjectFile) -> crate::Result<Stage> {
 
 fn build_patch_fixture(
     stage: &mut Stage,
-    fixture_types: &BTreeMap<Uuid, FixtureType>,
+    gdtfs: &BTreeMap<FixtureTypeId, Gdtf>,
     fixture_def: &crate::project::FixtureDefinition,
 ) -> crate::Result<()> {
-    let (fixture_type, dmx_mode) = fixture_type_and_mode(fixture_types, fixture_def)?;
+    let (fixture_type, dmx_mode) = fixture_type_and_mode(gdtfs, fixture_def)?;
 
     let builder = FixtureBuilder::new(
         fixture_def.root_id,
@@ -53,47 +51,30 @@ fn build_patch_fixture(
 }
 
 fn fixture_type_and_mode<'a>(
-    fixture_types: &'a BTreeMap<Uuid, FixtureType>,
+    gdtfs: &'a BTreeMap<FixtureTypeId, Gdtf>,
     fixture_def: &crate::project::FixtureDefinition,
-) -> crate::Result<(&'a FixtureType, &'a DmxMode)> {
+) -> crate::Result<(&'a Gdtf, &'a DmxMode)> {
     let fixture_type =
-        fixture_types.get(&fixture_def.kind.gdtf_fixture_type_id).ok_or_else(|| {
+        gdtfs.get(&FixtureTypeId::new(fixture_def.kind.gdtf_fixture_type_id)).ok_or_else(|| {
             crate::Error::FixtureTypeNotFound { id: fixture_def.kind.gdtf_fixture_type_id }
         })?;
 
     let dmx_mode = fixture_type
-        .dmx_mode(&fixture_def.kind.gdtf_dmx_mode)
+        .dmx_mode(&Name::new(&fixture_def.kind.gdtf_dmx_mode))
         .ok_or(crate::Error::DmxModeNotFound)?;
 
     Ok((fixture_type, dmx_mode))
 }
 
-fn load_fixture_types(file: &ProjectFile) -> crate::Result<BTreeMap<Uuid, FixtureType>> {
-    let mut fixture_types = BTreeMap::new();
+fn load_gdtfs(file: &ProjectFile) -> crate::Result<BTreeMap<FixtureTypeId, Gdtf>> {
+    let mut gdtfs = BTreeMap::new();
 
     for gdtf_file_path in &file.patch.gdtf_file_paths {
-        let file = fs::File::open(gdtf_file_path).map_err(|err| {
-            std::io::Error::other(format!(
-                "Failed to open GDTF file '{}': {}",
-                gdtf_file_path.display(),
-                err
-            ))
-        })?;
-
-        let gdtf_file = gdtf::GdtfFile::new(file).map_err(|err| {
-            std::io::Error::other(format!(
-                "Failed to parse GDTF file '{}': {}",
-                gdtf_file_path.display(),
-                err
-            ))
-        })?;
-
-        for fixture_type in gdtf_file.description.fixture_types {
-            fixture_types.insert(fixture_type.fixture_type_id, fixture_type);
-        }
+        let gdtf = Gdtf::from_archive(gdtf_file_path);
+        gdtfs.insert(gdtf.fixture_type_id(), gdtf);
     }
 
-    Ok(fixture_types)
+    Ok(gdtfs)
 }
 
 fn normalize(stage: &mut Stage) {
@@ -197,20 +178,32 @@ fn collapse(stage: &mut Stage) {
                 continue;
             }
 
-            if let Some(parent_mut) = stage.fixtures.get_mut(&parent_id) {
-                parent_mut.channel_functions.extend(child_channel_functions);
-                parent_mut.highlight_values.extend(child_highlight_values);
+            if let Some(parent) = stage.fixtures.get_mut(&parent_id) {
+                parent.channel_functions.extend(child_channel_functions);
+                parent.highlight_values.extend(child_highlight_values);
 
-                parent_mut.child_ids.retain(|cid| cid != &child_id);
+                parent.child_ids.retain(|cid| cid != &child_id);
 
                 for grandchild_id in child_direct_children {
-                    if !parent_mut.child_ids.contains(&grandchild_id) {
-                        parent_mut.child_ids.push(grandchild_id);
+                    if !parent.child_ids.contains(&grandchild_id) {
+                        parent.child_ids.push(grandchild_id);
                     }
                 }
             }
 
             stage.fixtures.remove(&child_id);
+
+            for fixture in stage.fixtures.values_mut() {
+                for cf in fixture.channel_functions.values_mut() {
+                    if let FixtureChannelFunctionKind::Virtual { relations } = &mut cf.kind {
+                        for rel in relations.iter_mut() {
+                            if rel.fixture_id == child_id {
+                                rel.fixture_id = parent_id;
+                            }
+                        }
+                    }
+                }
+            }
 
             changed = true;
         }

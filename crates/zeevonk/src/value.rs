@@ -3,6 +3,7 @@
 use std::collections::BTreeMap;
 use std::{fmt, num, str};
 
+use rigger::gdtf;
 use rigger::gdtf::attr::AttributeName;
 
 use crate::theymx::Address;
@@ -183,13 +184,9 @@ impl From<ClampedValue> for theymx::Value {
     }
 }
 
-impl From<gdtf::values::DmxValue> for ClampedValue {
-    fn from(value: gdtf::values::DmxValue) -> Self {
-        let len: u8 = value.bytes().into();
-        let raw = value.to(len);
-        let max_value = 2_u64.saturating_pow(len as u32 * 8) - 1;
-        let floating_value = raw as f32 / max_value as f32;
-        ClampedValue::new(floating_value)
+impl From<gdtf::dmx::DmxValue> for ClampedValue {
+    fn from(value: gdtf::dmx::DmxValue) -> Self {
+        ClampedValue::new(value.to_normalized() as f32)
     }
 }
 

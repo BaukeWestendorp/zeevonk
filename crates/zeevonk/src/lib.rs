@@ -37,7 +37,7 @@ pub mod resolver;
 pub use theymx;
 
 /// Re-export of rigger [`AttributeName`](rigger::gdtf::attr::AttributeName).
-pub use rigger::gdtf::attr::AttributeName;
+pub use rigger::gdtf::{FixtureTypeId, attr::AttributeName};
 
 pub use error::{Error, Result};
 

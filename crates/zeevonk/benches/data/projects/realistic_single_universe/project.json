@@ -425,8 +425,6 @@
   },
 
   "dmx_output": {
-    "instances": [
-      { "enttec_open_dmx": { "universe_id": 1, "serial_number": "BG00DNDB" } }
-    ]
+    "instances": [{ "enttec_open_dmx": { "universe_id": 1, "serial_number": "BG00DNDB" } }]
   }
 }

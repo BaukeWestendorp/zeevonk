@@ -79,7 +79,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// Resolve all channel functions of a single fixture.
+    /// Resolve all channel functions for a single fixture.
     fn resolve_fixture(&mut self, fixture_id: FixtureId) {
         let Some(fixture) = self.stage.fixtures().get(&fixture_id) else {
             return;
@@ -92,7 +92,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// Determines the value for a specific channel function explicitly present in the Zeevonk's unresolved values map.
+    /// Determines the value for a specific channel function.
     fn get_channel_function_value(
         &self,
         fixture_id: &FixtureId,
