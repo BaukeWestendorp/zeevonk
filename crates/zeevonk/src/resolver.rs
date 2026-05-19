@@ -5,7 +5,7 @@ use crate::theymx::Multiverse;
 use crate::project::{
     FixtureChannelFunction, FixtureChannelFunctionKind, FixtureId, Relation, RelationKind, Stage,
 };
-use crate::value::{AttributeValues, ClampedValue};
+use crate::value::{AttributeValue, AttributeValues, ClampedValue};
 
 pub fn resolve(values: &AttributeValues, stage: &Stage, multiverse: &mut Multiverse) {
     Resolver::new(values, stage, multiverse).resolve();
@@ -27,7 +27,7 @@ struct Resolver<'a> {
     /// Relations whose writes are deferred until after the initial fixture
     /// pass. Each entry contains the relation and the resolved value to apply.
     /// This is needed for resolving virtual channels.
-    deferred_relations: Vec<(Relation, ClampedValue)>,
+    deferred_relations: Vec<(Relation, AttributeValue)>,
 }
 
 impl<'a> Resolver<'a> {
@@ -90,13 +90,13 @@ impl<'a> Resolver<'a> {
         &self,
         fixture_id: &FixtureId,
         attribute: &AttributeName,
-    ) -> Option<ClampedValue> {
+    ) -> Option<AttributeValue> {
         self.attribute_values.get(fixture_id, attribute)
     }
 
     /// Apply a computed value to a channel function.
     ///
-    /// For physical channel functions, converts the `ClampedValue` to the
+    /// For physical channel functions, converts the [`AttributeValue`] to the
     /// appropriate byte sequence and writes it into the multiverse at the
     /// configured addresses.
     ///
@@ -105,11 +105,11 @@ impl<'a> Resolver<'a> {
     fn set_channel_function_value(
         &mut self,
         channel_function: &FixtureChannelFunction,
-        value: ClampedValue,
+        value: AttributeValue,
     ) {
         match channel_function.kind() {
             FixtureChannelFunctionKind::Physical { addresses } => {
-                let values = value.to_address_values(addresses);
+                let values = value.to_address_values(channel_function, addresses);
                 for (address, value) in values {
                     self.multiverse.set_value(&address, value);
                 }
@@ -122,8 +122,10 @@ impl<'a> Resolver<'a> {
                                 &relation.fixture_id(),
                                 &relation.attribute(),
                             ) {
-                                let new_value =
-                                    ClampedValue::new(follower_value.as_f32() * value.as_f32());
+                                let new_value = AttributeValue::Clamped(ClampedValue::new(
+                                    follower_value.to_clamped_value(channel_function).as_f32()
+                                        * value.to_clamped_value(channel_function).as_f32(),
+                                ));
                                 self.defer_relation_resolution(relation.clone(), new_value);
                             }
                         }
@@ -140,7 +142,7 @@ impl<'a> Resolver<'a> {
     ///
     /// Deferring relation resolutions ensures that master values are computed
     /// before followers are written.
-    fn defer_relation_resolution(&mut self, relation: Relation, value: ClampedValue) {
+    fn defer_relation_resolution(&mut self, relation: Relation, value: AttributeValue) {
         self.deferred_relations.push((relation, value));
     }
 }

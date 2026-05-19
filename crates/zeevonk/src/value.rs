@@ -7,7 +7,57 @@ use rigger::gdtf::attr::AttributeName;
 
 use crate::theymx::Address;
 
-use crate::project::FixtureId;
+use crate::project::{FixtureChannelFunction, FixtureId};
+
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(serde::Serialize, serde::Deserialize)]
+pub enum AttributeValue {
+    Clamped(ClampedValue),
+    Physical(f32),
+}
+
+impl AttributeValue {
+    /// Converts the value to values directly mappable at addresses.
+    pub fn to_address_values(
+        &self,
+        channel_function: &FixtureChannelFunction,
+        addresses: &[Address],
+    ) -> Vec<(Address, crate::theymx::Value)> {
+        self.to_clamped_value(channel_function).to_address_values(addresses)
+    }
+
+    pub fn to_clamped_value(&self, channel_function: &FixtureChannelFunction) -> ClampedValue {
+        match self {
+            AttributeValue::Clamped(v) => *v,
+            AttributeValue::Physical(v) => {
+                let mut min = channel_function.min;
+                let mut max = channel_function.max;
+                if min > max {
+                    std::mem::swap(&mut min, &mut max);
+                }
+                let normalized = ((*v - min) / (max - min)).clamp(0.0, 1.0);
+                ClampedValue::new(normalized)
+            }
+        }
+    }
+}
+
+impl From<ClampedValue> for AttributeValue {
+    fn from(value: ClampedValue) -> Self {
+        Self::Clamped(value)
+    }
+}
+
+impl fmt::Display for AttributeValue {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AttributeValue::Clamped(val) => write!(f, "Clamped({})", val),
+            AttributeValue::Physical(value) => {
+                write!(f, "Physical({})", value)
+            }
+        }
+    }
+}
 
 /// A clamped value between `0.0..=1.0`.
 ///
@@ -133,14 +183,6 @@ impl From<ClampedValue> for theymx::Value {
     }
 }
 
-impl str::FromStr for ClampedValue {
-    type Err = num::ParseFloatError;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Self::new(s.parse()?))
-    }
-}
-
 impl From<gdtf::values::DmxValue> for ClampedValue {
     fn from(value: gdtf::values::DmxValue) -> Self {
         let len: u8 = value.bytes().into();
@@ -151,15 +193,20 @@ impl From<gdtf::values::DmxValue> for ClampedValue {
     }
 }
 
-/// Stores [`ClampedValue`]s for each [`FixtureId`]'s [`Attribute`].
-///
-/// Maintains a mapping from [`FixtureId`] to a set of
-/// attribute-value pairs, where each value is a [`ClampedValue`] in the range `0.0..=1.0`.
+impl str::FromStr for ClampedValue {
+    type Err = num::ParseFloatError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(Self::new(s.parse()?))
+    }
+}
+
+/// Stores [`AttributeValue`]s for each [`FixtureId`]'s [`Attribute`].
 #[derive(Debug, Clone, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 pub struct AttributeValues {
-    values: BTreeMap<FixtureId, BTreeMap<AttributeName, ClampedValue>>,
+    values: BTreeMap<FixtureId, BTreeMap<AttributeName, AttributeValue>>,
 }
 
 impl Default for AttributeValues {
@@ -177,23 +224,23 @@ impl AttributeValues {
     /// Sets the value for a given attribute at a specific fixture path.
     ///
     /// If the fixture path or attribute does not exist, it will be created.
-    /// The value is converted into a [`ClampedValue`] and stored.
+    /// The value is converted into a [`AttributeValue`] and stored.
     pub fn set(
         &mut self,
         fixture_id: FixtureId,
         attribute: AttributeName,
-        value: impl Into<ClampedValue>,
+        value: impl Into<AttributeValue>,
     ) {
         self.values.entry(fixture_id).or_default().insert(attribute, value.into());
     }
 
     /// Returns an iterator over all stored attribute values.
-    pub fn values(&self) -> impl Iterator<Item = (&FixtureId, &AttributeName, &ClampedValue)> {
+    pub fn values(&self) -> impl Iterator<Item = (&FixtureId, &AttributeName, &AttributeValue)> {
         // Annotate the closure parameter types so the compiler can infer everything
         // inside the nested iterator correctly.
         self.values.iter().flat_map(
-            |(fixture_id, attrs): (&FixtureId, &BTreeMap<AttributeName, ClampedValue>)| {
-                attrs.iter().map(move |(attr, val): (&AttributeName, &ClampedValue)| {
+            |(fixture_id, attrs): (&FixtureId, &BTreeMap<AttributeName, AttributeValue>)| {
+                attrs.iter().map(move |(attr, val): (&AttributeName, &AttributeValue)| {
                     (fixture_id, attr, val)
                 })
             },
@@ -201,10 +248,10 @@ impl AttributeValues {
     }
 
     /// Retrieves the value for a given attribute at a specific fixture path, if present.
-    pub fn get(&self, id: &FixtureId, attribute: &AttributeName) -> Option<ClampedValue> {
+    pub fn get(&self, id: &FixtureId, attribute: &AttributeName) -> Option<AttributeValue> {
         self.values
             .get(id)
-            .and_then(|attrs: &BTreeMap<AttributeName, ClampedValue>| attrs.get(attribute))
+            .and_then(|attrs: &BTreeMap<AttributeName, AttributeValue>| attrs.get(attribute))
             .copied()
     }
 

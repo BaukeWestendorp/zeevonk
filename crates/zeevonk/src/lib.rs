@@ -36,6 +36,9 @@ pub mod resolver;
 /// Re-export of the [`theymx`](https://github.com/BaukeWestendorp/theymx) crate.
 pub use theymx;
 
+/// Re-export of rigger [`AttributeName`](rigger::gdtf::attr::AttributeName).
+pub use rigger::gdtf::attr::AttributeName;
+
 pub use error::{Error, Result};
 
 /// The main entry point for interacting with a Zeevonk instance.

@@ -302,11 +302,12 @@ mod channel_functions {
                         .collect::<Vec<_>>();
 
                     for (cf_ix, channel_function) in &filtered_channel_functions {
-                        let from = channel_function.dmx_from.into();
-                        let to = filtered_channel_functions
-                            .get(cf_ix + 1)
-                            .map(|(_, cf)| ClampedValue::from(cf.dmx_from))
-                            .unwrap_or_else(|| ClampedValue::new(ClampedValue::MAX));
+                        let from = channel_function.physical_from as f32;
+                        let to = channel_function.physical_to as f32;
+
+                        // Map the clamped value to the physical range [from, to]
+                        let default_clamped = ClampedValue::from(channel_function.default);
+                        let default = from + (to - from) * default_clamped.as_f32();
 
                         let Some(attribute) = self.attribute_from_cf(channel_function) else {
                             continue;
@@ -329,14 +330,12 @@ mod channel_functions {
                             virtuals,
                         );
 
-                        let default = ClampedValue::from(channel_function.default);
-
                         if dmx_channel
                             .initial_function()
                             .is_some_and(|(_, cf)| cf == *channel_function)
                         {
                             if let FixtureChannelFunctionKind::Physical { addresses } = &kind {
-                                let default_values = default.to_address_values(addresses);
+                                let default_values = default_clamped.to_address_values(addresses);
                                 defaults.extend(default_values);
 
                                 if let Some(highlight) = dmx_channel.highlight {

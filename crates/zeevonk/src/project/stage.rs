@@ -10,7 +10,6 @@ use uuid::Uuid;
 
 use crate::Error;
 use crate::theymx::{Address, Multiverse};
-use crate::value::ClampedValue;
 
 /// A read-only, "baked" view of a patch that contains
 /// fixtures and their configuration.
@@ -179,9 +178,9 @@ impl Fixture {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct FixtureChannelFunction {
     pub(crate) kind: FixtureChannelFunctionKind,
-    pub(crate) min: ClampedValue,
-    pub(crate) max: ClampedValue,
-    pub(crate) default: ClampedValue,
+    pub(crate) min: f32,
+    pub(crate) max: f32,
+    pub(crate) default: f32,
 }
 
 impl FixtureChannelFunction {
@@ -191,17 +190,17 @@ impl FixtureChannelFunction {
     }
 
     /// The minimum value (inclusive) supported by this channel function.
-    pub fn min(&self) -> ClampedValue {
+    pub fn min(&self) -> f32 {
         self.min
     }
 
     /// The maximum value (inclusive) supported by this channel function.
-    pub fn max(&self) -> ClampedValue {
+    pub fn max(&self) -> f32 {
         self.max
     }
 
     /// The default value for this attribute when no explicit value is set.
-    pub fn default(&self) -> ClampedValue {
+    pub fn default(&self) -> f32 {
         self.default
     }
 }
