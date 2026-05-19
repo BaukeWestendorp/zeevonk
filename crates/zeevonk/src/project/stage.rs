@@ -5,28 +5,28 @@ use std::collections::BTreeMap;
 use std::num::NonZeroU32;
 use std::{cmp, fmt, str};
 
-use uuid::Uuid;
+use rigger::gdtf::FixtureTypeId;
+use rigger::gdtf::attr::AttributeName;
 
 use crate::Error;
-use crate::attr::Attribute;
-use crate::theymx::{Address, Multiverse};
-use crate::value::ClampedValue;
+use crate::theymx::Address;
+use crate::value::AttributeValues;
 
 /// A read-only, "baked" view of a patch that contains
 /// fixtures and their configuration.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Stage {
-    /// The defaulted multiverse used for address resolution.
-    pub(crate) default_multiverse: Multiverse,
+    /// Default attribute values for fixtures in this stage.
+    pub(crate) default_attribute_values: AttributeValues,
 
     /// Map of all fixtures in this stage, keyed by their [`FixtureId`].
     pub(crate) fixtures: BTreeMap<FixtureId, Fixture>,
 }
 
 impl Stage {
-    /// Returns a reference to the defaulted [`Multiverse`] used for address resolution.
-    pub fn default_multiverse(&self) -> &Multiverse {
-        &self.default_multiverse
+    /// Returns the default attribute values for fixtures in this stage.
+    pub fn default_attribute_values(&self) -> &AttributeValues {
+        &self.default_attribute_values
     }
 
     /// Returns the map of fixtures contained in this stage.
@@ -109,9 +109,9 @@ pub struct Fixture {
     pub(crate) root_base_address: Address,
     pub(crate) name: String,
 
-    pub(crate) gdtf_fixture_type_id: Uuid,
+    pub(crate) gdtf_fixture_type_id: FixtureTypeId,
     pub(crate) gdtf_dmx_mode: String,
-    pub(crate) channel_functions: BTreeMap<Attribute, FixtureChannelFunction>,
+    pub(crate) channel_functions: BTreeMap<AttributeName, FixtureChannelFunction>,
     pub(crate) highlight_values: BTreeMap<Address, crate::theymx::Value>,
 
     pub(crate) child_ids: Vec<FixtureId>,
@@ -142,7 +142,7 @@ impl Fixture {
     }
 
     /// Returns the GDTF fixture type this instance is based on.
-    pub fn gdtf_fixture_type_id(&self) -> Uuid {
+    pub fn gdtf_fixture_type_id(&self) -> FixtureTypeId {
         self.gdtf_fixture_type_id
     }
 
@@ -154,16 +154,18 @@ impl Fixture {
     /// Get the channel function associated with the given attribute.
     ///
     /// Returns `None` if the attribute is not present on this fixture.
-    pub fn channel_function(&self, attribute: &Attribute) -> Option<&FixtureChannelFunction> {
+    pub fn channel_function(&self, attribute: &AttributeName) -> Option<&FixtureChannelFunction> {
         self.channel_functions.get(attribute)
     }
 
     /// Get all channel functions for this fixture.
-    pub fn channel_functions(&self) -> impl Iterator<Item = (&Attribute, &FixtureChannelFunction)> {
+    pub fn channel_functions(
+        &self,
+    ) -> impl Iterator<Item = (&AttributeName, &FixtureChannelFunction)> {
         self.channel_functions.iter()
     }
 
-    /// Returns the "highlight" DMX values for this fixture.
+    /// Returns the highlight DMX values for this fixture.
     pub fn highlight_values(&self) -> &BTreeMap<Address, crate::theymx::Value> {
         &self.highlight_values
     }
@@ -177,9 +179,9 @@ impl Fixture {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct FixtureChannelFunction {
     pub(crate) kind: FixtureChannelFunctionKind,
-    pub(crate) min: ClampedValue,
-    pub(crate) max: ClampedValue,
-    pub(crate) default: ClampedValue,
+    pub(crate) min: f32,
+    pub(crate) max: f32,
+    pub(crate) default: f32,
 }
 
 impl FixtureChannelFunction {
@@ -189,17 +191,17 @@ impl FixtureChannelFunction {
     }
 
     /// The minimum value (inclusive) supported by this channel function.
-    pub fn min(&self) -> ClampedValue {
+    pub fn min(&self) -> f32 {
         self.min
     }
 
     /// The maximum value (inclusive) supported by this channel function.
-    pub fn max(&self) -> ClampedValue {
+    pub fn max(&self) -> f32 {
         self.max
     }
 
     /// The default value for this attribute when no explicit value is set.
-    pub fn default(&self) -> ClampedValue {
+    pub fn default(&self) -> f32 {
         self.default
     }
 }
@@ -228,12 +230,12 @@ pub enum FixtureChannelFunctionKind {
 pub struct Relation {
     pub(crate) kind: RelationKind,
     pub(crate) fixture_id: FixtureId,
-    pub(crate) attribute: Attribute,
+    pub(crate) attribute: AttributeName,
 }
 
 impl Relation {
     /// Creates a new [`Relation`].
-    pub fn new(kind: RelationKind, fixture_id: FixtureId, attribute: Attribute) -> Self {
+    pub fn new(kind: RelationKind, fixture_id: FixtureId, attribute: AttributeName) -> Self {
         Self { kind, fixture_id, attribute }
     }
 
@@ -248,8 +250,8 @@ impl Relation {
     }
 
     /// Returns the attribute on the referenced fixture used by this relation.
-    pub fn attribute(&self) -> Attribute {
-        self.attribute
+    pub fn attribute(&self) -> &AttributeName {
+        &self.attribute
     }
 }
 

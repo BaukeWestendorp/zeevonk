@@ -24,7 +24,6 @@ use crate::output::agent::OutputAgent;
 use crate::project::{FixtureId, IntoFixtureIds, Project, ProjectFile};
 use crate::value::AttributeValues;
 
-pub mod attr;
 pub mod error;
 pub mod project;
 pub mod value;
@@ -36,6 +35,9 @@ pub mod resolver;
 
 /// Re-export of the [`theymx`](https://github.com/BaukeWestendorp/theymx) crate.
 pub use theymx;
+
+/// Re-export of rigger [`AttributeName`](rigger::gdtf::attr::AttributeName).
+pub use rigger::gdtf::{FixtureTypeId, attr::AttributeName};
 
 pub use error::{Error, Result};
 

@@ -1,13 +1,14 @@
+use rigger::gdtf::attr::AttributeName;
+
 use crate::theymx::Multiverse;
 
-use crate::attr::Attribute;
 use crate::project::{
     FixtureChannelFunction, FixtureChannelFunctionKind, FixtureId, Relation, RelationKind, Stage,
 };
-use crate::value::{AttributeValues, ClampedValue};
+use crate::value::{AttributeValue, AttributeValues, ClampedValue};
 
 pub fn resolve(values: &AttributeValues, stage: &Stage, multiverse: &mut Multiverse) {
-    Resolver::new(values, stage, multiverse).resolve();
+    Resolver::new(values, stage.default_attribute_values(), stage, multiverse).resolve();
 }
 
 /// Resolver for translating Zeevonk state into a physical DMX multiverse.
@@ -20,23 +21,31 @@ pub fn resolve(values: &AttributeValues, stage: &Stage, multiverse: &mut Multive
 /// resolved against the master's computed values.
 struct Resolver<'a> {
     attribute_values: &'a AttributeValues,
+    default_attribute_values: &'a AttributeValues,
     stage: &'a Stage,
     multiverse: &'a mut Multiverse,
 
     /// Relations whose writes are deferred until after the initial fixture
     /// pass. Each entry contains the relation and the resolved value to apply.
     /// This is needed for resolving virtual channels.
-    deferred_relations: Vec<(Relation, ClampedValue)>,
+    deferred_relations: Vec<(Relation, AttributeValue)>,
 }
 
 impl<'a> Resolver<'a> {
     /// Create a new resolver.
     pub fn new(
         attribute_values: &'a AttributeValues,
+        default_attribute_values: &'a AttributeValues,
         stage: &'a Stage,
         multiverse: &'a mut Multiverse,
     ) -> Self {
-        Self { attribute_values, stage, multiverse, deferred_relations: Vec::new() }
+        Self {
+            attribute_values,
+            default_attribute_values,
+            stage,
+            multiverse,
+            deferred_relations: Vec::new(),
+        }
     }
 
     /// Perform resolution and return the populated multiverse.
@@ -70,13 +79,12 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// Resolve all channel functions of a single fixture.
+    /// Resolve all channel functions for a single fixture.
     fn resolve_fixture(&mut self, fixture_id: FixtureId) {
         let Some(fixture) = self.stage.fixtures().get(&fixture_id) else {
             return;
         };
 
-        // For each channel function, get its explicit value (if any) and apply it.
         for (attribute, channel_function) in fixture.channel_functions() {
             if let Some(value) = self.get_channel_function_value(&fixture_id, &attribute) {
                 self.set_channel_function_value(channel_function, value);
@@ -84,18 +92,20 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    /// Determines the value for a specific channel function explicitly present in the Zeevonk's unresolved values map.
+    /// Determines the value for a specific channel function.
     fn get_channel_function_value(
         &self,
         fixture_id: &FixtureId,
-        attribute: &Attribute,
-    ) -> Option<ClampedValue> {
-        self.attribute_values.get(fixture_id, attribute)
+        attribute: &AttributeName,
+    ) -> Option<AttributeValue> {
+        self.attribute_values
+            .get(fixture_id, attribute)
+            .or_else(|| self.default_attribute_values.get(fixture_id, attribute))
     }
 
     /// Apply a computed value to a channel function.
     ///
-    /// For physical channel functions, converts the `ClampedValue` to the
+    /// For physical channel functions, converts the [`AttributeValue`] to the
     /// appropriate byte sequence and writes it into the multiverse at the
     /// configured addresses.
     ///
@@ -104,11 +114,11 @@ impl<'a> Resolver<'a> {
     fn set_channel_function_value(
         &mut self,
         channel_function: &FixtureChannelFunction,
-        value: ClampedValue,
+        value: AttributeValue,
     ) {
         match channel_function.kind() {
             FixtureChannelFunctionKind::Physical { addresses } => {
-                let values = value.to_address_values(addresses);
+                let values = value.to_address_values(channel_function, addresses);
                 for (address, value) in values {
                     self.multiverse.set_value(&address, value);
                 }
@@ -121,8 +131,10 @@ impl<'a> Resolver<'a> {
                                 &relation.fixture_id(),
                                 &relation.attribute(),
                             ) {
-                                let new_value =
-                                    ClampedValue::new(follower_value.as_f32() * value.as_f32());
+                                let new_value = AttributeValue::Clamped(ClampedValue::new(
+                                    follower_value.to_clamped_value(channel_function).as_f32()
+                                        * value.to_clamped_value(channel_function).as_f32(),
+                                ));
                                 self.defer_relation_resolution(relation.clone(), new_value);
                             }
                         }
@@ -139,7 +151,7 @@ impl<'a> Resolver<'a> {
     ///
     /// Deferring relation resolutions ensures that master values are computed
     /// before followers are written.
-    fn defer_relation_resolution(&mut self, relation: Relation, value: ClampedValue) {
+    fn defer_relation_resolution(&mut self, relation: Relation, value: AttributeValue) {
         self.deferred_relations.push((relation, value));
     }
 }

@@ -2,10 +2,9 @@ use std::path::Path;
 
 use criterion::{BatchSize, Criterion, criterion_group, criterion_main};
 
-use zeevonk::theymx::Multiverse;
-
-use zeevonk::attr::Attribute;
+use rigger::gdtf::attr::AttributeName;
 use zeevonk::project::ProjectFile;
+use zeevonk::theymx::Multiverse;
 use zeevonk::value::{AttributeValues, ClampedValue};
 
 mod common;
@@ -29,104 +28,104 @@ pub fn bench_realistic_single_universe(c: &mut Criterion) {
 
     let mut values = AttributeValues::new();
 
-    let mut set_all = |addr: String, attr: Attribute| {
+    let mut set_all = |addr: String, attr: AttributeName| {
         values.set(addr.parse().unwrap(), attr, ClampedValue::new(0.5));
     };
 
     for n in 101..=104 {
-        set_all(format!("{n}.1"), Attribute::Pan);
-        set_all(format!("{n}.1.1"), Attribute::Color(1));
-        set_all(format!("{n}.1.1"), Attribute::Shutter(1));
-        set_all(format!("{n}.1.1"), Attribute::Dimmer);
-        set_all(format!("{n}.1.1"), Attribute::Gobo(1));
-        set_all(format!("{n}.1.1"), Attribute::Prism(1));
-        set_all(format!("{n}.1.1"), Attribute::PrismPos(1));
-        set_all(format!("{n}.1.1"), Attribute::EffectsPos(1));
-        set_all(format!("{n}.1.1"), Attribute::Frost(1));
-        set_all(format!("{n}.1.1"), Attribute::Focus(1));
-        set_all(format!("{n}.1.1"), Attribute::Tilt);
-        set_all(format!("{n}.1.1"), Attribute::PositionMSpeed);
-        set_all(format!("{n}.1.1"), Attribute::FixtureGlobalReset);
-        set_all(format!("{n}.1.1"), Attribute::LampControl);
+        set_all(format!("{n}.1"), AttributeName::Pan);
+        set_all(format!("{n}.1.1"), AttributeName::Color(1));
+        set_all(format!("{n}.1.1"), AttributeName::Shutter(1));
+        set_all(format!("{n}.1.1"), AttributeName::Dimmer);
+        set_all(format!("{n}.1.1"), AttributeName::Gobo(1));
+        set_all(format!("{n}.1.1"), AttributeName::Prism(1));
+        set_all(format!("{n}.1.1"), AttributeName::PrismPos(1));
+        set_all(format!("{n}.1.1"), AttributeName::EffectsPos(1));
+        set_all(format!("{n}.1.1"), AttributeName::Frost(1));
+        set_all(format!("{n}.1.1"), AttributeName::Focus(1));
+        set_all(format!("{n}.1.1"), AttributeName::Tilt);
+        set_all(format!("{n}.1.1"), AttributeName::PositionMSpeed);
+        set_all(format!("{n}.1.1"), AttributeName::FixtureGlobalReset);
+        set_all(format!("{n}.1.1"), AttributeName::LampControl);
     }
 
     for n in 201..=208 {
-        set_all(format!("{n}"), Attribute::PositionMSpeed);
-        set_all(format!("{n}"), Attribute::Control(1));
-        set_all(format!("{n}.1"), Attribute::Pan);
-        set_all(format!("{n}.1.1"), Attribute::Tilt);
-        set_all(format!("{n}.1.1"), Attribute::ColorAddR);
-        set_all(format!("{n}.1.1"), Attribute::ColorAddG);
-        set_all(format!("{n}.1.1"), Attribute::ColorAddB);
-        set_all(format!("{n}.1.1"), Attribute::ColorAddW);
-        set_all(format!("{n}.1.1"), Attribute::Cto);
-        set_all(format!("{n}.1.1"), Attribute::Color(1));
-        set_all(format!("{n}.1.1"), Attribute::Zoom);
-        set_all(format!("{n}.1.1"), Attribute::Shutter(1));
-        set_all(format!("{n}.1.1"), Attribute::Dimmer);
+        set_all(format!("{n}"), AttributeName::PositionMSpeed);
+        set_all(format!("{n}"), AttributeName::Control(1));
+        set_all(format!("{n}.1"), AttributeName::Pan);
+        set_all(format!("{n}.1.1"), AttributeName::Tilt);
+        set_all(format!("{n}.1.1"), AttributeName::ColorAddR);
+        set_all(format!("{n}.1.1"), AttributeName::ColorAddG);
+        set_all(format!("{n}.1.1"), AttributeName::ColorAddB);
+        set_all(format!("{n}.1.1"), AttributeName::ColorAddW);
+        set_all(format!("{n}.1.1"), AttributeName::Cto);
+        set_all(format!("{n}.1.1"), AttributeName::Color(1));
+        set_all(format!("{n}.1.1"), AttributeName::Zoom);
+        set_all(format!("{n}.1.1"), AttributeName::Shutter(1));
+        set_all(format!("{n}.1.1"), AttributeName::Dimmer);
     }
 
     for n in 301..=312 {
-        set_all(format!("{n}.1"), Attribute::Pan);
-        set_all(format!("{n}.1"), Attribute::PanRotate);
-        set_all(format!("{n}.1.1"), Attribute::Tilt);
-        set_all(format!("{n}.1.1"), Attribute::TiltRotate);
-        set_all(format!("{n}.1.1"), Attribute::ColorAddR);
-        set_all(format!("{n}.1.1"), Attribute::ColorAddG);
-        set_all(format!("{n}.1.1"), Attribute::ColorAddB);
-        set_all(format!("{n}.1.1"), Attribute::Gobo(1));
-        set_all(format!("{n}.1.1"), Attribute::Prism(1));
-        set_all(format!("{n}.1.1"), Attribute::PrismPos(1));
-        set_all(format!("{n}.1.1"), Attribute::Prism(2));
-        set_all(format!("{n}.1.1"), Attribute::PrismPos(2));
-        set_all(format!("{n}.1.1"), Attribute::Shutter(1));
-        set_all(format!("{n}.1.1"), Attribute::Dimmer);
-        set_all(format!("{n}.1.1"), Attribute::Focus(1));
-        set_all(format!("{n}.1.1"), Attribute::Frost(1));
-        set_all(format!("{n}.1.1"), Attribute::DimmerMode);
-        set_all(format!("{n}.1.1"), Attribute::PositionMSpeed);
-        set_all(format!("{n}.1.1"), Attribute::Function);
+        set_all(format!("{n}.1"), AttributeName::Pan);
+        set_all(format!("{n}.1"), AttributeName::PanRotate);
+        set_all(format!("{n}.1.1"), AttributeName::Tilt);
+        set_all(format!("{n}.1.1"), AttributeName::TiltRotate);
+        set_all(format!("{n}.1.1"), AttributeName::ColorAddR);
+        set_all(format!("{n}.1.1"), AttributeName::ColorAddG);
+        set_all(format!("{n}.1.1"), AttributeName::ColorAddB);
+        set_all(format!("{n}.1.1"), AttributeName::Gobo(1));
+        set_all(format!("{n}.1.1"), AttributeName::Prism(1));
+        set_all(format!("{n}.1.1"), AttributeName::PrismPos(1));
+        set_all(format!("{n}.1.1"), AttributeName::Prism(2));
+        set_all(format!("{n}.1.1"), AttributeName::PrismPos(2));
+        set_all(format!("{n}.1.1"), AttributeName::Shutter(1));
+        set_all(format!("{n}.1.1"), AttributeName::Dimmer);
+        set_all(format!("{n}.1.1"), AttributeName::Focus(1));
+        set_all(format!("{n}.1.1"), AttributeName::Frost(1));
+        set_all(format!("{n}.1.1"), AttributeName::DimmerMode);
+        set_all(format!("{n}.1.1"), AttributeName::PositionMSpeed);
+        set_all(format!("{n}.1.1"), AttributeName::Function);
     }
 
     for n in 401..=404 {
-        set_all(format!("{n}.1"), Attribute::Pan);
-        set_all(format!("{n}.1"), Attribute::PanRotate);
-        set_all(format!("{n}.1.1"), Attribute::Tilt);
-        set_all(format!("{n}.1.1"), Attribute::TiltRotate);
-        set_all(format!("{n}.1.1"), Attribute::ColorAddR);
-        set_all(format!("{n}.1.1"), Attribute::ColorAddG);
-        set_all(format!("{n}.1.1"), Attribute::ColorAddB);
-        set_all(format!("{n}.1.1"), Attribute::Gobo(1));
-        set_all(format!("{n}.1.1"), Attribute::Prism(1));
-        set_all(format!("{n}.1.1"), Attribute::PrismPos(1));
-        set_all(format!("{n}.1.1"), Attribute::Prism(2));
-        set_all(format!("{n}.1.1"), Attribute::PrismPos(2));
-        set_all(format!("{n}.1.1"), Attribute::Shutter(1));
-        set_all(format!("{n}.1.1"), Attribute::Dimmer);
-        set_all(format!("{n}.1.1"), Attribute::Focus(1));
-        set_all(format!("{n}.1.1"), Attribute::Frost(1));
-        set_all(format!("{n}.1.1"), Attribute::DimmerMode);
-        set_all(format!("{n}.1.1"), Attribute::PositionMSpeed);
-        set_all(format!("{n}.1.1"), Attribute::Function);
+        set_all(format!("{n}.1"), AttributeName::Pan);
+        set_all(format!("{n}.1"), AttributeName::PanRotate);
+        set_all(format!("{n}.1.1"), AttributeName::Tilt);
+        set_all(format!("{n}.1.1"), AttributeName::TiltRotate);
+        set_all(format!("{n}.1.1"), AttributeName::ColorAddR);
+        set_all(format!("{n}.1.1"), AttributeName::ColorAddG);
+        set_all(format!("{n}.1.1"), AttributeName::ColorAddB);
+        set_all(format!("{n}.1.1"), AttributeName::Gobo(1));
+        set_all(format!("{n}.1.1"), AttributeName::Prism(1));
+        set_all(format!("{n}.1.1"), AttributeName::PrismPos(1));
+        set_all(format!("{n}.1.1"), AttributeName::Prism(2));
+        set_all(format!("{n}.1.1"), AttributeName::PrismPos(2));
+        set_all(format!("{n}.1.1"), AttributeName::Shutter(1));
+        set_all(format!("{n}.1.1"), AttributeName::Dimmer);
+        set_all(format!("{n}.1.1"), AttributeName::Focus(1));
+        set_all(format!("{n}.1.1"), AttributeName::Frost(1));
+        set_all(format!("{n}.1.1"), AttributeName::DimmerMode);
+        set_all(format!("{n}.1.1"), AttributeName::PositionMSpeed);
+        set_all(format!("{n}.1.1"), AttributeName::Function);
     }
 
     for n in 501..=505 {
-        set_all(format!("{n}.1"), Attribute::Tilt);
-        set_all(format!("{n}.1"), Attribute::Control(1));
-        set_all(format!("{n}.1.1"), Attribute::Dimmer);
-        set_all(format!("{n}.1.1"), Attribute::StrobeDuration);
-        set_all(format!("{n}.1.1"), Attribute::StrobeRate);
-        set_all(format!("{n}.1.1"), Attribute::StrobeModeStrobe);
-        set_all(format!("{n}.1.2"), Attribute::Dimmer);
-        set_all(format!("{n}.1.2"), Attribute::StrobeDuration);
-        set_all(format!("{n}.1.2"), Attribute::StrobeRate);
-        set_all(format!("{n}.1.2"), Attribute::StrobeModeStrobe);
-        set_all(format!("{n}.1.2"), Attribute::ColorAddR);
-        set_all(format!("{n}.1.2"), Attribute::ColorAddG);
-        set_all(format!("{n}.1.2"), Attribute::ColorAddB);
+        set_all(format!("{n}.1"), AttributeName::Tilt);
+        set_all(format!("{n}.1"), AttributeName::Control(1));
+        set_all(format!("{n}.1.1"), AttributeName::Dimmer);
+        set_all(format!("{n}.1.1"), AttributeName::StrobeDuration);
+        set_all(format!("{n}.1.1"), AttributeName::StrobeRate);
+        set_all(format!("{n}.1.1"), AttributeName::StrobeModeStrobe);
+        set_all(format!("{n}.1.2"), AttributeName::Dimmer);
+        set_all(format!("{n}.1.2"), AttributeName::StrobeDuration);
+        set_all(format!("{n}.1.2"), AttributeName::StrobeRate);
+        set_all(format!("{n}.1.2"), AttributeName::StrobeModeStrobe);
+        set_all(format!("{n}.1.2"), AttributeName::ColorAddR);
+        set_all(format!("{n}.1.2"), AttributeName::ColorAddG);
+        set_all(format!("{n}.1.2"), AttributeName::ColorAddB);
     }
 
-    set_all("601.1".to_string(), Attribute::Dimmer);
+    set_all("601.1".to_string(), AttributeName::Dimmer);
 
     c.bench_function("Realistic Single Universe", |b| {
         b.iter_batched(

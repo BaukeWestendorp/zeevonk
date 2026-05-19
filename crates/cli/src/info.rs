@@ -58,7 +58,7 @@ mod dump {
 
             println!(
                 "{secondary_indent}{DIM}type{RESET}={YELLOW}{fixture_type}{RESET}{DIM}, mode{RESET}={YELLOW}{dmx_mode}{RESET}",
-                fixture_type = fixture_type_id,
+                fixture_type = fixture_type_id.as_uuid(),
                 dmx_mode = dmx_mode,
             );
         } else {

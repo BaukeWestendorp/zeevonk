@@ -1,13 +1,13 @@
-use std::collections::HashSet;
+use crate::value::AttributeValues;
 
-use gdtf::dmx_mode::DmxMode;
-use gdtf::fixture_type::FixtureType;
-use gdtf::geometry::{AnyGeometry, Geometry, ReferenceGeometry};
-use gdtf::values::Name;
+use rigger::gdtf::Gdtf;
+use rigger::gdtf::Name;
+use rigger::gdtf::dmx::DmxMode;
+use rigger::gdtf::geo::{Geometry, ReferenceGeometry};
 
 use crate::project::stage::{Fixture, FixtureId, FixtureIdPart};
 use crate::theymx::Address;
-use channel_functions::ChannelFunctionCtx;
+use channel_functions::ChannelFunctionContext;
 use virtual_channels::VirtualChannelResolver;
 
 /// Builds a fixture tree from a GDTF fixture type + DMX mode.
@@ -16,16 +16,16 @@ pub(crate) struct FixtureBuilder<'a> {
     name: String,
     address: Address,
 
-    gdtf_fixture_type: &'a FixtureType,
+    gdtf: &'a Gdtf,
     gdtf_dmx_mode: &'a DmxMode,
 
     fixtures: Vec<Fixture>,
     sibling_count_stack: Vec<u32>,
 
-    channel_ctx: ChannelFunctionCtx<'a>,
+    channel_cx: ChannelFunctionContext<'a>,
     virtuals: VirtualChannelResolver,
 
-    pub(crate) defaults: HashSet<(Address, theymx::Value)>,
+    pub(crate) defaults: AttributeValues,
 }
 
 impl<'a> FixtureBuilder<'a> {
@@ -33,55 +33,57 @@ impl<'a> FixtureBuilder<'a> {
         root_id: FixtureIdPart,
         name: String,
         address: Address,
-        gdtf_fixture_type: &'a FixtureType,
+        gdtf: &'a Gdtf,
         gdtf_dmx_mode: &'a DmxMode,
     ) -> Self {
         Self {
             root_id,
             name,
             address,
-            gdtf_fixture_type,
+            gdtf,
             gdtf_dmx_mode,
             fixtures: Vec::new(),
             sibling_count_stack: Vec::new(),
-            channel_ctx: ChannelFunctionCtx::new(gdtf_fixture_type, gdtf_dmx_mode),
+            channel_cx: ChannelFunctionContext::new(gdtf, gdtf_dmx_mode),
             virtuals: VirtualChannelResolver::new(),
-            defaults: HashSet::new(),
+            defaults: AttributeValues::new(),
         }
     }
 
-    pub(crate) fn build_fixture_tree(
-        mut self,
-    ) -> crate::Result<(Vec<Fixture>, HashSet<(Address, theymx::Value)>)> {
+    pub(crate) fn build_fixture_tree(mut self) -> crate::Result<(Vec<Fixture>, AttributeValues)> {
         let root_geometry = self.root_geometry()?.clone();
         let root_id = FixtureId::new(self.root_id);
 
-        self.fixtures = self.fixtures_from_geometry(root_id, &root_geometry);
+        self.fixtures = self.fixtures_from_geometry(root_id, &root_geometry, self.gdtf);
 
         self.virtuals.resolve_all(
             self.gdtf_dmx_mode,
-            self.gdtf_fixture_type,
-            &self.channel_ctx,
+            self.gdtf,
+            &self.channel_cx,
             &mut self.fixtures,
+            &mut self.defaults,
         );
 
         Ok((self.fixtures, self.defaults))
     }
 
     fn root_geometry(&self) -> crate::Result<&Geometry> {
-        self.gdtf_dmx_mode
-            .geometry(self.gdtf_fixture_type)
-            .ok_or(crate::Error::RootGeometryNotFound)
+        self.gdtf_dmx_mode.geometry(self.gdtf).ok_or(crate::Error::RootGeometryNotFound)
     }
 
-    fn fixtures_from_geometry(&mut self, child_id: FixtureId, geometry: &Geometry) -> Vec<Fixture> {
+    fn fixtures_from_geometry(
+        &mut self,
+        child_id: FixtureId,
+        geometry: &Geometry,
+        gdtf: &'a Gdtf,
+    ) -> Vec<Fixture> {
         self.sibling_count_stack.push(0);
 
         let fixtures = match geometry {
-            Geometry::Reference(reference) => {
-                self.fixture_from_reference_geometry(child_id, reference)
+            Geometry::GeometryReference(reference) => {
+                self.fixture_from_reference_geometry(child_id, reference, gdtf)
             }
-            geom => self.fixture_from_geometry(child_id, geom),
+            geo => self.fixture_from_geometry(child_id, geo, gdtf),
         };
 
         self.sibling_count_stack.pop();
@@ -89,41 +91,37 @@ impl<'a> FixtureBuilder<'a> {
         fixtures
     }
 
-    fn fixture_from_geometry(&mut self, child_id: FixtureId, geometry: &Geometry) -> Vec<Fixture> {
-        let name = if child_id.len() == 1 {
-            self.name.clone()
-        } else {
-            geometry.name().map(|n| n.to_string()).unwrap_or_else(|| "<no name>".to_string())
-        };
+    fn fixture_from_geometry(
+        &mut self,
+        child_id: FixtureId,
+        geometry: &Geometry,
+        gdtf: &'a Gdtf,
+    ) -> Vec<Fixture> {
+        let name =
+            if child_id.len() == 1 { self.name.clone() } else { geometry.name().to_string() };
 
-        let geometry_name = match geometry.name() {
-            Some(n) => n,
-            None => return vec![],
-        };
-
-        self.create_child_fixture(child_id, name, geometry_name, geometry_name, 0)
+        self.create_child_fixture(child_id, name, geometry.name(), geometry.name(), 0, gdtf)
     }
 
     fn fixture_from_reference_geometry(
         &mut self,
         child_id: FixtureId,
         reference_geometry: &ReferenceGeometry,
+        gdtf: &'a Gdtf,
     ) -> Vec<Fixture> {
-        if reference_geometry.breaks.len() > 1 {
+        if reference_geometry.breaks().len() > 1 {
             log::warn!("multiple breaks not yet supported!");
         }
 
-        let geometry_address_offset = match reference_geometry.breaks.first() {
-            Some(b) => b.dmx_offset.absolute() as i32 - 1,
+        let geometry_address_offset = match reference_geometry.breaks().first() {
+            Some(b) => b.absolute() as i32 - 1,
             None => 0,
         };
 
-        let geometry_name = match reference_geometry.name() {
-            Some(n) => n,
-            None => return vec![],
-        };
-        let referenced_geometry_name = match reference_geometry.geometry.as_ref() {
-            Some(n) => n,
+        let geometry_name = reference_geometry.name();
+
+        let referenced_geometry_name = match reference_geometry.geometry(gdtf).as_ref() {
+            Some(n) => n.name(),
             None => return vec![],
         };
 
@@ -133,6 +131,7 @@ impl<'a> FixtureBuilder<'a> {
             geometry_name,
             referenced_geometry_name,
             geometry_address_offset,
+            gdtf,
         )
     }
 
@@ -143,31 +142,25 @@ impl<'a> FixtureBuilder<'a> {
         geometry: &Name,
         referenced_geometry: &Name,
         geometry_address_offset: i32,
+        gdtf: &'a Gdtf,
     ) -> Vec<Fixture> {
-        let Some(referenced_geometry) = self.gdtf_fixture_type.nested_geometry(referenced_geometry)
-        else {
+        let Some(referenced_geometry) = self.gdtf.geometry(referenced_geometry) else {
             log::error!(
-                "Referenced geometry {:?} not found in fixture type {:?}",
+                "Referenced geometry '{}' not found in fixture type '{}'",
                 referenced_geometry,
-                self.gdtf_fixture_type.fixture_type_id
+                self.gdtf.name()
             );
             return vec![];
         };
 
-        let child_fixtures = self.collect_child_fixtures(&id, referenced_geometry);
+        let child_fixtures = self.collect_child_fixtures(&id, referenced_geometry, gdtf);
         let child_ids = self.collect_direct_child_ids(&id, &child_fixtures);
 
-        // Keep unwrap to preserve prior behavior.
-        let referenced_name = referenced_geometry.name().unwrap();
+        let referenced_name = referenced_geometry.name();
 
-        let gdtf_dmx_mode_name = self
-            .gdtf_dmx_mode
-            .name
-            .as_ref()
-            .map(|n| n.to_string())
-            .unwrap_or_else(|| "<no mode name>".to_string());
+        let gdtf_dmx_mode = self.gdtf_dmx_mode.name().to_string();
 
-        let (channel_functions, highlight_values) = self.channel_ctx.create_channel_functions(
+        let (channel_functions, highlight_values) = self.channel_cx.create_channel_functions(
             id,
             geometry,
             referenced_name,
@@ -175,14 +168,15 @@ impl<'a> FixtureBuilder<'a> {
             self.address,
             &mut self.defaults,
             &mut self.virtuals,
+            gdtf,
         );
 
         let mut fixtures = vec![Fixture {
             id,
             root_base_address: self.address,
             name,
-            gdtf_fixture_type_id: self.gdtf_fixture_type.fixture_type_id,
-            gdtf_dmx_mode: gdtf_dmx_mode_name,
+            gdtf_fixture_type_id: self.gdtf.fixture_type_id(),
+            gdtf_dmx_mode,
             channel_functions,
             highlight_values,
             child_ids,
@@ -192,7 +186,12 @@ impl<'a> FixtureBuilder<'a> {
         fixtures
     }
 
-    fn collect_child_fixtures(&mut self, id: &FixtureId, geometry: &Geometry) -> Vec<Fixture> {
+    fn collect_child_fixtures(
+        &mut self,
+        id: &FixtureId,
+        geometry: &Geometry,
+        gdtf: &'a Gdtf,
+    ) -> Vec<Fixture> {
         let mut child_fixtures = Vec::new();
 
         for child_geometry in geometry.children() {
@@ -206,7 +205,7 @@ impl<'a> FixtureBuilder<'a> {
                 }
             };
 
-            let fixtures_for_child = self.fixtures_from_geometry(part, child_geometry);
+            let fixtures_for_child = self.fixtures_from_geometry(part, child_geometry, gdtf);
             if fixtures_for_child.is_empty() {
                 continue;
             }
@@ -237,31 +236,29 @@ impl<'a> FixtureBuilder<'a> {
 }
 
 mod channel_functions {
-    use std::collections::{BTreeMap, HashSet};
-    use std::str::FromStr;
+    use std::collections::BTreeMap;
 
-    use gdtf::dmx_mode::{ChannelFunction, DmxChannel, DmxMode};
-    use gdtf::fixture_type::FixtureType;
-    use gdtf::values::Name;
+    use rigger::gdtf::attr::AttributeName;
+    use rigger::gdtf::dmx::{DmxChannel, DmxMode, DmxOffset};
+    use rigger::gdtf::{Gdtf, Name};
 
-    use crate::attr::Attribute;
     use crate::project::stage::{FixtureChannelFunction, FixtureChannelFunctionKind, FixtureId};
     use crate::theymx::Address;
-    use crate::value::ClampedValue;
+    use crate::value::{AttributeValue, AttributeValues, ClampedValue};
 
     use super::virtual_channels::VirtualChannelResolver;
 
     /// Context for creating channel functions for a fixture instance.
     ///
     /// This owns the static GDTF inputs needed to interpret channel functions.
-    pub(crate) struct ChannelFunctionCtx<'a> {
-        gdtf_fixture_type: &'a FixtureType,
+    pub(crate) struct ChannelFunctionContext<'a> {
+        gdtf: &'a Gdtf,
         gdtf_dmx_mode: &'a DmxMode,
     }
 
-    impl<'a> ChannelFunctionCtx<'a> {
-        pub(crate) fn new(gdtf_fixture_type: &'a FixtureType, gdtf_dmx_mode: &'a DmxMode) -> Self {
-            Self { gdtf_fixture_type, gdtf_dmx_mode }
+    impl<'a> ChannelFunctionContext<'a> {
+        pub(crate) fn new(gdtf: &'a Gdtf, gdtf_dmx_mode: &'a DmxMode) -> Self {
+            Self { gdtf, gdtf_dmx_mode }
         }
 
         pub(crate) fn create_channel_functions(
@@ -271,42 +268,43 @@ mod channel_functions {
             referenced_geometry: &Name,
             geometry_address_offset: i32,
             base_address: Address,
-            defaults: &mut HashSet<(Address, theymx::Value)>,
+            defaults: &mut AttributeValues,
             virtuals: &mut VirtualChannelResolver,
-        ) -> (BTreeMap<Attribute, FixtureChannelFunction>, BTreeMap<Address, crate::theymx::Value>)
-        {
-            let dmx_channels_with_geometry = self
-                .gdtf_dmx_mode
-                .dmx_channels
-                .iter()
-                .enumerate()
-                .filter(|(_, dmx_channel)| dmx_channel.geometry == *referenced_geometry);
+            gdtf: &'a Gdtf,
+        ) -> (
+            BTreeMap<AttributeName, FixtureChannelFunction>,
+            BTreeMap<Address, crate::theymx::Value>,
+        ) {
+            let dmx_channels_with_geometry =
+                self.gdtf_dmx_mode.dmx_channels().iter().enumerate().filter(|(_, dmx_channel)| {
+                    dmx_channel.geometry(gdtf).is_some_and(|geo| geo.name() == referenced_geometry)
+                });
 
             let mut channel_functions = BTreeMap::new();
 
             let mut highlight_values = BTreeMap::new();
 
             for (c_ix, dmx_channel) in dmx_channels_with_geometry {
-                for (lc_ix, logical_channel) in dmx_channel.logical_channels.iter().enumerate() {
+                for (lc_ix, logical_channel) in dmx_channel.logical_channels().iter().enumerate() {
                     let filtered_channel_functions = logical_channel
-                        .channel_functions
+                        .channel_functions()
                         .iter()
                         .filter(|cf| {
-                            cf.attribute(self.gdtf_fixture_type).is_some_and(|a| {
-                                a.name.as_ref().is_some_and(|name| &**name != "NoFeature")
-                            })
+                            cf.attribute(self.gdtf)
+                                .is_some_and(|a| a.name() != &AttributeName::NoFeature)
                         })
                         .enumerate()
                         .collect::<Vec<_>>();
 
                     for (cf_ix, channel_function) in &filtered_channel_functions {
-                        let from = channel_function.dmx_from.into();
-                        let to = filtered_channel_functions
-                            .get(cf_ix + 1)
-                            .map(|(_, cf)| ClampedValue::from(cf.dmx_from))
-                            .unwrap_or_else(|| ClampedValue::new(ClampedValue::MAX));
+                        let from = channel_function.physical_from();
+                        let to = channel_function.physical_to();
 
-                        let Some(attribute) = self.attribute_from_cf(channel_function) else {
+                        // Map the clamped value to the physical range [from, to]
+                        let default_clamped = ClampedValue::from(channel_function.default());
+                        let default = from + (to - from) * default_clamped.as_f32();
+
+                        let Some(attribute) = channel_function.attribute(gdtf) else {
                             continue;
                         };
 
@@ -320,24 +318,25 @@ mod channel_functions {
 
                         let kind = self.make_channel_function_kind(
                             dmx_channel,
-                            &attribute,
+                            attribute.name().clone(),
                             cf_id.clone(),
                             geometry_address_offset,
                             base_address,
                             virtuals,
                         );
 
-                        let default = ClampedValue::from(channel_function.default);
-
                         if dmx_channel
                             .initial_function()
                             .is_some_and(|(_, cf)| cf == *channel_function)
                         {
                             if let FixtureChannelFunctionKind::Physical { addresses } = &kind {
-                                let default_values = default.to_address_values(addresses);
-                                defaults.extend(default_values);
+                                defaults.set(
+                                    id,
+                                    attribute.name().clone(),
+                                    AttributeValue::Clamped(default_clamped),
+                                );
 
-                                if let Some(highlight) = dmx_channel.highlight {
+                                if let Some(highlight) = dmx_channel.highlight() {
                                     let values =
                                         ClampedValue::from(highlight).to_address_values(addresses);
                                     for (address, value) in values {
@@ -348,7 +347,7 @@ mod channel_functions {
                         }
 
                         channel_functions.insert(
-                            attribute,
+                            attribute.name().clone(),
                             FixtureChannelFunction { kind, min: from, max: to, default },
                         );
 
@@ -363,18 +362,19 @@ mod channel_functions {
         fn make_channel_function_kind(
             &self,
             dmx_channel: &DmxChannel,
-            attribute: &Attribute,
+            attribute: AttributeName,
             cf_id: ChannelFunctionId,
             geometry_address_offset: i32,
             base_address: Address,
             virtuals: &mut VirtualChannelResolver,
         ) -> FixtureChannelFunctionKind {
-            match &dmx_channel.offset {
-                Some(offsets) => {
+            match &dmx_channel.offset() {
+                DmxOffset::Physical(offsets) => {
                     let addresses = offsets
                         .iter()
                         .filter_map(|o| {
-                            match base_address.with_channel_offset(geometry_address_offset + o - 1)
+                            match base_address
+                                .with_channel_offset(geometry_address_offset + *o as i32 - 1)
                             {
                                 Ok(addr) => Some(addr),
                                 Err(err) => {
@@ -387,17 +387,11 @@ mod channel_functions {
 
                     FixtureChannelFunctionKind::Physical { addresses }
                 }
-                None => {
-                    virtuals.register_virtual_channel(cf_id, *attribute);
+                DmxOffset::Virtual => {
+                    virtuals.register_virtual_channel(cf_id, attribute);
                     FixtureChannelFunctionKind::Virtual { relations: vec![] }
                 }
             }
-        }
-
-        fn attribute_from_cf(&self, cf: &ChannelFunction) -> Option<Attribute> {
-            cf.attribute(self.gdtf_fixture_type)
-                .and_then(|attribute| attribute.name.as_ref())
-                .map(|attribute| Attribute::from_str(attribute).unwrap())
         }
     }
 
@@ -414,26 +408,26 @@ mod channel_functions {
 mod virtual_channels {
     use std::collections::BTreeMap;
 
-    use gdtf::dmx_mode::{ChannelFunction, DmxChannel, DmxMode, RelationType};
-    use gdtf::fixture_type::FixtureType;
+    use rigger::gdtf::Gdtf;
+    use rigger::gdtf::attr::AttributeName;
+    use rigger::gdtf::dmx::{
+        ChannelFunction, DmxChannel, DmxMode, RelationKind as RiggerRelationKind,
+    };
 
-    use crate::attr::Attribute;
     use crate::project::stage::{
         Fixture, FixtureChannelFunctionKind, FixtureId, Relation, RelationKind,
     };
+    use crate::value::{AttributeValues, ClampedValue};
 
-    use super::channel_functions::ChannelFunctionId;
+    use super::channel_functions::{ChannelFunctionContext, ChannelFunctionId};
 
     /// Collects and resolves virtual channel functions.
     ///
     /// During channel-function creation we don't yet have enough information to populate
-    /// relations for virtual channels. We therefore:
-    /// - record which channel function was created in which fixture (`record_channel_function_location`)
-    /// - register which channel function is virtual and needs relations (`register_virtual_channel`)
-    /// - resolve all virtuals after the fixture list is fully built (`resolve_all`)
+    /// relations for virtual channels.
     pub(crate) struct VirtualChannelResolver {
         channel_function_map: BTreeMap<ChannelFunctionId, FixtureId>,
-        unresolved_virtual_channels: Vec<(ChannelFunctionId, Attribute)>,
+        unresolved_virtual_channels: Vec<(ChannelFunctionId, AttributeName)>,
     }
 
     impl VirtualChannelResolver {
@@ -452,7 +446,7 @@ mod virtual_channels {
         pub(crate) fn register_virtual_channel(
             &mut self,
             cf_id: ChannelFunctionId,
-            attribute: Attribute,
+            attribute: AttributeName,
         ) {
             self.unresolved_virtual_channels.push((cf_id, attribute));
         }
@@ -460,22 +454,35 @@ mod virtual_channels {
         pub(crate) fn resolve_all(
             &self,
             gdtf_dmx_mode: &DmxMode,
-            gdtf_fixture_type: &FixtureType,
-            channel_ctx: &super::channel_functions::ChannelFunctionCtx<'_>,
+            gdtf: &Gdtf,
+            channel_cx: &ChannelFunctionContext<'_>,
             fixtures: &mut [Fixture],
+            defaults: &mut AttributeValues,
         ) {
-            // `channel_ctx` is currently only used for attribute parsing semantics; keep it in the
+            // `channel_cx` is currently only used for attribute parsing semantics; keep it in the
             // signature to avoid re-threading later when this logic is further split/purified.
-            let _ = channel_ctx;
+            let _ = channel_cx;
 
             for (cf_id, virtual_attribute) in &self.unresolved_virtual_channels {
-                let Some(dmx_channel) = gdtf_dmx_mode.dmx_channels.get(cf_id.channel_ix) else {
+                let Some(dmx_channel) = gdtf_dmx_mode.dmx_channels().get(cf_id.channel_ix) else {
+                    continue;
+                };
+
+                let Some(logical_channel) =
+                    dmx_channel.logical_channels().get(cf_id.logical_channel_ix)
+                else {
+                    continue;
+                };
+
+                let Some(channel_function) =
+                    logical_channel.channel_functions().get(cf_id.channel_function_ix)
+                else {
                     continue;
                 };
 
                 let relations = self.relations_for_dmx_channel(
                     gdtf_dmx_mode,
-                    gdtf_fixture_type,
+                    gdtf,
                     &cf_id.geometry,
                     dmx_channel,
                 );
@@ -490,20 +497,35 @@ mod virtual_channels {
                     continue;
                 };
 
-                virtual_channel_function.kind = FixtureChannelFunctionKind::Virtual { relations };
+                virtual_channel_function.kind =
+                    FixtureChannelFunctionKind::Virtual { relations: relations.clone() };
+
+                let is_initial = dmx_channel
+                    .initial_function()
+                    .is_some_and(|(_, cf)| std::ptr::eq(cf, channel_function));
+
+                if is_initial {
+                    defaults.set(
+                        cf_id.fixture_id,
+                        virtual_attribute.clone(),
+                        crate::value::AttributeValue::Clamped(ClampedValue::from(
+                            channel_function.default(),
+                        )),
+                    );
+                }
             }
         }
 
         fn relations_for_dmx_channel(
             &self,
             gdtf_dmx_mode: &DmxMode,
-            gdtf_fixture_type: &FixtureType,
+            gdtf: &Gdtf,
             geometry: &str,
             dmx_channel: &DmxChannel,
         ) -> Vec<Relation> {
             let mut channel_relations = Vec::new();
 
-            let relations = gdtf_dmx_mode.relations.iter().filter(|relation| {
+            let relations = gdtf_dmx_mode.relations().iter().filter(|relation| {
                 relation
                     .master(gdtf_dmx_mode)
                     .is_some_and(|master| master.name() == dmx_channel.name())
@@ -519,9 +541,9 @@ mod virtual_channels {
                     continue;
                 };
 
-                let kind = match relation.type_ {
-                    RelationType::Multiply => RelationKind::Multiply,
-                    RelationType::Override => RelationKind::Override,
+                let kind = match relation.kind() {
+                    RiggerRelationKind::Multiply => RelationKind::Multiply,
+                    RiggerRelationKind::Override => RelationKind::Override,
                 };
 
                 let Some(fixture_id) = self.fixture_id_for_channel_function(
@@ -531,18 +553,19 @@ mod virtual_channels {
                 ) else {
                     log::warn!(
                         "could not find fixture id for follower channel function {}",
-                        follower_channel_function.name.as_deref().unwrap_or("<no name>")
+                        follower_channel_function
+                            .name()
+                            .map(|cf| cf.as_str())
+                            .unwrap_or("<no name>")
                     );
                     continue;
                 };
 
-                let Some(attribute) =
-                    attribute_from_cf(gdtf_fixture_type, follower_channel_function)
-                else {
+                let Some(attribute) = follower_channel_function.attribute(gdtf) else {
                     continue;
                 };
 
-                channel_relations.push(Relation::new(kind, fixture_id, attribute));
+                channel_relations.push(Relation::new(kind, fixture_id, attribute.name().clone()));
             }
 
             channel_relations
@@ -554,10 +577,10 @@ mod virtual_channels {
             geometry: &str,
             target_channel_function: &ChannelFunction,
         ) -> Option<FixtureId> {
-            for (c_ix, dmx_channel) in gdtf_dmx_mode.dmx_channels.iter().enumerate() {
-                for (lc_ix, logical_channel) in dmx_channel.logical_channels.iter().enumerate() {
+            for (c_ix, dmx_channel) in gdtf_dmx_mode.dmx_channels().iter().enumerate() {
+                for (lc_ix, logical_channel) in dmx_channel.logical_channels().iter().enumerate() {
                     for (cf_ix, channel_function) in
-                        logical_channel.channel_functions.iter().enumerate()
+                        logical_channel.channel_functions().iter().enumerate()
                     {
                         if !std::ptr::eq(target_channel_function, channel_function) {
                             continue;
@@ -579,16 +602,5 @@ mod virtual_channels {
 
             None
         }
-    }
-
-    fn attribute_from_cf(
-        gdtf_fixture_type: &FixtureType,
-        cf: &ChannelFunction,
-    ) -> Option<Attribute> {
-        use std::str::FromStr;
-
-        cf.attribute(gdtf_fixture_type)
-            .and_then(|attribute| attribute.name.as_ref())
-            .map(|attribute| Attribute::from_str(attribute).unwrap())
     }
 }

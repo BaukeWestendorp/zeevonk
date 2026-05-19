@@ -4,7 +4,7 @@
 
 use std::path::Path;
 
-use zeevonk::attr::Attribute;
+use rigger::gdtf::attr::AttributeName;
 use zeevonk::project::{
     FixtureDefinition, FixtureIdPart, FixtureKindDefinition, Patch, Project, ProjectFile, Stage,
 };
@@ -38,12 +38,12 @@ pub fn generate_project(
     zeevonk::project::builder::from_file(project_file)
 }
 
-pub fn build_values(stage: &Stage, attrs: &[(Attribute, ClampedValue)]) -> AttributeValues {
+pub fn build_values(stage: &Stage, attrs: &[(AttributeName, ClampedValue)]) -> AttributeValues {
     let mut values = AttributeValues::new();
     for (fid, _) in stage.fixtures() {
         for (child_fid, _) in stage.children(fid) {
-            for &(attr, v) in attrs {
-                values.set(*child_fid, attr, v);
+            for (attr, v) in attrs {
+                values.set(*child_fid, attr.clone(), *v);
             }
         }
     }
