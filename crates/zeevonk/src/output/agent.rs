@@ -172,12 +172,15 @@ struct Pipeline {
 }
 
 impl Pipeline {
-    pub fn new(default_multiverse: Multiverse) -> Self {
+    pub fn new(project: &Project) -> Self {
+        let mut base = Multiverse::new();
+        resolver::resolve(&AttributeValues::new(), &project.stage(), &mut base);
+
         Self {
-            base: default_multiverse.clone(),
+            base: base.clone(),
             updates: AttributeValues::new(),
             highlights: BTreeMap::new(),
-            output: default_multiverse.clone(),
+            output: base,
         }
     }
 
@@ -217,8 +220,7 @@ struct Updater {
 
 impl Updater {
     pub fn new(output_tx: crossbeam_channel::Sender<Multiverse>, project: Arc<Project>) -> Self {
-        let default_multiverse = project.stage().default_multiverse().clone();
-        let pipeline = RwLock::new(Pipeline::new(default_multiverse));
+        let pipeline = RwLock::new(Pipeline::new(&project));
 
         Self { project, tick_interval: Duration::from_secs_f64(1.0 / 44.0), output_tx, pipeline }
     }

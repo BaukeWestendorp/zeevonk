@@ -9,23 +9,24 @@ use rigger::gdtf::attr::AttributeName;
 use uuid::Uuid;
 
 use crate::Error;
-use crate::theymx::{Address, Multiverse};
+use crate::theymx::Address;
+use crate::value::AttributeValues;
 
 /// A read-only, "baked" view of a patch that contains
 /// fixtures and their configuration.
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
 pub struct Stage {
-    /// The defaulted multiverse used for address resolution.
-    pub(crate) default_multiverse: Multiverse,
+    /// Default attribute values for fixtures in this stage.
+    pub(crate) default_attribute_values: AttributeValues,
 
     /// Map of all fixtures in this stage, keyed by their [`FixtureId`].
     pub(crate) fixtures: BTreeMap<FixtureId, Fixture>,
 }
 
 impl Stage {
-    /// Returns a reference to the defaulted [`Multiverse`] used for address resolution.
-    pub fn default_multiverse(&self) -> &Multiverse {
-        &self.default_multiverse
+    /// Returns the default attribute values for fixtures in this stage.
+    pub fn default_attribute_values(&self) -> &AttributeValues {
+        &self.default_attribute_values
     }
 
     /// Returns the map of fixtures contained in this stage.

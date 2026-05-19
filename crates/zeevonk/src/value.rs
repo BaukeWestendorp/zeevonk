@@ -266,4 +266,41 @@ impl AttributeValues {
     pub fn clear(&mut self) {
         self.values.clear();
     }
+
+    pub(crate) fn retain_fixtures(&mut self, keep: &std::collections::BTreeSet<FixtureId>) {
+        self.values.retain(|id, _| keep.contains(id));
+    }
+
+    pub(crate) fn move_attribute_value(
+        &mut self,
+        from: &FixtureId,
+        to: FixtureId,
+        attribute: &AttributeName,
+    ) {
+        let Some(from_map) = self.values.get_mut(from) else {
+            return;
+        };
+
+        let Some(value) = from_map.remove(attribute) else {
+            return;
+        };
+
+        if from_map.is_empty() {
+            self.values.remove(from);
+        }
+
+        self.values.entry(to).or_default().insert(attribute.clone(), value);
+    }
+
+    pub(crate) fn remap_fixture_ids(&mut self, id_map: &BTreeMap<FixtureId, FixtureId>) {
+        let old = std::mem::take(&mut self.values);
+        let mut new = BTreeMap::new();
+
+        for (old_id, attrs) in old {
+            let new_id = id_map.get(&old_id).copied().unwrap_or(old_id);
+            new.entry(new_id).or_insert_with(BTreeMap::new).extend(attrs);
+        }
+
+        self.values = new;
+    }
 }

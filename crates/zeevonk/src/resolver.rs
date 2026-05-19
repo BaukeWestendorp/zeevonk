@@ -8,7 +8,7 @@ use crate::project::{
 use crate::value::{AttributeValue, AttributeValues, ClampedValue};
 
 pub fn resolve(values: &AttributeValues, stage: &Stage, multiverse: &mut Multiverse) {
-    Resolver::new(values, stage, multiverse).resolve();
+    Resolver::new(values, stage.default_attribute_values(), stage, multiverse).resolve();
 }
 
 /// Resolver for translating Zeevonk state into a physical DMX multiverse.
@@ -21,6 +21,7 @@ pub fn resolve(values: &AttributeValues, stage: &Stage, multiverse: &mut Multive
 /// resolved against the master's computed values.
 struct Resolver<'a> {
     attribute_values: &'a AttributeValues,
+    default_attribute_values: &'a AttributeValues,
     stage: &'a Stage,
     multiverse: &'a mut Multiverse,
 
@@ -34,10 +35,17 @@ impl<'a> Resolver<'a> {
     /// Create a new resolver.
     pub fn new(
         attribute_values: &'a AttributeValues,
+        default_attribute_values: &'a AttributeValues,
         stage: &'a Stage,
         multiverse: &'a mut Multiverse,
     ) -> Self {
-        Self { attribute_values, stage, multiverse, deferred_relations: Vec::new() }
+        Self {
+            attribute_values,
+            default_attribute_values,
+            stage,
+            multiverse,
+            deferred_relations: Vec::new(),
+        }
     }
 
     /// Perform resolution and return the populated multiverse.
@@ -77,7 +85,6 @@ impl<'a> Resolver<'a> {
             return;
         };
 
-        // For each channel function, get its explicit value (if any) and apply it.
         for (attribute, channel_function) in fixture.channel_functions() {
             if let Some(value) = self.get_channel_function_value(&fixture_id, &attribute) {
                 self.set_channel_function_value(channel_function, value);
@@ -91,7 +98,9 @@ impl<'a> Resolver<'a> {
         fixture_id: &FixtureId,
         attribute: &AttributeName,
     ) -> Option<AttributeValue> {
-        self.attribute_values.get(fixture_id, attribute)
+        self.attribute_values
+            .get(fixture_id, attribute)
+            .or_else(|| self.default_attribute_values.get(fixture_id, attribute))
     }
 
     /// Apply a computed value to a channel function.

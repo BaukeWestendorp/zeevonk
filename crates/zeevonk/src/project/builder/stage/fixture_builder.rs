@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use crate::value::AttributeValues;
 
 use gdtf::dmx_mode::DmxMode;
 use gdtf::fixture_type::FixtureType;
@@ -25,7 +25,7 @@ pub(crate) struct FixtureBuilder<'a> {
     channel_ctx: ChannelFunctionCtx<'a>,
     virtuals: VirtualChannelResolver,
 
-    pub(crate) defaults: HashSet<(Address, theymx::Value)>,
+    pub(crate) defaults: AttributeValues,
 }
 
 impl<'a> FixtureBuilder<'a> {
@@ -46,13 +46,11 @@ impl<'a> FixtureBuilder<'a> {
             sibling_count_stack: Vec::new(),
             channel_ctx: ChannelFunctionCtx::new(gdtf_fixture_type, gdtf_dmx_mode),
             virtuals: VirtualChannelResolver::new(),
-            defaults: HashSet::new(),
+            defaults: AttributeValues::new(),
         }
     }
 
-    pub(crate) fn build_fixture_tree(
-        mut self,
-    ) -> crate::Result<(Vec<Fixture>, HashSet<(Address, theymx::Value)>)> {
+    pub(crate) fn build_fixture_tree(mut self) -> crate::Result<(Vec<Fixture>, AttributeValues)> {
         let root_geometry = self.root_geometry()?.clone();
         let root_id = FixtureId::new(self.root_id);
 
@@ -63,6 +61,7 @@ impl<'a> FixtureBuilder<'a> {
             self.gdtf_fixture_type,
             &self.channel_ctx,
             &mut self.fixtures,
+            &mut self.defaults,
         );
 
         Ok((self.fixtures, self.defaults))
@@ -237,7 +236,7 @@ impl<'a> FixtureBuilder<'a> {
 }
 
 mod channel_functions {
-    use std::collections::{BTreeMap, HashSet};
+    use std::collections::BTreeMap;
     use std::str::FromStr;
 
     use gdtf::dmx_mode::{ChannelFunction, DmxChannel, DmxMode};
@@ -247,7 +246,7 @@ mod channel_functions {
 
     use crate::project::stage::{FixtureChannelFunction, FixtureChannelFunctionKind, FixtureId};
     use crate::theymx::Address;
-    use crate::value::ClampedValue;
+    use crate::value::{AttributeValue, AttributeValues, ClampedValue};
 
     use super::virtual_channels::VirtualChannelResolver;
 
@@ -271,7 +270,7 @@ mod channel_functions {
             referenced_geometry: &Name,
             geometry_address_offset: i32,
             base_address: Address,
-            defaults: &mut HashSet<(Address, theymx::Value)>,
+            defaults: &mut AttributeValues,
             virtuals: &mut VirtualChannelResolver,
         ) -> (
             BTreeMap<AttributeName, FixtureChannelFunction>,
@@ -335,8 +334,11 @@ mod channel_functions {
                             .is_some_and(|(_, cf)| cf == *channel_function)
                         {
                             if let FixtureChannelFunctionKind::Physical { addresses } = &kind {
-                                let default_values = default_clamped.to_address_values(addresses);
-                                defaults.extend(default_values);
+                                defaults.set(
+                                    id,
+                                    attribute.clone(),
+                                    AttributeValue::Clamped(default_clamped),
+                                );
 
                                 if let Some(highlight) = dmx_channel.highlight {
                                     let values =
@@ -464,6 +466,7 @@ mod virtual_channels {
             gdtf_fixture_type: &FixtureType,
             channel_ctx: &super::channel_functions::ChannelFunctionCtx<'_>,
             fixtures: &mut [Fixture],
+            defaults: &mut crate::value::AttributeValues,
         ) {
             // `channel_ctx` is currently only used for attribute parsing semantics; keep it in the
             // signature to avoid re-threading later when this logic is further split/purified.
@@ -471,6 +474,18 @@ mod virtual_channels {
 
             for (cf_id, virtual_attribute) in &self.unresolved_virtual_channels {
                 let Some(dmx_channel) = gdtf_dmx_mode.dmx_channels.get(cf_id.channel_ix) else {
+                    continue;
+                };
+
+                let Some(logical_channel) =
+                    dmx_channel.logical_channels.get(cf_id.logical_channel_ix)
+                else {
+                    continue;
+                };
+
+                let Some(channel_function) =
+                    logical_channel.channel_functions.get(cf_id.channel_function_ix)
+                else {
                     continue;
                 };
 
@@ -491,7 +506,22 @@ mod virtual_channels {
                     continue;
                 };
 
-                virtual_channel_function.kind = FixtureChannelFunctionKind::Virtual { relations };
+                virtual_channel_function.kind =
+                    FixtureChannelFunctionKind::Virtual { relations: relations.clone() };
+
+                let is_initial = dmx_channel
+                    .initial_function()
+                    .is_some_and(|(_, cf)| std::ptr::eq(cf, channel_function));
+
+                if is_initial {
+                    defaults.set(
+                        cf_id.fixture_id,
+                        virtual_attribute.clone(),
+                        crate::value::AttributeValue::Clamped(crate::value::ClampedValue::from(
+                            channel_function.default,
+                        )),
+                    );
+                }
             }
         }
 

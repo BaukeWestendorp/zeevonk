@@ -10,10 +10,11 @@ use uuid::Uuid;
 use crate::project::builder::stage::fixture_builder::FixtureBuilder;
 use crate::project::file::ProjectFile;
 use crate::project::stage::{Fixture, FixtureChannelFunctionKind, FixtureId, FixtureIdPart, Stage};
-use crate::theymx::Multiverse;
+use crate::value::AttributeValues;
 
 pub fn from_file(file: &ProjectFile) -> crate::Result<Stage> {
-    let mut stage = Stage { fixtures: BTreeMap::new(), default_multiverse: Multiverse::new() };
+    let mut stage =
+        Stage { fixtures: BTreeMap::new(), default_attribute_values: AttributeValues::new() };
 
     let fixture_types = load_fixture_types(file)?;
 
@@ -45,9 +46,8 @@ fn build_patch_fixture(
     for built_fixture in built_fixtures {
         stage.fixtures.insert(built_fixture.id(), built_fixture);
     }
-    for (address, value) in defaults {
-        stage.default_multiverse.set_value(&address, value);
-    }
+
+    stage.default_attribute_values.extend(defaults);
 
     Ok(())
 }
@@ -128,6 +128,7 @@ fn prune_empty(stage: &mut Stage) {
     }
 
     stage.fixtures.retain(|id, _| keep.contains(id));
+    stage.default_attribute_values.retain_fixtures(&keep);
 
     let existing: BTreeSet<FixtureId> = stage.fixtures.keys().cloned().collect();
     for fixture in stage.fixtures.values_mut() {
@@ -179,6 +180,12 @@ fn collapse(stage: &mut Stage) {
                 .get_mut(&child_id)
                 .map(|c| std::mem::take(&mut c.channel_functions))
                 .unwrap_or_default();
+
+            for attribute in child_channel_functions.keys() {
+                stage
+                    .default_attribute_values
+                    .move_attribute_value(&child_id, parent_id, attribute);
+            }
 
             let child_highlight_values = stage
                 .fixtures
@@ -293,5 +300,6 @@ fn renumber(stage: &mut Stage) {
         }
 
         stage.fixtures = new_fixtures;
+        stage.default_attribute_values.remap_fixture_ids(&id_map);
     }
 }
