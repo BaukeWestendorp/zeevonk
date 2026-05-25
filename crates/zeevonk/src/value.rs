@@ -11,7 +11,7 @@ use crate::theymx::Address;
 use crate::project::{FixtureChannelFunction, FixtureId};
 
 /// Represents a value for a fixture attribute, either as a clamped normalized value or as a physical value.
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 #[derive(serde::Serialize, serde::Deserialize)]
 pub enum AttributeValue {
     /// A value clamped to the range `0.0..=1.0`.
@@ -37,14 +37,31 @@ impl AttributeValue {
         match self {
             AttributeValue::Clamped(v) => *v,
             AttributeValue::Physical(v) => {
-                let mut min = channel_function.min;
-                let mut max = channel_function.max;
+                let (mut min, mut max) = match (channel_function.min, channel_function.max) {
+                    (AttributeValue::Physical(min), AttributeValue::Physical(max)) => (min, max),
+                    _ => (0.0, 1.0),
+                };
+
                 if min > max {
                     std::mem::swap(&mut min, &mut max);
                 }
-                let normalized = ((*v - min) / (max - min)).clamp(0.0, 1.0);
+
+                let range = max - min;
+                if range == 0.0 {
+                    return ClampedValue::new(0.0);
+                }
+
+                let normalized = ((*v - min) / range).clamp(0.0, 1.0);
                 ClampedValue::new(normalized)
             }
+        }
+    }
+
+    /// Converts the value to the inner f32.
+    pub fn as_f32(&self) -> f32 {
+        match self {
+            AttributeValue::Clamped(v) => v.as_f32(),
+            AttributeValue::Physical(v) => *v,
         }
     }
 }
@@ -52,6 +69,12 @@ impl AttributeValue {
 impl From<ClampedValue> for AttributeValue {
     fn from(value: ClampedValue) -> Self {
         Self::Clamped(value)
+    }
+}
+
+impl From<AttributeValue> for f32 {
+    fn from(value: AttributeValue) -> Self {
+        value.as_f32()
     }
 }
 

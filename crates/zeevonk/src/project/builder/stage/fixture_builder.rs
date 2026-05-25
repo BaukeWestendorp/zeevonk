@@ -238,7 +238,7 @@ impl<'a> FixtureBuilder<'a> {
 mod channel_functions {
     use std::collections::BTreeMap;
 
-    use rigger::gdtf::attr::AttributeName;
+    use rigger::gdtf::attr::{AttributeName, PhysicalUnit};
     use rigger::gdtf::dmx::{DmxChannel, DmxMode, DmxOffset};
     use rigger::gdtf::{Gdtf, Name};
 
@@ -297,15 +297,31 @@ mod channel_functions {
                         .collect::<Vec<_>>();
 
                     for (cf_ix, channel_function) in &filtered_channel_functions {
-                        let from = channel_function.physical_from();
-                        let to = channel_function.physical_to();
-
-                        // Map the clamped value to the physical range [from, to]
-                        let default_clamped = ClampedValue::from(channel_function.default());
-                        let default = from + (to - from) * default_clamped.as_f32();
-
                         let Some(attribute) = channel_function.attribute(gdtf) else {
+                            log::error!("attribute not found for channel function");
                             continue;
+                        };
+
+                        let is_unitless = matches!(attribute.physical_unit(), PhysicalUnit::None);
+
+                        let default_clamped = ClampedValue::from(channel_function.default());
+
+                        let (from, to, default) = if is_unitless {
+                            (
+                                AttributeValue::Clamped(ClampedValue::new(0.0)),
+                                AttributeValue::Clamped(ClampedValue::new(1.0)),
+                                AttributeValue::Clamped(default_clamped),
+                            )
+                        } else {
+                            let from = channel_function.physical_from();
+                            let to = channel_function.physical_to();
+                            let default = from + (to - from) * default_clamped.as_f32();
+
+                            (
+                                AttributeValue::Physical(from),
+                                AttributeValue::Physical(to),
+                                AttributeValue::Physical(default),
+                            )
                         };
 
                         let cf_id = ChannelFunctionId {
@@ -330,11 +346,7 @@ mod channel_functions {
                             .is_some_and(|(_, cf)| cf == *channel_function)
                         {
                             if let FixtureChannelFunctionKind::Physical { addresses } = &kind {
-                                defaults.set(
-                                    id,
-                                    attribute.name().clone(),
-                                    AttributeValue::Clamped(default_clamped),
-                                );
+                                defaults.set(id, attribute.name().clone(), default);
 
                                 if let Some(highlight) = dmx_channel.highlight() {
                                     let values =

@@ -10,7 +10,7 @@ use rigger::gdtf::attr::AttributeName;
 
 use crate::Error;
 use crate::theymx::Address;
-use crate::value::AttributeValues;
+use crate::value::{AttributeValue, AttributeValues};
 
 /// A read-only, "baked" view of a patch that contains
 /// fixtures and their configuration.
@@ -179,9 +179,9 @@ impl Fixture {
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct FixtureChannelFunction {
     pub(crate) kind: FixtureChannelFunctionKind,
-    pub(crate) min: f32,
-    pub(crate) max: f32,
-    pub(crate) default: f32,
+    pub(crate) min: AttributeValue,
+    pub(crate) max: AttributeValue,
+    pub(crate) default: AttributeValue,
 }
 
 impl FixtureChannelFunction {
@@ -191,17 +191,17 @@ impl FixtureChannelFunction {
     }
 
     /// The minimum value (inclusive) supported by this channel function.
-    pub fn min(&self) -> f32 {
+    pub fn min(&self) -> AttributeValue {
         self.min
     }
 
     /// The maximum value (inclusive) supported by this channel function.
-    pub fn max(&self) -> f32 {
+    pub fn max(&self) -> AttributeValue {
         self.max
     }
 
     /// The default value for this attribute when no explicit value is set.
-    pub fn default(&self) -> f32 {
+    pub fn default(&self) -> AttributeValue {
         self.default
     }
 }
